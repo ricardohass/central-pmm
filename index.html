@@ -575,6 +575,25 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         </div>
       </div>
 
+      <!-- Materiais — visível para não-admins (closers, SDR, social seller) -->
+      <div id="homeMateriais" style="display:none;margin-top:4px;">
+        <p class="time-section-title" style="margin-top:24px;margin-bottom:14px;">Processos e materiais</p>
+        <div class="processos-grid">
+          <a class="processo-btn" href="https://canva.link/n52trvty4t8zk6u" target="_blank">
+            <span class="processo-btn-icon">📊</span>Template de apresentação de vendas
+          </a>
+          <a class="processo-btn" href="https://whimsical.com/lionx-company/fluxo-reuniao-passo-a-passo-pmm-Cr2NxKcaD1TAUPMmosttzB" target="_blank">
+            <span class="processo-btn-icon">🔄</span>Processo de vendas
+          </a>
+          <a class="processo-btn" href="https://pmm-central.netlify.app/novo-cliente" target="_blank">
+            <span class="processo-btn-icon">📋</span>Formulário de novo cliente
+          </a>
+          <a class="processo-btn" href="https://docs.google.com/document/d/1fTpM41VFxfQqmhT-9DkC1NMOx9NB_JQPWHQlZDlzy-U/edit" target="_blank">
+            <span class="processo-btn-icon">📖</span>Manual do Closer
+          </a>
+        </div>
+      </div>
+
       <p class="home-footer">Central comercial PMM &nbsp;·&nbsp; Grupo Prø &nbsp;·&nbsp; 2026</p>
     </div>
 
@@ -1356,10 +1375,10 @@ const TODAS_TELAS=[
   {id:'cobrancas',nome:'Cobranças'},
 ];
 const PERM_DEFAULT={
-  admin:['time','dashboards','vendas','performance','usuarios','metas','acessos','analises','depoimentos','links','cobrancas'],
+  admin:['dashboards','vendas','performance','usuarios','metas','acessos','analises','depoimentos','links','cobrancas'],
   closer:['performance','analises','metas'],
-  sdr:['time'],
-  social_seller:['time'],
+  sdr:[],
+  social_seller:[],
 };
 function getPerms(){
   const s=localStorage.getItem('pmm_perms');
@@ -1436,10 +1455,16 @@ function aplicarPermissoes(){
   const perms=getPerms();
   const funcao=currentUser.funcao;
   const telasPermitidas=['home',...(perms[funcao]||[])];
-  ['home','time','dashboards','vendas','performance','usuarios','metas','acessos','analises','depoimentos','links','cobrancas'].forEach(p=>{
+  ['home','dashboards','vendas','performance','usuarios','metas','acessos','analises','depoimentos','links','cobrancas'].forEach(p=>{
     const tab=document.getElementById('tab-'+p);
     if(tab) tab.style.display=telasPermitidas.includes(p)?'':'none';
   });
+  // Time interno desativado — sempre oculto
+  const tabTime=document.getElementById('tab-time');
+  if(tabTime) tabTime.style.display='none';
+  // Materiais na home: só para não-admins
+  const matEl=document.getElementById('homeMateriais');
+  if(matEl) matEl.style.display=funcao!=='admin'?'block':'none';
   if(funcao==='admin'){
     document.getElementById('dash-admin-view').style.display='block';
     document.getElementById('dash-closer-view').style.display='none';
@@ -1521,8 +1546,8 @@ async function carregarHomeSnapshot(){
     const hojStr=hoje.toISOString().split('T')[0];
 
     const [todasMes, vendaHoje] = await Promise.all([
-      supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=neq.cancelada&select=*'),
-      supaFetch('vendas?data_venda=eq.'+hojStr+'&status=neq.cancelada&select=valor_bruto,closer')
+      supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=not.in.(cancelada,reembolso)&select=*'),
+      supaFetch('vendas?data_venda=eq.'+hojStr+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,closer')
     ]);
 
     const fatBruto=todasMes.reduce((s,v)=>s+Number(v.valor_bruto||0),0);
@@ -2468,6 +2493,7 @@ const DADOS_INICIAIS_ACESSOS = [
   {nome:'Template de apresentação de vendas', link:'https://canva.link/n52trvty4t8zk6u', login:'-', senha:'-', observacao:'', ordem:14},
   {nome:'Database - Supabase', link:'', login:'', senha:'GrupoPro#2026', observacao:'', ordem:15},
   {nome:'Manual do Closer', link:'https://docs.google.com/document/d/1fTpM41VFxfQqmhT-9DkC1NMOx9NB_JQPWHQlZDlzy-U/edit', login:'-', senha:'-', observacao:'Protocolo operacional e rotina de alta performance', ordem:16},
+  {nome:'Processo de vendas', link:'https://whimsical.com/lionx-company/fluxo-reuniao-passo-a-passo-pmm-Cr2NxKcaD1TAUPMmosttzB', login:'-', senha:'-', observacao:'Fluxo reunião passo a passo', ordem:17},
 ];
 
 let acessosPopulados=false;
@@ -2479,7 +2505,7 @@ async function carregarAcessos(){
   // Closers só veem seus próprios acessos + recursos gerais
   const ACESSOS_CLOSER_NOMES=[
     'E-mail Estrategista 001','E-mail Estrategista 002','E-mail Estrategista 003','E-mail Estrategista 004',
-    'Análise de instagram','Formulário - cadastro de novo cliente','Template de apresentação de vendas','Manual do Closer'
+    'Análise de instagram','Formulário - cadastro de novo cliente','Template de apresentação de vendas','Manual do Closer','Processo de vendas'
   ];
   const CLOSER_EMAIL_MAP={
     'Lígia Oliveira':'E-mail Estrategista 001',
