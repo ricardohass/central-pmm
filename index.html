@@ -709,7 +709,10 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           <p class="page-title" style="margin-bottom:0;">Vendas</p>
           <p class="vendas-count" id="vendasCount">0 venda(s)</p>
         </div>
-        <button class="btn-nova-venda" onclick="abrirFormVenda()">+ Nova venda</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="btnMigrarVendas" onclick="migrarVendasQuebradas()" style="display:none;font-family:'Inter',sans-serif;font-size:12px;color:var(--muted);background:#fff;border:0.5px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;">🔄 Migrar X/N</button>
+          <button class="btn-nova-venda" onclick="abrirFormVenda()">+ Nova venda</button>
+        </div>
       </div>
       <div class="vendas-filtros">
         <div class="filtros-grid">
@@ -1421,6 +1424,9 @@ function iniciarApp(){
   // Mostrar botão novo acesso só para admin
   const btnNovoAcesso=document.getElementById('btnNovoAcesso');
   if(btnNovoAcesso) btnNovoAcesso.style.display=currentUser.funcao==='admin'?'flex':'none';
+  // Mostrar botão de migração só para admin
+  const btnMigrar=document.getElementById('btnMigrarVendas');
+  if(btnMigrar) btnMigrar.style.display=currentUser.funcao==='admin'?'':'none';
   // Ocultar botão novo registro de performance para closers
   const btnNovoPerf=document.querySelector('.perf-controls .btn-novo');
   if(btnNovoPerf) btnNovoPerf.style.display=currentUser.funcao==='admin'?'':'none';
@@ -3388,6 +3394,133 @@ async function carregarMural(){
     }).join('');
   }catch(e){
     wrap.innerHTML='<p class="mural-empty">Erro ao carregar recados.</p>';
+  }
+}
+
+// ── MIGRAÇÃO DE VENDAS QUEBRADAS (X/N) ──
+async function migrarVendasQuebradas(){
+  const btn=document.getElementById('btnMigrarVendas');
+  if(btn){btn.disabled=true;btn.textContent='Buscando...';}
+  try{
+    const vendas=await supaFetch('vendas?order=data_venda.asc,created_at.asc&select=*');
+    const regex=/^(.*?)\s+(\d+)\/(\d+)\s*$/;
+    const grupos={};
+
+    vendas.forEach(v=>{
+      const nome=(v.nome_cliente||'').trim();
+      const m=nome.match(regex);
+      if(!m) return;
+      const nomeBase=m[1].trim();
+      const num=parseInt(m[2]);
+      const total=parseInt(m[3]);
+      if(num<1||total<2||num>total) return;
+      const chave=nomeBase.toLowerCase()+'|||'+total;
+      if(!grupos[chave]) grupos[chave]={nomeBase,total,registros:[]};
+      grupos[chave].registros.push({...v,_num:num,_total:total});
+    });
+
+    const lista=Object.values(grupos).filter(g=>g.registros.length>0);
+    if(lista.length===0){
+      await pmmAlert('Nenhuma venda com padrão X/N encontrada.','ℹ️','Sem registros para migrar');
+      return;
+    }
+
+    const preview=lista.map(g=>{
+      g.registros.sort((a,b)=>a._num-b._num);
+      const encontrados=g.registros.length;
+      return `• ${g.nomeBase} (${encontrados} de ${g.total} encontrados)`;
+    }).join('\n');
+
+    const ok=await pmmConfirm(
+      `Encontrei ${lista.length} grupo(s) para migrar:\n\n${preview}\n\nOs registros duplicados serão apagados e cada grupo vira uma única venda com cronograma.`,
+      '🔄','Migrar vendas X/N'
+    );
+    if(!ok) return;
+
+    const hoje=new Date().toISOString().split('T')[0];
+    let migrados=0;
+
+    for(const grupo of lista){
+      const {nomeBase,total,registros}=grupo;
+      registros.sort((a,b)=>a._num-b._num);
+      const principal=registros[0];
+
+      // Detecta método de pagamento
+      const detectMetodo=r=>{
+        if(r.gateway&&r.gateway.toLowerCase().includes('pix')) return 'PIX';
+        if(r.forma_pagamento==='parcelado') return 'Cartão';
+        return 'PIX';
+      };
+
+      // Detecta status do pagamento
+      const detectStatus=r=>{
+        if(r.status==='confirmada'&&!(Number(r.valor_restante||0)>0)) return 'recebido';
+        return 'pendente';
+      };
+
+      // Cria entradas de pagamento para registros existentes
+      const pagamentos=registros.map(r=>({
+        venda_id:principal.id,
+        data_prevista:r.data_venda?r.data_venda.split('T')[0]:hoje,
+        metodo:detectMetodo(r),
+        gateway:r.gateway||null,
+        valor_bruto:Number(r.valor_bruto||0),
+        valor_liquido:Number(r.valor_liquido||0),
+        status:detectStatus(r),
+      }));
+
+      // Pagamentos faltando (ex: 1/3 e 2/3 mas sem 3/3)
+      const numRegistrados=registros.map(r=>r._num);
+      for(let i=1;i<=total;i++){
+        if(!numRegistrados.includes(i)){
+          pagamentos.push({
+            venda_id:principal.id,
+            data_prevista:hoje,
+            metodo:'PIX',
+            gateway:null,
+            valor_bruto:0,
+            valor_liquido:0,
+            status:'pendente',
+          });
+        }
+      }
+      pagamentos.sort((a,b)=>a.data_prevista.localeCompare(b.data_prevista));
+
+      const totalBruto=pagamentos.reduce((s,p)=>s+p.valor_bruto,0);
+      const totalLiquido=pagamentos.reduce((s,p)=>s+p.valor_liquido,0);
+      const totalRestante=pagamentos.filter(p=>p.status==='pendente').reduce((s,p)=>s+p.valor_bruto,0);
+
+      // Atualiza o registro principal
+      await supaFetch('vendas?id=eq.'+principal.id,{method:'PATCH',body:JSON.stringify({
+        nome_cliente:nomeBase,
+        valor_bruto:totalBruto,
+        valor_liquido:totalLiquido,
+        valor_restante:totalRestante,
+        base_comissao:registros.reduce((s,r)=>s+Number(r.base_comissao||0),0),
+        parcelas:total,
+        forma_pagamento:'parcelado',
+      })});
+
+      // Apaga pagamentos antigos (caso já exista) e insere os novos
+      await supaFetch('pagamentos_venda?venda_id=eq.'+principal.id,{method:'DELETE',headers:{'Prefer':''}});
+      await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(pagamentos)});
+
+      // Apaga os registros duplicados (todos exceto o principal)
+      for(const r of registros.slice(1)){
+        await supaFetch('vendas?id=eq.'+r.id,{method:'DELETE',headers:{'Prefer':''}});
+      }
+      migrados++;
+    }
+
+    await pmmAlert(`Migração concluída! ${migrados} grupo(s) consolidado(s) com sucesso.`,'✅','Pronto');
+    carregarVendas();
+    // Recarrega cobranças se a aba estiver aberta
+    const pgCob=document.getElementById('page-cobrancas');
+    if(pgCob&&pgCob.classList.contains('active')) carregarCobrancas();
+  }catch(e){
+    await pmmAlert('Erro durante a migração: '+e.message,'❌','Erro');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='🔄 Migrar X/N';}
   }
 }
 
