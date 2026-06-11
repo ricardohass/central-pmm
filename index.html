@@ -453,6 +453,54 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 /* Modal metas */
 .meta-modal-box { background:var(--cream); border-radius:16px; padding:32px; width:100%; max-width:480px; }
 .meta-modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+
+/* CRONOGRAMA DE PAGAMENTOS (form) */
+.pgto-row { display:grid; grid-template-columns:118px 84px 100px 80px 80px 78px 22px; gap:6px; align-items:center; padding:6px 0; border-bottom:0.5px solid var(--border); }
+.pgto-row:last-child { border-bottom:none; }
+.pgto-row-header > span { font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+.pgto-input { font-family:'Inter',sans-serif; font-size:12px; color:var(--text); border:0.5px solid var(--border); border-radius:7px; background:var(--cream); padding:6px 7px; outline:none; width:100%; }
+.pgto-input:focus { border-color:var(--coral); }
+.pgto-select { font-family:'Inter',sans-serif; font-size:12px; color:var(--text); border:0.5px solid var(--border); border-radius:7px; background:var(--cream); padding:6px 7px; outline:none; width:100%; cursor:pointer; }
+.pgto-totals { display:flex; gap:20px; padding:10px 0 0; font-size:12px; flex-wrap:wrap; }
+.pgto-total-item { display:flex; gap:6px; align-items:center; }
+.pgto-total-label { color:var(--muted); }
+.pgto-total-val { font-weight:600; color:var(--green); }
+.btn-add-pgto { font-family:'Inter',sans-serif; font-size:12px; color:var(--coral); background:none; border:0.5px solid var(--coral); border-radius:7px; padding:5px 12px; cursor:pointer; margin-top:10px; }
+.btn-add-pgto:hover { background:rgba(212,87,42,0.06); }
+
+/* COBRANÇAS / CALENDÁRIO */
+.cal-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:24px; }
+.cob-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:16px 18px; }
+.cob-card-label { font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.cob-card-value { font-family:'Playfair Display',serif; font-size:24px; font-weight:400; color:var(--green); line-height:1.2; }
+.cob-card-value.coral { color:var(--coral); }
+.cob-card-value.amber { color:#C07A00; }
+.cal-wrap { background:#fff; border:0.5px solid var(--border); border-radius:12px; overflow:hidden; }
+.cal-grid-header { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:0.5px solid var(--border); }
+.cal-day-name { padding:10px 0; text-align:center; font-size:11px; font-weight:600; color:var(--muted); }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); }
+.cal-cell { min-height:80px; padding:8px; border-right:0.5px solid var(--border); border-bottom:0.5px solid var(--border); cursor:pointer; transition:background .15s; }
+.cal-cell:nth-child(7n) { border-right:none; }
+.cal-cell:hover:not(.other-month) { background:var(--cream); }
+.cal-cell.other-month { background:var(--cream2); opacity:0.55; cursor:default; pointer-events:none; }
+.cal-cell.today { background:#F0FDF4; }
+.cal-date { font-size:12px; font-weight:500; color:var(--text); margin-bottom:4px; display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; }
+.cal-cell.today .cal-date { background:var(--coral); color:#fff; border-radius:50%; }
+.cal-dots { display:flex; flex-direction:column; gap:2px; }
+.cal-dot { font-size:10px; padding:1px 5px; border-radius:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.cal-dot.atrasado { background:#FEE2E2; color:#991B1B; }
+.cal-dot.pendente  { background:#FEF3E2; color:#92600A; }
+.cal-dot.recebido  { background:#ECFDF5; color:#065F46; }
+.cal-detail { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:20px; margin-top:16px; }
+.cal-detail-title { font-size:13px; font-weight:500; color:var(--text); margin-bottom:12px; padding-bottom:10px; border-bottom:0.5px solid var(--border); }
+.cob-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:0.5px solid var(--border); flex-wrap:wrap; }
+.cob-item:last-child { border-bottom:none; }
+.cob-item-info { flex:1; min-width:120px; }
+.cob-item-cliente { font-size:13px; font-weight:500; color:var(--text); }
+.cob-item-meta { font-size:11px; color:var(--muted); margin-top:2px; }
+.cob-item-valor { font-size:14px; font-weight:500; color:var(--green); white-space:nowrap; }
+.btn-receber { font-family:'Inter',sans-serif; font-size:11px; font-weight:500; background:var(--green); color:#fff; border:none; border-radius:20px; padding:4px 12px; cursor:pointer; white-space:nowrap; }
+.btn-receber:hover { background:var(--green-light); }
 </style>
 </head>
 <body>
@@ -484,6 +532,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <button class="nav-tab" id="tab-analises"    onclick="sp('analises',this)">Análises</button>
     <button class="nav-tab" id="tab-depoimentos" onclick="sp('depoimentos',this)">Depoimentos</button>
     <button class="nav-tab" id="tab-links"       onclick="sp('links',this)">Links de venda</button>
+    <button class="nav-tab" id="tab-cobrancas"  onclick="sp('cobrancas',this)">Cobranças</button>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbarUser"></span>
     <button class="logout-btn" onclick="fazerLogout()">Sair</button>
@@ -871,6 +920,20 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       <div id="linksContent"></div>
     </div>
 
+    <!-- COBRANÇAS -->
+    <div id="page-cobrancas" class="page">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <p class="page-eyebrow">Controle financeiro</p>
+          <p class="page-title" style="margin-bottom:0;">Cobranças</p>
+        </div>
+        <button class="btn-novo" onclick="carregarCobrancas()">&#8635; Atualizar</button>
+      </div>
+      <div id="cobrancasContent">
+        <p class="empty-state">Abrindo...</p>
+      </div>
+    </div>
+
     <!-- DEPOIMENTOS -->
     <div id="page-depoimentos" class="page">
       <div class="dep-header">
@@ -954,30 +1017,19 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <input type="hidden" id="vfId">
 
     <div class="vf-section">
-      <p class="vf-section-title">Dados financeiros</p>
-      <div class="vf-grid-2">
-        <div class="vf-field"><label>Valor bruto (R$) *</label><input type="number" id="vfBruto" step="0.01" min="0" value="0"></div>
-        <div class="vf-field"><label>Valor líquido (R$) *</label><input type="number" id="vfLiquido" step="0.01" min="0" value="0"></div>
-        <div class="vf-field"><label>Base de comissão (R$) *</label><input type="number" id="vfComissao" step="0.01" min="0" value="0"></div>
-        <div class="vf-field"><label>Valor restante a pagar (R$)</label><input type="number" id="vfRestante" step="0.01" min="0" value="0"></div>
-        <div class="vf-field"><label>Forma de pagamento *</label>
-          <select id="vfPagamento" onchange="toggleParcelas()">
-            <option value="a_vista">À vista</option>
-            <option value="parcelado">Parcelado</option>
-          </select>
-        </div>
-        <div class="vf-field" id="camParcelas" style="display:none;"><label>Número de parcelas</label><input type="number" id="vfParcelas" min="2" max="60" value="2"></div>
-        <div class="vf-field vf-full"><label>Gateway *</label>
-          <select id="vfGateway">
-            <option value="">Selecione o gateway</option>
-            <option value="Hotmart">Hotmart</option>
-            <option value="Hubla">Hubla</option>
-            <option value="Cispay">Cispay</option>
-            <option value="PIX Itaú">PIX Itaú</option>
-            <option value="PIX BTG">PIX BTG</option>
-            <option value="Asaas">Asaas</option>
-          </select>
-        </div>
+      <p class="vf-section-title">Cronograma de pagamentos</p>
+      <div class="pgto-row pgto-row-header" style="margin-bottom:4px;">
+        <span>Data prevista</span><span>Método</span><span>Gateway</span><span>Bruto (R$)</span><span>Líquido (R$)</span><span>Status</span><span></span>
+      </div>
+      <div id="pgtoWrap" style="overflow-x:auto;"></div>
+      <button type="button" class="btn-add-pgto" onclick="adicionarPgtoRow()">+ Adicionar pagamento</button>
+      <div class="pgto-totals">
+        <div class="pgto-total-item"><span class="pgto-total-label">Total bruto:</span><span class="pgto-total-val" id="pgtoTotalBruto">R$ 0,00</span></div>
+        <div class="pgto-total-item"><span class="pgto-total-label">Total líquido:</span><span class="pgto-total-val" id="pgtoTotalLiquido">R$ 0,00</span></div>
+        <div class="pgto-total-item"><span class="pgto-total-label">A receber:</span><span class="pgto-total-val" id="pgtoTotalRestante" style="color:var(--coral);">R$ 0,00</span></div>
+      </div>
+      <div style="margin-top:14px;max-width:220px;">
+        <div class="vf-field"><label>Base de comissão (R$)</label><input type="number" id="vfComissao" step="0.01" min="0" value="0"></div>
       </div>
     </div>
 
@@ -1298,9 +1350,10 @@ const TODAS_TELAS=[
   {id:'analises',nome:'Análises'},
   {id:'depoimentos',nome:'Depoimentos'},
   {id:'links',nome:'Links de venda'},
+  {id:'cobrancas',nome:'Cobranças'},
 ];
 const PERM_DEFAULT={
-  admin:['time','dashboards','vendas','performance','usuarios','metas','acessos','analises','depoimentos','links'],
+  admin:['time','dashboards','vendas','performance','usuarios','metas','acessos','analises','depoimentos','links','cobrancas'],
   closer:['performance','analises','metas'],
   sdr:['time'],
   social_seller:['time'],
@@ -1356,6 +1409,7 @@ const HOME_CARDS={
   analises:{icon:'&#128200;',label:'Análises',sub:'Comparativos e insights'},
   depoimentos:{icon:'&#127942;',label:'Depoimentos',sub:'Cases de sucesso do PMM'},
   links:{icon:'&#128279;',label:'Links de venda',sub:'Checkouts e pagamentos'},
+  cobrancas:{icon:'&#128197;',label:'Cobranças',sub:'Calendário de cobranças'},
 };
 
 function iniciarApp(){
@@ -1376,7 +1430,7 @@ function aplicarPermissoes(){
   const perms=getPerms();
   const funcao=currentUser.funcao;
   const telasPermitidas=['home',...(perms[funcao]||[])];
-  ['home','time','dashboards','vendas','performance','usuarios','metas'].forEach(p=>{
+  ['home','time','dashboards','vendas','performance','usuarios','metas','acessos','analises','depoimentos','links','cobrancas'].forEach(p=>{
     const tab=document.getElementById('tab-'+p);
     if(tab) tab.style.display=telasPermitidas.includes(p)?'':'none';
   });
@@ -1442,6 +1496,7 @@ function sp(name,btn){
   if(name==='analises'){atualizarLabelAnaliseMes();carregarAnalises();}
   if(name==='depoimentos') carregarDepoimentos();
   if(name==='links') carregarLinks();
+  if(name==='cobrancas') carregarCobrancas();
 }
 function switchTab(tab,btn){
   document.querySelectorAll('.section-tab').forEach(t=>t.classList.remove('active'));
@@ -1653,14 +1708,9 @@ function limparFiltros(){
 function abrirFormVenda(){
   document.getElementById('vfTitle').textContent='Nova venda';
   document.getElementById('vfId').value='';
-  document.getElementById('vfBruto').value='0';
-  document.getElementById('vfLiquido').value='0';
   document.getElementById('vfComissao').value='0';
-  document.getElementById('vfRestante').value='0';
-  document.getElementById('vfPagamento').value='a_vista';
-  document.getElementById('vfParcelas').value='2';
-  document.getElementById('camParcelas').style.display='none';
-  document.getElementById('vfGateway').value='';
+  document.getElementById('pgtoWrap').innerHTML='';
+  adicionarPgtoRow(new Date().toISOString().split('T')[0],'PIX','','','','pendente');
   document.getElementById('vfProduto').value='';
   document.getElementById('vfData').value=new Date().toISOString().split('T')[0];
   document.getElementById('vfOrigem').value='';
@@ -1681,14 +1731,9 @@ function abrirFormVenda(){
 function editarVenda(v){
   document.getElementById('vfTitle').textContent='Editar venda';
   document.getElementById('vfId').value=v.id;
-  document.getElementById('vfBruto').value=v.valor_bruto||0;
-  document.getElementById('vfLiquido').value=v.valor_liquido||0;
   document.getElementById('vfComissao').value=v.base_comissao||0;
-  document.getElementById('vfRestante').value=v.valor_restante||0;
-  document.getElementById('vfPagamento').value=v.forma_pagamento||'a_vista';
-  document.getElementById('vfParcelas').value=v.parcelas||2;
-  document.getElementById('camParcelas').style.display=v.forma_pagamento==='parcelado'?'flex':'none';
-  document.getElementById('vfGateway').value=v.gateway||'';
+  document.getElementById('pgtoWrap').innerHTML='';
+  carregarPgtosNoForm(v);
   document.getElementById('vfProduto').value=v.produto||'';
   document.getElementById('vfData').value=v.data_venda?v.data_venda.split('T')[0]:'';
   document.getElementById('vfOrigem').value=v.origem||'';
@@ -1716,29 +1761,59 @@ async function salvarVenda(){
   const closer=document.getElementById('vfCloser').value;
   const data=document.getElementById('vfData').value;
   if(!produto||!closer||!data){await pmmAlert('Produto, closer e data são obrigatórios.','⚠️','Campos obrigatórios');return;}
-  const parcelado=document.getElementById('vfPagamento').value==='parcelado';
+
+  // Coleta cronograma de pagamentos
+  const pgtoRows=[...document.querySelectorAll('#pgtoWrap .pgto-row')];
+  const pagamentos=pgtoRows.map(r=>({
+    data_prevista:r.querySelector('.pgto-data').value||data,
+    metodo:r.querySelector('.pgto-metodo').value,
+    gateway:r.querySelector('.pgto-gateway').value||null,
+    valor_bruto:parseFloat(r.querySelector('.pgto-bruto').value)||0,
+    valor_liquido:parseFloat(r.querySelector('.pgto-liquido').value)||0,
+    status:r.querySelector('.pgto-status').value,
+  }));
+
+  const totalBruto=pagamentos.reduce((s,p)=>s+p.valor_bruto,0);
+  const totalLiquido=pagamentos.reduce((s,p)=>s+p.valor_liquido,0);
+  const totalRestante=pagamentos.filter(p=>p.status==='pendente').reduce((s,p)=>s+p.valor_bruto,0);
+  const primeiroGateway=pagamentos.find(p=>p.gateway)?.gateway||null;
+  const temCartao=pagamentos.some(p=>p.metodo==='Cartão');
+  const formaPagamento=pagamentos.length>1||(pagamentos.length===1&&temCartao)?'parcelado':'a_vista';
+
   const body={
     data_venda:data,
     nome_cliente:document.getElementById('vfCliente').value||null,
     produto,
     origem:document.getElementById('vfOrigem').value||null,
-    gateway:document.getElementById('vfGateway').value||null,
-    forma_pagamento:document.getElementById('vfPagamento').value,
-    parcelas:parcelado?parseInt(document.getElementById('vfParcelas').value)||null:null,
+    gateway:primeiroGateway,
+    forma_pagamento:formaPagamento,
+    parcelas:pagamentos.length>1?pagamentos.length:null,
     status:document.getElementById('vfStatus').value,
-    valor_bruto:parseFloat(document.getElementById('vfBruto').value)||0,
-    valor_liquido:parseFloat(document.getElementById('vfLiquido').value)||0,
+    valor_bruto:totalBruto,
+    valor_liquido:totalLiquido,
     base_comissao:parseFloat(document.getElementById('vfComissao').value)||0,
-    valor_restante:parseFloat(document.getElementById('vfRestante').value)||0,
+    valor_restante:totalRestante,
     closer,
     sdr:document.getElementById('vfSdr').value||null,
     social_seller:document.getElementById('vfSocialSeller').value||null,
     observacoes:document.getElementById('vfObs').value||null,
     links_pagamento:JSON.stringify([...document.querySelectorAll('.vf-link-input')].map(i=>i.value.trim()).filter(Boolean)),
   };
+
   try{
-    if(id){await supaFetch('vendas?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});}
-    else{await supaFetch('vendas',{method:'POST',body:JSON.stringify(body)});}
+    let vendaId=id;
+    if(id){
+      await supaFetch('vendas?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
+    } else {
+      const result=await supaFetch('vendas',{method:'POST',body:JSON.stringify(body)});
+      vendaId=Array.isArray(result)&&result[0]?result[0].id:null;
+    }
+    // Salva cronograma na tabela pagamentos_venda
+    if(vendaId&&pagamentos.length>0){
+      if(id) await supaFetch('pagamentos_venda?venda_id=eq.'+id,{method:'DELETE',headers:{'Prefer':''}});
+      const inserts=pagamentos.map(p=>({...p,venda_id:vendaId}));
+      await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(inserts)});
+    }
     fecharFormVenda();carregarVendas();
   }catch(e){pmmAlert('Erro ao salvar venda: '+e.message,'❌','Erro');}
 }
@@ -3314,6 +3389,265 @@ async function carregarMural(){
   }catch(e){
     wrap.innerHTML='<p class="mural-empty">Erro ao carregar recados.</p>';
   }
+}
+
+// ── CRONOGRAMA DE PAGAMENTOS (form) ──
+function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,liquido,status){
+  dataPrev=dataPrev||''; metodo=metodo||'PIX'; gateway=gateway||''; bruto=bruto||''; liquido=liquido||''; status=status||'pendente';
+  const wrap=document.getElementById('pgtoWrap');
+  const div=document.createElement('div');
+  div.className='pgto-row';
+  div.innerHTML=`
+    <input type="date" class="pgto-input pgto-data" value="${dataPrev}" oninput="atualizarTotaisPgto()">
+    <select class="pgto-select pgto-metodo" onchange="atualizarTotaisPgto()">
+      <option value="PIX"${metodo==='PIX'?' selected':''}>PIX</option>
+      <option value="Cartão"${metodo==='Cartão'?' selected':''}>Cartão</option>
+      <option value="Boleto"${metodo==='Boleto'?' selected':''}>Boleto</option>
+      <option value="Outro"${metodo==='Outro'?' selected':''}>Outro</option>
+    </select>
+    <select class="pgto-select pgto-gateway">
+      <option value="">Gateway</option>
+      <option value="Hotmart"${gateway==='Hotmart'?' selected':''}>Hotmart</option>
+      <option value="Hubla"${gateway==='Hubla'?' selected':''}>Hubla</option>
+      <option value="Cispay"${gateway==='Cispay'?' selected':''}>Cispay</option>
+      <option value="PIX Itaú"${gateway==='PIX Itaú'?' selected':''}>PIX Itaú</option>
+      <option value="PIX BTG"${gateway==='PIX BTG'?' selected':''}>PIX BTG</option>
+      <option value="Asaas"${gateway==='Asaas'?' selected':''}>Asaas</option>
+    </select>
+    <input type="number" class="pgto-input pgto-bruto" step="0.01" min="0" value="${bruto}" placeholder="0,00" oninput="atualizarTotaisPgto()">
+    <input type="number" class="pgto-input pgto-liquido" step="0.01" min="0" value="${liquido}" placeholder="0,00" oninput="atualizarTotaisPgto()">
+    <select class="pgto-select pgto-status" onchange="atualizarTotaisPgto()">
+      <option value="pendente"${status==='pendente'?' selected':''}>Pendente</option>
+      <option value="recebido"${status==='recebido'?' selected':''}>Recebido</option>
+    </select>
+    <button type="button" onclick="removerPgtoRow(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0;">✕</button>`;
+  wrap.appendChild(div);
+  atualizarTotaisPgto();
+}
+
+function removerPgtoRow(btn){
+  const wrap=document.getElementById('pgtoWrap');
+  if(wrap.children.length<=1) return;
+  btn.closest('.pgto-row').remove();
+  atualizarTotaisPgto();
+}
+
+function atualizarTotaisPgto(){
+  let bruto=0,liquido=0,restante=0;
+  document.querySelectorAll('#pgtoWrap .pgto-row').forEach(r=>{
+    const b=parseFloat(r.querySelector('.pgto-bruto').value)||0;
+    const l=parseFloat(r.querySelector('.pgto-liquido').value)||0;
+    const s=r.querySelector('.pgto-status').value;
+    bruto+=b; liquido+=l;
+    if(s==='pendente') restante+=b;
+  });
+  document.getElementById('pgtoTotalBruto').textContent=fmtBRL(bruto);
+  document.getElementById('pgtoTotalLiquido').textContent=fmtBRL(liquido);
+  document.getElementById('pgtoTotalRestante').textContent=fmtBRL(restante);
+}
+
+async function carregarPgtosNoForm(v){
+  try{
+    const rows=await supaFetch('pagamentos_venda?venda_id=eq.'+v.id+'&order=data_prevista.asc&select=*');
+    if(rows.length>0){
+      rows.forEach(p=>adicionarPgtoRow(p.data_prevista||'',p.metodo||'PIX',p.gateway||'',p.valor_bruto||'',p.valor_liquido||'',p.status||'pendente'));
+    } else {
+      // Legado: cria uma linha com os dados existentes da venda
+      const d=v.data_venda?v.data_venda.split('T')[0]:new Date().toISOString().split('T')[0];
+      const metodo=v.forma_pagamento==='parcelado'?'Cartão':'PIX';
+      const st=Number(v.valor_restante||0)<=0?'recebido':'pendente';
+      adicionarPgtoRow(d,metodo,v.gateway||'',v.valor_bruto||'',v.valor_liquido||'',st);
+    }
+  }catch(e){
+    adicionarPgtoRow(new Date().toISOString().split('T')[0],'PIX','','','','pendente');
+  }
+}
+
+// ── COBRANÇAS / CALENDÁRIO ──
+let calMes=new Date().getMonth();
+let calAno=new Date().getFullYear();
+let todosPagamentos=[];
+
+async function carregarCobrancas(){
+  const container=document.getElementById('cobrancasContent');
+  if(!container) return;
+  container.innerHTML='<p style="text-align:center;color:var(--muted);padding:40px;">Carregando cobranças...</p>';
+  try{
+    const hoje=new Date();
+    const anoMes=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+    const [pendentes,recebidosMes]=await Promise.all([
+      supaFetch('pagamentos_venda?status=eq.pendente&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
+      supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+anoMes+'-01&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
+    ]);
+    todosPagamentos=[...pendentes,...recebidosMes];
+    renderCobrancas();
+  }catch(e){
+    container.innerHTML='<div style="text-align:center;padding:48px;color:var(--coral);font-size:13px;">Erro ao carregar cobranças.<br><span style="color:var(--muted);font-size:12px;">Verifique se a tabela <code>pagamentos_venda</code> foi criada no Supabase.</span></div>';
+  }
+}
+
+function renderCobrancas(){
+  const container=document.getElementById('cobrancasContent');
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const hojStr=hoje.toISOString().split('T')[0];
+  const em7=new Date(hoje); em7.setDate(hoje.getDate()+7);
+  const em7Str=em7.toISOString().split('T')[0];
+
+  const atrasados=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista<hojStr);
+  const hojeArr=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista===hojStr);
+  const prox7=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista>hojStr&&p.data_prevista<=em7Str);
+  const recMes=todosPagamentos.filter(p=>p.status==='recebido');
+  const sumBRL=arr=>fmtBRL(arr.reduce((s,p)=>s+Number(p.valor_bruto||0),0));
+
+  container.innerHTML=`
+    <div class="cal-summary">
+      <div class="cob-card"><div class="cob-card-label">Atrasado</div><div class="cob-card-value coral">${sumBRL(atrasados)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${atrasados.length} pagamento(s)</div></div>
+      <div class="cob-card"><div class="cob-card-label">Vence hoje</div><div class="cob-card-value amber">${sumBRL(hojeArr)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${hojeArr.length} pagamento(s)</div></div>
+      <div class="cob-card"><div class="cob-card-label">Próx. 7 dias</div><div class="cob-card-value">${sumBRL(prox7)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${prox7.length} pagamento(s)</div></div>
+      <div class="cob-card"><div class="cob-card-label">Recebido (mês)</div><div class="cob-card-value" style="color:#2E7D52;">${sumBRL(recMes)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${recMes.length} pagamento(s)</div></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <div class="date-nav">
+        <button class="date-btn" onclick="mudarCalMes(-1)">&#8249;</button>
+        <span class="date-label" id="calMesLabel"></span>
+        <button class="date-btn" onclick="mudarCalMes(1)">&#8250;</button>
+      </div>
+      <div style="display:flex;gap:14px;font-size:11px;color:var(--muted);align-items:center;">
+        <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#FEE2E2;"></span>Atrasado</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#FEF3E2;"></span>Pendente</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#ECFDF5;"></span>Recebido</span>
+      </div>
+    </div>
+    <div class="cal-wrap">
+      <div class="cal-grid-header">
+        ${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d=>`<div class="cal-day-name">${d}</div>`).join('')}
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <div id="calDetail" style="display:none;" class="cal-detail">
+      <p class="cal-detail-title" id="calDetailTitle"></p>
+      <div id="calDetailList"></div>
+    </div>`;
+
+  atualizarCalLabel();
+  renderCalendario();
+}
+
+function atualizarCalLabel(){
+  const el=document.getElementById('calMesLabel');
+  if(el) el.textContent=MESES_NOMES[calMes]+' '+calAno;
+}
+
+function mudarCalMes(delta){
+  calMes+=delta;
+  if(calMes>11){calMes=0;calAno++;}
+  if(calMes<0){calMes=11;calAno--;}
+  atualizarCalLabel();
+  renderCalendario();
+}
+
+function renderCalendario(){
+  const grid=document.getElementById('calGrid');
+  if(!grid) return;
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const hojStr=hoje.toISOString().split('T')[0];
+
+  // Agrupa pagamentos por data
+  const byDate={};
+  todosPagamentos.forEach(p=>{
+    if(!p.data_prevista) return;
+    const key=p.data_prevista.split('T')[0];
+    if(!byDate[key]) byDate[key]=[];
+    byDate[key].push(p);
+  });
+
+  const primeiroDia=new Date(calAno,calMes,1);
+  const ultimoDia=new Date(calAno,calMes+1,0);
+  const comecaEm=primeiroDia.getDay();
+  let cells='';
+
+  // Dias anteriores (cinza)
+  for(let i=0;i<comecaEm;i++){
+    const d=new Date(calAno,calMes,-comecaEm+i+1);
+    cells+=`<div class="cal-cell other-month"><div class="cal-date">${d.getDate()}</div></div>`;
+  }
+
+  // Dias do mês
+  for(let d=1;d<=ultimoDia.getDate();d++){
+    const dateStr=calAno+'-'+String(calMes+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const pagsDia=byDate[dateStr]||[];
+    const isHoje=dateStr===hojStr;
+    const dots=pagsDia.slice(0,3).map(p=>{
+      const atrasado=p.status==='pendente'&&p.data_prevista<hojStr;
+      const cls=p.status==='recebido'?'recebido':atrasado?'atrasado':'pendente';
+      const nome=(p.vendas?.nome_cliente||'Cliente').split(' ')[0];
+      return`<div class="cal-dot ${cls}">${nome} ${fmtBRL(p.valor_bruto)}</div>`;
+    }).join('');
+    const extra=pagsDia.length>3?`<div class="cal-dot pendente">+${pagsDia.length-3} mais</div>`:'';
+    cells+=`<div class="cal-cell${isHoje?' today':''}" onclick="mostrarDetalheCalDia('${dateStr}')">
+      <div class="cal-date">${d}</div>
+      <div class="cal-dots">${dots}${extra}</div>
+    </div>`;
+  }
+
+  // Dias seguintes (cinza)
+  const total=comecaEm+ultimoDia.getDate();
+  const trailing=(7-total%7)%7;
+  for(let i=1;i<=trailing;i++){
+    cells+=`<div class="cal-cell other-month"><div class="cal-date">${i}</div></div>`;
+  }
+  grid.innerHTML=cells;
+}
+
+function mostrarDetalheCalDia(dateStr){
+  const detail=document.getElementById('calDetail');
+  const titulo=document.getElementById('calDetailTitle');
+  const lista=document.getElementById('calDetailList');
+  if(!detail) return;
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const hojStr=hoje.toISOString().split('T')[0];
+  const pagsDia=todosPagamentos.filter(p=>p.data_prevista&&p.data_prevista.split('T')[0]===dateStr);
+  const [ano,mes,dia]=dateStr.split('-');
+  titulo.textContent=`${dia}/${mes}/${ano} — ${pagsDia.length} pagamento(s)`;
+  if(pagsDia.length===0){
+    lista.innerHTML='<p style="font-size:13px;color:var(--muted);padding:12px 0;">Nenhum pagamento neste dia.</p>';
+  } else {
+    lista.innerHTML=pagsDia.map(p=>{
+      const atrasado=p.status==='pendente'&&p.data_prevista<hojStr;
+      const sClass=p.status==='recebido'?'s-confirmada':atrasado?'s-cancelada':'s-pendente';
+      const sLabel=p.status==='recebido'?'Recebido':atrasado?'Atrasado':'Pendente';
+      const nome=p.vendas?.nome_cliente||'Cliente sem nome';
+      const closer=p.vendas?.closer||'';
+      return`<div class="cob-item">
+        <div class="cob-item-info">
+          <div class="cob-item-cliente">${nome}</div>
+          <div class="cob-item-meta">${p.metodo||'—'}${p.gateway?' · '+p.gateway:''}${closer?' · '+closer:''}</div>
+        </div>
+        <div class="cob-item-valor">${fmtBRL(p.valor_bruto)}</div>
+        <span class="status-badge ${sClass}">${sLabel}</span>
+        ${p.status!=='recebido'?`<button class="btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Recebido</button>`:''}
+      </div>`;
+    }).join('');
+  }
+  detail.style.display='block';
+  detail.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+async function marcarRecebido(id,dateStr){
+  try{
+    await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:'recebido'})});
+    const p=todosPagamentos.find(x=>x.id===id);
+    if(p){
+      p.status='recebido';
+      // Atualiza valor_restante na venda
+      if(p.vendas?.id){
+        const restante=todosPagamentos.filter(x=>x.vendas?.id===p.vendas.id&&x.status==='pendente').reduce((s,x)=>s+Number(x.valor_bruto||0),0);
+        await supaFetch('vendas?id=eq.'+p.vendas.id,{method:'PATCH',body:JSON.stringify({valor_restante:restante})});
+      }
+    }
+    renderCobrancas();
+    mostrarDetalheCalDia(dateStr);
+  }catch(e){pmmAlert('Erro ao marcar como recebido: '+e.message,'❌','Erro');}
 }
 </script>
 </body>
