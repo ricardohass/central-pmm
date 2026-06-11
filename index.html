@@ -3311,13 +3311,21 @@ async function salvarLink(){
   const valor=parseFloat(document.getElementById('mlValor').value)||0;
   const url=document.getElementById('mlUrl').value.trim();
   if(!nome||!url||!valor){await pmmAlert('Nome, valor e URL são obrigatórios.','⚠️','Campos obrigatórios');return;}
+  const oferta=document.getElementById('mlOferta').value||'34K';
+  let ordem=1;
+  if(!id){
+    try{
+      const ex=await supaFetch('links_vendas?oferta=eq.'+oferta+'&select=ordem&order=ordem.desc&limit=1');
+      ordem=ex.length?((ex[0].ordem||0)+1):1;
+    }catch(_){}
+  }
   const body={
-    nome,valor,
-    oferta:document.getElementById('mlOferta').value||'34K',
+    nome,valor,oferta,
     gateway:document.getElementById('mlGateway').value,
     url,
     descricao:document.getElementById('mlDesc').value.trim()||null,
     ativo:document.getElementById('mlAtivo').checked,
+    ordem,
   };
   try{
     if(id) await supaFetch('links_vendas?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
