@@ -455,7 +455,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .meta-modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
 
 /* CRONOGRAMA DE PAGAMENTOS (form) */
-.pgto-row { display:grid; grid-template-columns:118px 84px 100px 80px 80px 78px 22px; gap:6px; align-items:center; padding:6px 0; border-bottom:0.5px solid var(--border); }
+.pgto-row { display:grid; grid-template-columns:110px 76px 52px 90px 76px 76px 70px 22px; gap:6px; align-items:center; padding:6px 0; border-bottom:0.5px solid var(--border); }
 .pgto-row:last-child { border-bottom:none; }
 .pgto-row-header > span { font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
 .pgto-input { font-family:'Inter',sans-serif; font-size:12px; color:var(--text); border:0.5px solid var(--border); border-radius:7px; background:var(--cream); padding:6px 7px; outline:none; width:100%; }
@@ -1022,7 +1022,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <div class="vf-section">
       <p class="vf-section-title">Cronograma de pagamentos</p>
       <div class="pgto-row pgto-row-header" style="margin-bottom:4px;">
-        <span>Data prevista</span><span>Método</span><span>Gateway</span><span>Bruto (R$)</span><span>Líquido (R$)</span><span>Status</span><span></span>
+        <span>Data prevista</span><span>Método</span><span>Parcelas</span><span>Gateway</span><span>Bruto (R$)</span><span>Líquido (R$)</span><span>Status</span><span></span>
       </div>
       <div id="pgtoWrap" style="overflow-x:auto;"></div>
       <button type="button" class="btn-add-pgto" onclick="adicionarPgtoRow()">+ Adicionar pagamento</button>
@@ -1773,6 +1773,7 @@ async function salvarVenda(){
   const pagamentos=pgtoRows.map(r=>({
     data_prevista:r.querySelector('.pgto-data').value||data,
     metodo:r.querySelector('.pgto-metodo').value,
+    parcelas:parseInt(r.querySelector('.pgto-parcelas').value)||1,
     gateway:r.querySelector('.pgto-gateway').value||null,
     valor_bruto:parseFloat(r.querySelector('.pgto-bruto').value)||0,
     valor_liquido:parseFloat(r.querySelector('.pgto-liquido').value)||0,
@@ -1783,8 +1784,9 @@ async function salvarVenda(){
   const totalLiquido=pagamentos.reduce((s,p)=>s+p.valor_liquido,0);
   const totalRestante=pagamentos.filter(p=>p.status==='pendente').reduce((s,p)=>s+p.valor_bruto,0);
   const primeiroGateway=pagamentos.find(p=>p.gateway)?.gateway||null;
-  const temCartao=pagamentos.some(p=>p.metodo==='Cartão');
-  const formaPagamento=pagamentos.length>1||(pagamentos.length===1&&temCartao)?'parcelado':'a_vista';
+  const temParcelado=pagamentos.some(p=>p.metodo==='Cartão'&&(p.parcelas||1)>1);
+  const formaPagamento=(pagamentos.length>1||temParcelado)?'parcelado':'a_vista';
+  const totalParcelas=pagamentos.length>1?pagamentos.length:(pagamentos[0]?.parcelas||1);
 
   const body={
     data_venda:data,
@@ -1793,7 +1795,7 @@ async function salvarVenda(){
     origem:document.getElementById('vfOrigem').value||null,
     gateway:primeiroGateway,
     forma_pagamento:formaPagamento,
-    parcelas:pagamentos.length>1?pagamentos.length:null,
+    parcelas:formaPagamento==='parcelado'?totalParcelas:null,
     status:document.getElementById('vfStatus').value,
     valor_bruto:totalBruto,
     valor_liquido:totalLiquido,
@@ -3525,19 +3527,22 @@ async function migrarVendasQuebradas(){
 }
 
 // ── CRONOGRAMA DE PAGAMENTOS (form) ──
-function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,liquido,status){
-  dataPrev=dataPrev||''; metodo=metodo||'PIX'; gateway=gateway||''; bruto=bruto||''; liquido=liquido||''; status=status||'pendente';
+function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,liquido,status,parcelas){
+  dataPrev=dataPrev||''; metodo=metodo||'PIX'; gateway=gateway||''; bruto=bruto||''; liquido=liquido||''; status=status||'pendente'; parcelas=parseInt(parcelas)||1;
+  const isCartao=metodo==='Cartão';
+  const opsParcelas=[1,2,3,4,5,6,7,8,9,10,11,12,15,18,24].map(n=>`<option value="${n}"${n===parcelas?' selected':''}>${n===1?'À vista':n+'x'}</option>`).join('');
   const wrap=document.getElementById('pgtoWrap');
   const div=document.createElement('div');
   div.className='pgto-row';
   div.innerHTML=`
     <input type="date" class="pgto-input pgto-data" value="${dataPrev}" oninput="atualizarTotaisPgto()">
-    <select class="pgto-select pgto-metodo" onchange="atualizarTotaisPgto()">
+    <select class="pgto-select pgto-metodo" onchange="onPgtoMetodoChange(this);atualizarTotaisPgto()">
       <option value="PIX"${metodo==='PIX'?' selected':''}>PIX</option>
       <option value="Cartão"${metodo==='Cartão'?' selected':''}>Cartão</option>
       <option value="Boleto"${metodo==='Boleto'?' selected':''}>Boleto</option>
       <option value="Outro"${metodo==='Outro'?' selected':''}>Outro</option>
     </select>
+    <select class="pgto-select pgto-parcelas"${!isCartao?' disabled style="color:var(--muted);background:var(--cream2);"':''}>${opsParcelas}</select>
     <select class="pgto-select pgto-gateway">
       <option value="">Gateway</option>
       <option value="Hotmart"${gateway==='Hotmart'?' selected':''}>Hotmart</option>
@@ -3556,6 +3561,20 @@ function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,liquido,status){
     <button type="button" onclick="removerPgtoRow(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0;">✕</button>`;
   wrap.appendChild(div);
   atualizarTotaisPgto();
+}
+
+function onPgtoMetodoChange(sel){
+  const parcelasEl=sel.closest('.pgto-row').querySelector('.pgto-parcelas');
+  if(sel.value==='Cartão'){
+    parcelasEl.disabled=false;
+    parcelasEl.style.color='';
+    parcelasEl.style.background='';
+  } else {
+    parcelasEl.value='1';
+    parcelasEl.disabled=true;
+    parcelasEl.style.color='var(--muted)';
+    parcelasEl.style.background='var(--cream2)';
+  }
 }
 
 function removerPgtoRow(btn){
@@ -3583,13 +3602,13 @@ async function carregarPgtosNoForm(v){
   try{
     const rows=await supaFetch('pagamentos_venda?venda_id=eq.'+v.id+'&order=data_prevista.asc&select=*');
     if(rows.length>0){
-      rows.forEach(p=>adicionarPgtoRow(p.data_prevista||'',p.metodo||'PIX',p.gateway||'',p.valor_bruto||'',p.valor_liquido||'',p.status||'pendente'));
+      rows.forEach(p=>adicionarPgtoRow(p.data_prevista||'',p.metodo||'PIX',p.gateway||'',p.valor_bruto||'',p.valor_liquido||'',p.status||'pendente',p.parcelas||1));
     } else {
       // Legado: cria uma linha com os dados existentes da venda
       const d=v.data_venda?v.data_venda.split('T')[0]:new Date().toISOString().split('T')[0];
       const metodo=v.forma_pagamento==='parcelado'?'Cartão':'PIX';
       const st=Number(v.valor_restante||0)<=0?'recebido':'pendente';
-      adicionarPgtoRow(d,metodo,v.gateway||'',v.valor_bruto||'',v.valor_liquido||'',st);
+      adicionarPgtoRow(d,metodo,v.gateway||'',v.valor_bruto||'',v.valor_liquido||'',st,v.parcelas||1);
     }
   }catch(e){
     adicionarPgtoRow(new Date().toISOString().split('T')[0],'PIX','','','','pendente');
