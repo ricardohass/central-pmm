@@ -196,7 +196,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 /* FORM NOVA VENDA */
 .venda-form-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:flex-start; justify-content:center; overflow-y:auto; padding:32px 16px; }
 .venda-form-overlay.open { display:flex; }
-.venda-form-box { background:var(--cream); border-radius:16px; padding:32px; width:100%; max-width:700px; }
+.venda-form-box { background:var(--cream); border-radius:16px; padding:32px; width:100%; max-width:860px; }
 .vf-title { font-family:'Playfair Display',serif; font-size:22px; color:var(--green); margin-bottom:4px; }
 .vf-sub { font-size:12px; color:var(--muted); margin-bottom:28px; }
 .vf-section { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; }
@@ -455,12 +455,12 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .meta-modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
 
 /* CRONOGRAMA DE PAGAMENTOS (form) */
-.pgto-row { display:grid; grid-template-columns:110px 76px 52px 90px 76px 76px 70px 22px; gap:6px; align-items:center; padding:6px 0; border-bottom:0.5px solid var(--border); }
+.pgto-row { display:grid; grid-template-columns:140px 95px 68px 115px 100px 100px 88px 26px; gap:8px; align-items:center; padding:8px 0; border-bottom:0.5px solid var(--border); }
 .pgto-row:last-child { border-bottom:none; }
 .pgto-row-header > span { font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
-.pgto-input { font-family:'Inter',sans-serif; font-size:12px; color:var(--text); border:0.5px solid var(--border); border-radius:7px; background:var(--cream); padding:6px 7px; outline:none; width:100%; }
+.pgto-input { font-family:'Inter',sans-serif; font-size:13px; color:var(--text); border:0.5px solid var(--border); border-radius:7px; background:var(--cream); padding:8px 9px; outline:none; width:100%; }
 .pgto-input:focus { border-color:var(--coral); }
-.pgto-select { font-family:'Inter',sans-serif; font-size:12px; color:var(--text); border:0.5px solid var(--border); border-radius:7px; background:var(--cream); padding:6px 7px; outline:none; width:100%; cursor:pointer; }
+.pgto-select { font-family:'Inter',sans-serif; font-size:13px; color:var(--text); border:0.5px solid var(--border); border-radius:7px; background:var(--cream); padding:8px 9px; outline:none; width:100%; cursor:pointer; }
 .pgto-totals { display:flex; gap:20px; padding:10px 0 0; font-size:12px; flex-wrap:wrap; }
 .pgto-total-item { display:flex; gap:6px; align-items:center; }
 .pgto-total-label { color:var(--muted); }
@@ -1820,7 +1820,15 @@ async function salvarVenda(){
     if(vendaId&&pagamentos.length>0){
       if(id) await supaFetch('pagamentos_venda?venda_id=eq.'+id,{method:'DELETE',headers:{'Prefer':''}});
       const inserts=pagamentos.map(p=>({...p,venda_id:vendaId}));
-      await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(inserts)});
+      try{
+        await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(inserts)});
+      }catch(e2){
+        if(e2.message.includes('parcelas')){
+          // Coluna parcelas ainda não existe no Supabase — salva sem ela
+          const sem=inserts.map(({parcelas,...rest})=>rest);
+          await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(sem)});
+        } else throw e2;
+      }
     }
     fecharFormVenda();carregarVendas();
   }catch(e){pmmAlert('Erro ao salvar venda: '+e.message,'❌','Erro');}
@@ -3505,7 +3513,14 @@ async function migrarVendasQuebradas(){
 
       // Apaga pagamentos antigos (caso já exista) e insere os novos
       await supaFetch('pagamentos_venda?venda_id=eq.'+principal.id,{method:'DELETE',headers:{'Prefer':''}});
-      await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(pagamentos)});
+      try{
+        await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(pagamentos)});
+      }catch(e2){
+        if(e2.message.includes('parcelas')){
+          const sem=pagamentos.map(({parcelas,...rest})=>rest);
+          await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(sem)});
+        } else throw e2;
+      }
 
       // Apaga os registros duplicados (todos exceto o principal)
       for(const r of registros.slice(1)){
