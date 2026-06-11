@@ -3137,6 +3137,8 @@ const OFERTA_25K = [
   {parcelas:'6x',       parcela:4603.15,   total:27618.90, cartao:true,  pix:false, ac1:true,  ac2:false, ac3:false},
   {parcelas:'Até 12x',  parcela:null,      total:30000.12, cartao:true,  pix:false, ac1:true,  ac2:false, ac3:false,
    url:'https://checkout2.cispay.com.br/cmprch7xk000p02l5frau1mev', obs:'Parcelamento em até 12x no cartão'},
+  {parcelas:'Entrada 3.5K', parcela:3500.00, total:25000.00, cartao:false, pix:true, ac1:true, ac2:true, ac3:true,
+   url:'https://pay.hub.la/GyuLhWJPu8VU4PBcrji9', obs:'Entrada via Hubla + restante combinado'},
   {parcelas:'Preço especial', parcela:null, total:11500.00, cartao:true, pix:false, ac1:true, ac2:false, ac3:false,
    obs:'Condição especial de negociação'},
 ];
@@ -3153,6 +3155,7 @@ function tabela25kHTML(links){
     const k=l.nome.toLowerCase().includes('vista')?'À vista':
              l.nome.toLowerCase().includes('12')?'Até 12x':
              l.nome.toLowerCase().includes('especial')?'Preço especial':
+             l.nome.toLowerCase().includes('entrada')?'Entrada 3.5K':
              mParcela?mParcela[1]+'x':l.nome;
     linkMap[k]=l;
   });
