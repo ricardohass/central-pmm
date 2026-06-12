@@ -2166,11 +2166,28 @@ async function getDadosCloser(closer,ano,mes){
 }
 
 // ── USUÁRIOS ──
+const CLOSERS_INICIAIS=[
+  {email:'estrategista001@grupoprooficial.com', nome:'Lígia Oliveira',    senha:'h~D6oDQE558F=D6@',  funcao:'closer', status:'ativo'},
+  {email:'estrategista002@grupoprooficial.com', nome:'Gabriel Rocha',     senha:'i0=sM]PUhZMBC41U',  funcao:'closer', status:'ativo'},
+  {email:'estrategista003@grupoprooficial.com', nome:'Caroline Neiva',    senha:'Caroline10.',        funcao:'closer', status:'ativo'},
+  {email:'estrategista004@grupoprooficial.com', nome:'Janaina Xavier',    senha:'PRO#2026',           funcao:'closer', status:'ativo'},
+];
+let closersSemeados=false;
 async function carregarUsuarios(){
   const tbody=document.getElementById('usuariosTbody');
   tbody.innerHTML='<tr><td colspan="6" class="empty-state">Carregando...</td></tr>';
   try{
-    const rows=await supaFetch('usuarios?order=nome.asc&select=*');
+    let rows=await supaFetch('usuarios?order=nome.asc&select=*');
+    // Criar closers que ainda não existem no banco
+    if(!closersSemeados){
+      closersSemeados=true;
+      const emailsExistentes=new Set(rows.map(r=>r.email));
+      const faltando=CLOSERS_INICIAIS.filter(c=>!emailsExistentes.has(c.email));
+      if(faltando.length){
+        await supaFetch('usuarios',{method:'POST',body:JSON.stringify(faltando)});
+        rows=await supaFetch('usuarios?order=nome.asc&select=*');
+      }
+    }
     document.getElementById('usuariosCount').textContent=rows.length+' usuário(s)';
     const fBadge=f=>`<span class="funcao-badge badge-${f}">${f==='social_seller'?'Social Seller':cap(f)}</span>`;
     tbody.innerHTML=rows.map(u=>`<tr>
