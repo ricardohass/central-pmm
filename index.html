@@ -866,7 +866,10 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         <button class="section-tab" onclick="switchTab('permissoes',this)">Permissões por função</button>
       </div>
       <div class="section-panel active" id="panel-lista">
-        <div class="usuarios-header"><span class="usuarios-count" id="usuariosCount"></span></div>
+        <div class="usuarios-header">
+          <span class="usuarios-count" id="usuariosCount"></span>
+          <button class="btn-novo" onclick="abrirNovoUsuario()">+ Novo usuário</button>
+        </div>
         <div class="usuarios-table-wrap">
           <table class="usuarios-table">
             <thead><tr><th>Nome</th><th>E-mail</th><th>Senha</th><th>Função</th><th>Status</th><th></th></tr></thead>
@@ -1294,9 +1297,10 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 <!-- MODAL EDITAR USUÁRIO -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal-box">
-    <p class="modal-title">Editar usuário</p>
+    <p class="modal-title" id="modalTitle">Editar usuário</p>
     <p class="modal-sub" id="modalEmail"></p>
     <input type="hidden" id="modalId">
+    <div class="modal-field" id="modalEmailWrap" style="display:none;"><label>E-mail *</label><input type="email" id="modalEmailInput" placeholder="nome@email.com"></div>
     <div class="modal-field"><label>Nome</label><input type="text" id="modalNome"></div>
     <div class="modal-field"><label>Senha</label><input type="text" id="modalSenha"></div>
     <div class="modal-field"><label>Função</label>
@@ -1315,7 +1319,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     </div>
     <div class="modal-actions">
       <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
-      <button class="btn-salvar" onclick="salvarUsuario()">Salvar alterações</button>
+      <button class="btn-salvar" id="modalSalvarBtn" onclick="salvarUsuario()">Salvar alterações</button>
     </div>
   </div>
 </div>
@@ -2177,13 +2181,30 @@ async function carregarUsuarios(){
     </tr>`).join('');
   }catch(e){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Erro ao carregar.</td></tr>';}
 }
+function abrirNovoUsuario(){
+  document.getElementById('modalTitle').textContent='Novo usuário';
+  document.getElementById('modalId').value='';
+  document.getElementById('modalEmail').textContent='';
+  document.getElementById('modalEmailWrap').style.display='';
+  document.getElementById('modalEmailInput').value='';
+  document.getElementById('modalNome').value='';
+  document.getElementById('modalSenha').value='';
+  document.getElementById('modalFuncao').value='closer';
+  document.getElementById('modalStatus').value='ativo';
+  document.getElementById('modalSalvarBtn').textContent='Criar usuário';
+  document.getElementById('modalOverlay').classList.add('open');
+}
 function abrirModal(u){
+  document.getElementById('modalTitle').textContent='Editar usuário';
   document.getElementById('modalId').value=u.id;
   document.getElementById('modalEmail').textContent=u.email;
+  document.getElementById('modalEmailWrap').style.display='none';
+  document.getElementById('modalEmailInput').value='';
   document.getElementById('modalNome').value=u.nome;
   document.getElementById('modalSenha').value=u.senha;
   document.getElementById('modalFuncao').value=u.funcao;
   document.getElementById('modalStatus').value=u.status;
+  document.getElementById('modalSalvarBtn').textContent='Salvar alterações';
   document.getElementById('modalOverlay').classList.add('open');
 }
 function fecharModal(){document.getElementById('modalOverlay').classList.remove('open');}
@@ -2195,9 +2216,15 @@ async function salvarUsuario(){
   const status=document.getElementById('modalStatus').value;
   if(!nome||!senha){await pmmAlert('Nome e senha são obrigatórios.','⚠️','Campos obrigatórios');return;}
   try{
-    await supaFetch('usuarios?id=eq.'+id,{method:'PATCH',body:JSON.stringify({nome,senha,funcao,status})});
+    if(id){
+      await supaFetch('usuarios?id=eq.'+id,{method:'PATCH',body:JSON.stringify({nome,senha,funcao,status})});
+    } else {
+      const email=document.getElementById('modalEmailInput').value.trim().toLowerCase();
+      if(!email){await pmmAlert('E-mail é obrigatório.','⚠️','Campos obrigatórios');return;}
+      await supaFetch('usuarios',{method:'POST',body:JSON.stringify({email,nome,senha,funcao,status})});
+    }
     fecharModal();carregarUsuarios();
-  }catch(e){pmmAlert('Erro ao salvar.','❌','Erro');}
+  }catch(e){pmmAlert('Erro ao salvar: '+e.message,'❌','Erro');}
 }
 
 // ── METAS ──
