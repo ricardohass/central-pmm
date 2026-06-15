@@ -501,6 +501,8 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .cob-item-valor { font-size:14px; font-weight:500; color:var(--green); white-space:nowrap; }
 .btn-receber { font-family:'Inter',sans-serif; font-size:11px; font-weight:500; background:var(--green); color:#fff; border:none; border-radius:20px; padding:4px 12px; cursor:pointer; white-space:nowrap; }
 .btn-receber:hover { background:var(--green-light); }
+.cob-date-input { font-family:'Inter',sans-serif; font-size:12px; color:var(--text); border:0.5px solid var(--border); border-radius:6px; background:var(--cream); padding:4px 8px; outline:none; cursor:pointer; transition:border-color .15s; }
+.cob-date-input:hover,.cob-date-input:focus { border-color:var(--coral); background:#fff; }
 </style>
 </head>
 <body>
@@ -3866,14 +3868,23 @@ function mostrarDetalheCalDia(dateStr){
       const sLabel=p.status==='recebido'?'Recebido':atrasado?'Atrasado':'Pendente';
       const nome=p.vendas?.nome_cliente||'Cliente sem nome';
       const closer=p.vendas?.closer||'';
+      const dataAtual=(p.data_prevista||dateStr).split('T')[0];
+      const recebido=p.status==='recebido';
       return`<div class="cob-item">
         <div class="cob-item-info">
           <div class="cob-item-cliente">${nome}</div>
           <div class="cob-item-meta">${p.metodo||'—'}${p.gateway?' · '+p.gateway:''}${closer?' · '+closer:''}</div>
         </div>
+        <div style="display:flex;flex-direction:column;gap:2px;align-items:center;flex-shrink:0;">
+          <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Vencimento</span>
+          ${recebido
+            ? `<span style="font-size:12px;color:var(--muted);">${fmtDataBR(dataAtual)}</span>`
+            : `<input type="date" class="cob-date-input" value="${dataAtual}" title="Editar data de vencimento" onchange="atualizarDataPagamento('${p.id}',this.value,'${dateStr}')">`
+          }
+        </div>
         <div class="cob-item-valor">${fmtBRL(p.valor_bruto)}</div>
         <span class="status-badge ${sClass}">${sLabel}</span>
-        ${p.status!=='recebido'?`<button class="btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Recebido</button>`:''}
+        ${!recebido?`<button class="btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Recebido</button>`:''}
       </div>`;
     }).join('');
   }
@@ -3896,6 +3907,23 @@ async function marcarRecebido(id,dateStr){
     renderCobrancas();
     mostrarDetalheCalDia(dateStr);
   }catch(e){pmmAlert('Erro ao marcar como recebido: '+e.message,'❌','Erro');}
+}
+
+async function atualizarDataPagamento(id,novaData,dateStrOriginal){
+  if(!novaData) return;
+  try{
+    await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify({data_prevista:novaData})});
+    const p=todosPagamentos.find(x=>x.id===id);
+    if(p) p.data_prevista=novaData;
+    // Atualiza valor_restante na venda pai para refletir na aba de vendas
+    if(p&&p.vendas?.id){
+      const restante=todosPagamentos.filter(x=>x.vendas?.id===p.vendas.id&&x.status==='pendente').reduce((s,x)=>s+Number(x.valor_bruto||0),0);
+      await supaFetch('vendas?id=eq.'+p.vendas.id,{method:'PATCH',body:JSON.stringify({valor_restante:restante})});
+    }
+    renderCobrancas();
+    // Abre o detalhe no novo dia
+    mostrarDetalheCalDia(novaData);
+  }catch(e){pmmAlert('Erro ao atualizar data: '+e.message,'❌','Erro');}
 }
 </script>
 </body>
