@@ -1252,6 +1252,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <div class="modal-field"><label>Valor (R$) *</label><input type="number" id="mlValor" min="0" step="0.01" placeholder="34000"></div>
     <div class="modal-field"><label>Oferta *</label>
       <select id="mlOferta">
+        <option value="35K">35K</option>
         <option value="34K">34K</option>
         <option value="25K">25K</option>
         <option value="15K">15K</option>
@@ -1263,6 +1264,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         <option value="Asaas">Asaas</option>
         <option value="Hotmart">Hotmart</option>
         <option value="Hubla">Hubla</option>
+        <option value="Itaú">Itaú</option>
         <option value="PIX Itaú">PIX Itaú</option>
         <option value="PIX BTG">PIX BTG</option>
       </select>
@@ -3268,6 +3270,87 @@ function tabela25kHTML(links){
   </div>`;
 }
 
+// Oferta 35K — dados hard-coded
+const OFERTA_35K_PRINCIPAL = [
+  {nome:'Pagamento à vista e parcelado', parcelas:'1a a 12x', gateway:'Cispay',  url:'https://checkout2.cispay.com.br/cmq9f9gof000302l5f0y45jcz', chave:null},
+  {nome:'PIX Principal (chave aleatória)',parcelas:'1x',       gateway:'Asaas',   url:null, chave:'3ac14915-fa0a-4ca1-8197-e3b90075b78f'},
+  {nome:'PIX Secundário (CNPJ)',          parcelas:'1x',       gateway:'Itaú',    url:null, chave:'47.200.425/0001-08'},
+  {nome:'Entrada R$3.500 Hubla',          parcelas:'1x',       gateway:'Hubla',   url:'https://pay.hub.la/GyuLhWJPu8VU4PBcrjI9', chave:null},
+  {nome:'PMM 15K',                        parcelas:'1a a 12x', gateway:'Cispay',  url:'https://checkout2.cispay.com.br/cmqfig7y3000c02l41lr2gv2b', chave:null},
+];
+const OFERTA_35K_PARCELAS = [
+  {parcelas:'À vista ou 12x', base:35000, parcela:35000, total:35000,  plataforma:'Cispay', url:'https://checkout2.cispay.com.br/cmq9f9gof000302l5f0y45jcz'},
+  {parcelas:'2x',             base:35000, parcela:18450, total:36900,  plataforma:'Asaas',  url:'https://www.asaas.com/c/ku19fx53iz1opuvl'},
+  {parcelas:'3x',             base:35000, parcela:12650, total:37950,  plataforma:'Asaas',  url:'https://www.asaas.com/c/wqi3h1i06d4tofxh'},
+  {parcelas:'4x',             base:35000, parcela:9750,  total:39000,  plataforma:'Asaas',  url:'https://www.asaas.com/c/gdu9whswk5otq15o'},
+  {parcelas:'5x',             base:35000, parcela:8000,  total:40000,  plataforma:'Asaas',  url:'https://www.asaas.com/c/1my0p2k4dbhrxbo7'},
+  {parcelas:'6x',             base:35000, parcela:6750,  total:40500,  plataforma:'Asaas',  url:'https://www.asaas.com/c/t0v0d37x0wy3peh3'},
+];
+
+function tabela35kHTML(){
+  const principalRows = OFERTA_35K_PRINCIPAL.map((item,i)=>{
+    const conteudo = item.url
+      ? `<a href="${item.url}" target="_blank" style="color:var(--green);font-size:12px;text-decoration:none;word-break:break-all;">${item.url}</a>`
+      : `<span style="font-family:monospace;font-size:12px;color:var(--muted);">${item.chave}</span>`;
+    const copiavel = item.url||item.chave;
+    const btnId='cbtn_35p'+i;
+    const copyBtn=`<button class="link-copy-btn" id="${btnId}" onclick="copiarLink('${copiavel}','35p${i}')" style="font-size:12px;padding:5px 12px;white-space:nowrap;">📋 Copiar</button>`;
+    const bg=i%2===0?'':'background:var(--cream);';
+    return`<tr style="${bg}">
+      <td style="padding:12px 16px;font-size:13px;font-weight:500;color:var(--text);border-bottom:0.5px solid var(--border);">${item.nome}</td>
+      <td style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:0.5px solid var(--border);white-space:nowrap;">${item.parcelas}</td>
+      <td style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:0.5px solid var(--border);white-space:nowrap;">${item.gateway}</td>
+      <td style="padding:12px 16px;border-bottom:0.5px solid var(--border);">${conteudo}</td>
+      <td style="padding:12px 16px;border-bottom:0.5px solid var(--border);text-align:right;">${copyBtn}</td>
+    </tr>`;
+  }).join('');
+
+  const parcelasRows = OFERTA_35K_PARCELAS.map((item,i)=>{
+    const btnId='cbtn_35r'+i;
+    const copyBtn=`<button class="link-copy-btn" id="${btnId}" onclick="copiarLink('${item.url}','35r${i}')" style="font-size:12px;padding:5px 12px;white-space:nowrap;">📋 Copiar</button>`;
+    const bg=i%2===0?'':'background:var(--cream);';
+    return`<tr style="${bg}">
+      <td style="padding:12px 16px;font-weight:600;color:var(--green);font-size:13px;border-bottom:0.5px solid var(--border);">${item.parcelas}</td>
+      <td style="padding:12px 16px;font-size:13px;border-bottom:0.5px solid var(--border);">${fmtBRL(item.base)}</td>
+      <td style="padding:12px 16px;font-size:13px;border-bottom:0.5px solid var(--border);">${fmtBRL(item.parcela)}</td>
+      <td style="padding:12px 16px;font-size:13px;font-weight:600;border-bottom:0.5px solid var(--border);">${fmtBRL(item.total)}</td>
+      <td style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:0.5px solid var(--border);">${item.plataforma}</td>
+      <td style="padding:12px 16px;border-bottom:0.5px solid var(--border);text-align:right;">${copyBtn}</td>
+    </tr>`;
+  }).join('');
+
+  return`
+    <div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;margin-bottom:14px;">
+      <div style="background:var(--green);padding:11px 18px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,0.7);">À vista</span>
+        <span style="font-family:'Playfair Display',serif;font-size:18px;color:#fff;">— R$ 35.000</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:580px;">
+        <thead><tr style="background:var(--cream);">
+          <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Condição</th>
+          <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Parcelas</th>
+          <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Gateway</th>
+          <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Chave / Link</th>
+          <th style="border-bottom:0.5px solid var(--border);"></th>
+        </tr></thead>
+        <tbody>${principalRows}</tbody>
+      </table>
+    </div>
+    <div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:580px;">
+        <thead><tr style="background:var(--cream);">
+          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--green);border-bottom:0.5px solid var(--border);">Parcelas</th>
+          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor Base</th>
+          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor Parcela</th>
+          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor Final</th>
+          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Plataforma</th>
+          <th style="border-bottom:0.5px solid var(--border);"></th>
+        </tr></thead>
+        <tbody>${parcelasRows}</tbody>
+      </table>
+    </div>`;
+}
+
 function linkCardHTML(l){
   const isAdmin=currentUser&&currentUser.funcao==='admin';
   return`<div class="link-card ${l.ativo?'':'inativo'}">
@@ -3297,7 +3380,6 @@ async function carregarLinks(){
   el.innerHTML='<p class="dep-empty">Carregando...</p>';
   try{
     const rows=await supaFetch('links_vendas?order=oferta.asc,ordem.asc,valor.desc&select=*');
-    if(!rows.length){el.innerHTML='<p class="dep-empty">Nenhum link cadastrado ainda.</p>';return;}
 
     const grupos={};
     rows.forEach(l=>{
@@ -3306,18 +3388,47 @@ async function carregarLinks(){
       grupos[o].push(l);
     });
 
-    const ofertaLabel={'34K':'Oferta 34K','25K':'Oferta 25K'};
+    const ofertaLabel={'34K':'Oferta 34K','25K':'Oferta 25K','15K':'Oferta 15K'};
 
-    el.innerHTML=Object.keys(grupos).sort().map(oferta=>{
-      const conteudo = oferta==='25K'
-        ? tabela25kHTML(grupos[oferta])
-        : `<div class="links-grid">${grupos[oferta].map(linkCardHTML).join('')}</div>`;
-      return`<div style="margin-bottom:32px;">
-        <p class="an-section-title" style="margin-top:0;">${ofertaLabel[oferta]||oferta}</p>
-        ${conteudo}
+    // Backlog: ofertas antigas do banco (25K, 34K, 15K...) excluindo 35K que é hard-coded
+    const ofertasAntigas=Object.keys(grupos).filter(o=>o!=='35K').sort();
+    const backlogHTML=ofertasAntigas.length
+      ? ofertasAntigas.map(oferta=>{
+          const conteudo=oferta==='25K'
+            ? tabela25kHTML(grupos[oferta])
+            : `<div class="links-grid">${grupos[oferta].map(linkCardHTML).join('')}</div>`;
+          return`<div style="margin-bottom:28px;">
+            <p class="an-section-title" style="margin-top:0;">${ofertaLabel[oferta]||oferta}</p>
+            ${conteudo}
+          </div>`;
+        }).join('')
+      : '<p style="font-size:13px;color:var(--muted);padding:12px 0 0;">Nenhuma oferta anterior cadastrada.</p>';
+
+    el.innerHTML=`
+      <div style="margin-bottom:40px;">
+        <p class="an-section-title" style="margin-top:0;">Oferta 35K</p>
+        ${tabela35kHTML()}
+      </div>
+      <div>
+        <button onclick="toggleLinksBacklog()" id="backlogToggleBtn" style="display:flex;align-items:center;gap:8px;background:#fff;border:0.5px solid var(--border);border-radius:10px;padding:11px 18px;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;color:var(--muted);width:100%;text-align:left;transition:border-color .15s;">
+          <span id="backlogToggleIcon" style="font-size:12px;display:inline-block;transition:transform .2s;">▶</span>
+          Ofertas anteriores — backlog (25K, 34K...)
+        </button>
+        <div id="backlogContent" style="display:none;margin-top:14px;">
+          ${backlogHTML}
+        </div>
       </div>`;
-    }).join('');
   }catch(e){el.innerHTML='<p class="dep-empty">Erro ao carregar links.</p>';}
+}
+
+function toggleLinksBacklog(){
+  const c=document.getElementById('backlogContent');
+  const icon=document.getElementById('backlogToggleIcon');
+  const btn=document.getElementById('backlogToggleBtn');
+  const open=c.style.display!=='none';
+  c.style.display=open?'none':'block';
+  icon.style.transform=open?'':'rotate(90deg)';
+  btn.style.borderColor=open?'var(--border)':'var(--coral)';
 }
 
 async function copiarLink(url,id){
