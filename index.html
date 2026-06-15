@@ -106,7 +106,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .cli-line { width:18px; height:2px; border-radius:1px; flex-shrink:0; }
 .pie-wrap { display:flex; flex-direction:column; align-items:center; }
 .pie-legend { width:100%; margin-top:14px; display:flex; flex-direction:column; gap:8px; }
-.pie-li { display:flex; align-items:center; gap:8px; font-size:12px; }
+.pie-li { display:flex; align-items:flex-start; gap:8px; font-size:12px; }
 .pie-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 .pie-pct { margin-left:auto; color:var(--muted); font-size:11px; }
 .ranking-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:20px; max-width:560px; }
@@ -1646,9 +1646,9 @@ async function carregarDashboard(){
 
     // Pizza origens
     const origens={};
-    vendas.forEach(v=>{const o=v.origem||'Outros';origens[o]=(origens[o]||0)+1;});
+    vendas.forEach(v=>{const o=v.origem||'Outros';if(!origens[o])origens[o]={n:0,liq:0};origens[o].n++;origens[o].liq+=Number(v.valor_liquido||0);});
     const origKeys=Object.keys(origens);
-    const origVals=origKeys.map(k=>origens[k]);
+    const origVals=origKeys.map(k=>origens[k].n);
     if(window._pieChart) window._pieChart.destroy();
     window._pieChart=new Chart(document.getElementById('pieChart'),{
       type:'doughnut',
@@ -1657,14 +1657,14 @@ async function carregarDashboard(){
     });
     const total=origVals.reduce((a,b)=>a+b,0);
     document.getElementById('pieLegend').innerHTML=origKeys.length
-      ?origKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div>${k}<span class="pie-pct">${total>0?Math.round((origens[k]/total)*100):0}%</span></div>`).join('')
+      ?origKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${origens[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">Líq. ${fmtBRL(origens[k].liq)}</span></div><span class="pie-pct">${total>0?Math.round((origens[k].n/total)*100):0}%</span></div>`).join('')
       :'<p style="font-size:12px;color:var(--muted);">Sem dados</p>';
 
     // Pizza gateways
     const gateways={};
-    vendas.forEach(v=>{const g=v.gateway||'Outros';gateways[g]=(gateways[g]||0)+1;});
+    vendas.forEach(v=>{const g=v.gateway||'Outros';if(!gateways[g])gateways[g]={n:0,liq:0};gateways[g].n++;gateways[g].liq+=Number(v.valor_liquido||0);});
     const gwKeys=Object.keys(gateways);
-    const gwVals=gwKeys.map(k=>gateways[k]);
+    const gwVals=gwKeys.map(k=>gateways[k].n);
     if(window._pieGateway) window._pieGateway.destroy();
     window._pieGateway=new Chart(document.getElementById('pieGateway'),{
       type:'doughnut',
@@ -1673,7 +1673,7 @@ async function carregarDashboard(){
     });
     const gwTotal=gwVals.reduce((a,b)=>a+b,0);
     document.getElementById('pieLegendGateway').innerHTML=gwKeys.length
-      ?gwKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div>${k}<span class="pie-pct">${gwTotal>0?Math.round((gateways[k]/gwTotal)*100):0}% <span style="color:var(--muted);font-size:10px;">(${gateways[k]})</span></span></div>`).join('')
+      ?gwKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${gateways[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">Líq. ${fmtBRL(gateways[k].liq)}</span></div><span class="pie-pct">${gwTotal>0?Math.round((gateways[k].n/gwTotal)*100):0}%</span></div>`).join('')
       :'<p style="font-size:12px;color:var(--muted);">Sem dados</p>';
 
     // Gráfico por dia
