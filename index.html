@@ -559,12 +559,12 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <p class="snap-sub" id="snap-vendas-sub">carregando...</p>
           </div>
           <div class="snap-card">
-            <p class="snap-label">Faturamento bruto</p>
+            <p class="snap-label">Recebido no mês</p>
             <p class="snap-value" id="snap-bruto">—</p>
-            <p class="snap-sub" id="snap-bruto-sub">mês atual</p>
+            <p class="snap-sub" id="snap-bruto-sub">pagamentos recebidos</p>
           </div>
           <div class="snap-card">
-            <p class="snap-label">Faturamento hoje</p>
+            <p class="snap-label">Contratado hoje</p>
             <p class="snap-value coral" id="snap-hoje">—</p>
             <p class="snap-sub" id="snap-hoje-sub">vendas do dia</p>
           </div>
@@ -701,8 +701,8 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       </div>
       <div id="dash-admin-view">
         <div class="metrics">
-          <div class="mcard"><p class="mcard-label">Faturamento bruto</p><p class="mcard-value" id="dash-fat-bruto">—</p><p class="mcard-meta" id="dash-fat-bruto-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-bruto" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-bruto">0%</span></div></div>
-          <div class="mcard"><p class="mcard-label">Faturamento líquido</p><p class="mcard-value" id="dash-fat-liq">—</p><p class="mcard-meta">Meta: R$ 1.000.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-liq" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-liq">0%</span></div></div>
+          <div class="mcard"><p class="mcard-label">Recebido no mês (bruto)</p><p class="mcard-value" id="dash-fat-bruto">—</p><p class="mcard-meta" id="dash-fat-bruto-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-bruto" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-bruto">0%</span></div></div>
+          <div class="mcard"><p class="mcard-label">Recebido no mês (líquido)</p><p class="mcard-value" id="dash-fat-liq">—</p><p class="mcard-meta">Meta: R$ 1.000.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-liq" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-liq">0%</span></div></div>
           <div class="mcard"><p class="mcard-label">Total de vendas</p><p class="mcard-value big" id="dash-total-vendas">—</p><p class="mcard-meta">todas (exceto canceladas)</p></div>
           <div class="mcard"><p class="mcard-label">Reembolsos</p><p class="mcard-value big coral" id="dash-reembolsos">—</p><p class="mcard-meta">no mês</p></div>
           <div class="mcard"><p class="mcard-label">A receber</p><p class="mcard-value coral" id="dash-a-receber">—</p><p class="mcard-meta">valor restante pendente</p></div>
@@ -1551,17 +1551,18 @@ async function carregarHomeSnapshot(){
     const ultimoDia=anoMes+'-'+new Date(hoje.getFullYear(),hoje.getMonth()+1,0).getDate();
     const hojStr=hoje.toISOString().split('T')[0];
 
-    const [todasMes, vendaHoje] = await Promise.all([
+    const [todasMes, vendaHoje, pgRecebidosMes] = await Promise.all([
       supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=not.in.(cancelada,reembolso)&select=*'),
-      supaFetch('vendas?data_venda=eq.'+hojStr+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,closer')
+      supaFetch('vendas?data_venda=eq.'+hojStr+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,closer'),
+      supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+primeiroDia+'&data_prevista=lte.'+ultimoDia+'&select=valor_bruto')
     ]);
 
-    const fatBruto=todasMes.reduce((s,v)=>s+Number(v.valor_bruto||0),0);
+    const recebidoMes=pgRecebidosMes.reduce((s,p)=>s+Number(p.valor_bruto||0),0);
     const fatHoje=vendaHoje.reduce((s,v)=>s+Number(v.valor_bruto||0),0);
 
     document.getElementById('snap-vendas').textContent=todasMes.length;
     document.getElementById('snap-vendas-sub').textContent=anoMes.replace('-','/')+' — exceto canceladas';
-    document.getElementById('snap-bruto').textContent=fmtBRL(fatBruto);
+    document.getElementById('snap-bruto').textContent=fmtBRL(recebidoMes);
     document.getElementById('snap-hoje').textContent=fmtBRL(fatHoje);
     document.getElementById('snap-hoje-sub').textContent=vendaHoje.length+' venda(s) hoje';
 
@@ -1596,10 +1597,13 @@ async function carregarDashboard(){
   const ultimoDia=anoMes+'-'+new Date(dashAno,dashMes+1,0).getDate();
 
   try{
-    const todas=await supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&select=*');
+    const [todas, pgRecebidos]=await Promise.all([
+      supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&select=*'),
+      supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+primeiroDia+'&data_prevista=lte.'+ultimoDia+'&select=valor_bruto,valor_liquido')
+    ]);
     const vendas=todas.filter(v=>v.status!=='cancelada');
-    const fatBruto=vendas.reduce((s,v)=>s+Number(v.valor_bruto||0),0);
-    const fatLiq=vendas.reduce((s,v)=>s+Number(v.valor_liquido||0),0);
+    const fatBruto=pgRecebidos.reduce((s,p)=>s+Number(p.valor_bruto||0),0);
+    const fatLiq=pgRecebidos.reduce((s,p)=>s+Number(p.valor_liquido||0),0);
     const aReceber=todas.reduce((s,v)=>s+Number(v.valor_restante||0),0);
     const reembolsos=todas.filter(v=>v.status==='reembolso').length;
 
@@ -1616,7 +1620,7 @@ async function carregarDashboard(){
     document.getElementById('bar-fat-liq').style.width=pctL+'%';
     document.getElementById('pct-fat-liq').textContent=pctL+'%';
 
-    // Ranking
+    // Ranking (usa valor contratado — métrica de performance do closer)
     const ranking={};
     vendas.forEach(v=>{
       if(!v.closer)return;
