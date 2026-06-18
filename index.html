@@ -528,6 +528,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <button class="nav-tab" id="tab-dashboards"  onclick="sp('dashboards',this)">Dashboards</button>
     <button class="nav-tab" id="tab-vendas"      onclick="sp('vendas',this)">Vendas</button>
     <button class="nav-tab" id="tab-performance" onclick="sp('performance',this)">Performance</button>
+    <button class="nav-tab" id="tab-funil"       onclick="sp('funil',this)">Funil</button>
     <button class="nav-tab" id="tab-usuarios"    onclick="sp('usuarios',this)">Usuários</button>
     <button class="nav-tab" id="tab-metas"       onclick="sp('metas',this)">Metas</button>
     <button class="nav-tab" id="tab-acessos"     onclick="sp('acessos',this)">Acessos</button>
@@ -862,6 +863,35 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           </table>
         </div>
       </div>
+    </div>
+
+    <!-- FUNIL -->
+    <div id="page-funil" class="page">
+      <div class="perf-header">
+        <div class="perf-title-block"><p class="page-eyebrow">Funil comercial</p><p class="page-title">Funil — leads a vendas</p></div>
+        <div class="perf-controls">
+          <select class="perf-select" id="funilPeriodo" onchange="mudarFunilPeriodo()">
+            <option value="mes">Mês corrente</option>
+            <option value="semana">Semana anterior</option>
+          </select>
+          <div class="date-nav" id="funilDateNav">
+            <button class="date-btn" onclick="mudarFunilMes(-1)">&#8249;</button>
+            <span class="date-label" id="funilMesLabel"></span>
+            <button class="date-btn" onclick="mudarFunilMes(1)">&#8250;</button>
+          </div>
+          <button class="btn-novo" id="btnEditarMetasFunil" onclick="abrirEditarMetasFunil()">&#127919; Metas do funil</button>
+          <button class="btn-novo" id="btnNovoFunil" onclick="toggleFormFunil()">+ Novo registro</button>
+        </div>
+      </div>
+      <div class="novo-form" id="novoFormFunil" style="display:none;">
+        <div class="novo-form-title" id="formFunilTitle">Novo registro diário — pré-vendas</div>
+        <div class="novo-form-grid" id="funilFormGrid"></div>
+        <div class="novo-form-actions">
+          <button class="btn-cancelar" onclick="toggleFormFunil()">Cancelar</button>
+          <button class="btn-salvar" onclick="salvarRegistroFunil()">&#10003; Salvar</button>
+        </div>
+      </div>
+      <div id="funilContent"></div>
     </div>
 
     <!-- USUÁRIOS -->
@@ -1238,6 +1268,27 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
   </div>
 </div>
 
+<!-- MODAL METAS DO FUNIL -->
+<div class="modal-overlay" id="modalMetasFunil">
+  <div class="meta-modal-box">
+    <p class="modal-title">Metas do funil</p>
+    <p class="modal-sub"><span id="mfMesLabel"></span> — meta mensal de leads + taxas-alvo de conversão</p>
+    <div class="meta-modal-grid">
+      <div class="modal-field" style="grid-column:1/-1;"><label>Meta de leads no mês (nº)</label><input type="number" id="mfLeads" min="0" step="1"></div>
+      <div class="modal-field"><label>% qualificação</label><input type="number" id="mfQual" min="0" max="100" step="0.1"></div>
+      <div class="modal-field"><label>% de contato</label><input type="number" id="mfCont" min="0" max="100" step="0.1"></div>
+      <div class="modal-field"><label>% de resposta</label><input type="number" id="mfResp" min="0" max="100" step="0.1"></div>
+      <div class="modal-field"><label>% de agendamento</label><input type="number" id="mfAgend" min="0" max="100" step="0.1"></div>
+      <div class="modal-field"><label>% comparecimento</label><input type="number" id="mfComp" min="0" max="100" step="0.1"></div>
+      <div class="modal-field"><label>% de fechamento</label><input type="number" id="mfFech" min="0" max="100" step="0.1"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancelar" onclick="fecharModalMetasFunil()">Cancelar</button>
+      <button class="btn-salvar" onclick="salvarMetasFunil()">Salvar metas</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL PMM (alert/confirm) -->
 <div class="pmm-modal-overlay" id="pmmModal">
   <div class="pmm-modal-box">
@@ -1380,6 +1431,7 @@ const TODAS_TELAS=[
   {id:'dashboards',nome:'Dashboards'},
   {id:'vendas',nome:'Vendas'},
   {id:'performance',nome:'Performance'},
+  {id:'funil',nome:'Funil'},
   {id:'usuarios',nome:'Usuários'},
   {id:'metas',nome:'Metas'},
   {id:'acessos',nome:'Acessos'},
@@ -1389,7 +1441,7 @@ const TODAS_TELAS=[
   {id:'cobrancas',nome:'Cobranças'},
 ];
 const PERM_DEFAULT={
-  admin:['dashboards','vendas','performance','usuarios','metas','acessos','analises','depoimentos','links','cobrancas'],
+  admin:['dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas'],
   closer:['performance','analises','metas'],
   sdr:[],
   social_seller:[],
@@ -1439,6 +1491,7 @@ const HOME_CARDS={
   dashboards:{icon:'&#128202;',label:'Dashboards',sub:'Faturamento e ranking'},
   vendas:{icon:'&#128179;',label:'Vendas',sub:'Cadastro e histórico'},
   performance:{icon:'&#128293;',label:'Performance',sub:'Registro diário por closer'},
+  funil:{icon:'&#128202;',label:'Funil comercial',sub:'Leads a vendas + metas'},
   usuarios:{icon:'&#128101;',label:'Usuários',sub:'Gestão de acessos'},
   metas:{icon:'&#127919;',label:'Metas e KPIs',sub:'Indicadores do período'},
   acessos:{icon:'&#128272;',label:'Acessos',sub:'Logins e senhas'},
@@ -1469,7 +1522,7 @@ function aplicarPermissoes(){
   const perms=getPerms();
   const funcao=currentUser.funcao;
   const telasPermitidas=['home',...(perms[funcao]||[])];
-  ['home','dashboards','vendas','performance','usuarios','metas','acessos','analises','depoimentos','links','cobrancas'].forEach(p=>{
+  ['home','dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas'].forEach(p=>{
     const tab=document.getElementById('tab-'+p);
     if(tab) tab.style.display=telasPermitidas.includes(p)?'':'none';
   });
@@ -1532,6 +1585,7 @@ function sp(name,btn){
   if(pg) pg.classList.add('active');
   if(btn) btn.classList.add('active');
   if(name==='performance'){atualizarLabelPerfMes();renderPerf();}
+  if(name==='funil'){atualizarLabelFunilMes();document.getElementById('funilDateNav').style.display=funilPeriodo==='mes'?'':'none';renderFunil();}
   if(name==='time') carregarMural();
   if(name==='usuarios'){carregarUsuarios();renderPermCards();}
   if(name==='vendas') carregarVendas();
@@ -2547,6 +2601,269 @@ async function salvarMetas(){
     });
     fecharModalMetas();
     carregarMetas();
+  }catch(e){pmmAlert('Erro ao salvar metas: '+e.message,'❌','Erro');}
+}
+
+// ── FUNIL COMERCIAL ──
+const FUNIL_CANAIS=['Aplicação','Social Selling','Febracis','Indicação','Método CIS','Gratuidade','Mentoria Prø'];
+let funilAno=new Date().getFullYear();
+let funilMes=new Date().getMonth(); // 0-indexed
+let funilPeriodo='mes'; // 'mes' | 'semana'
+let funilFormEditId=null;
+const META_FUNIL_DEFAULT={meta_leads:0,taxa_qualificacao:60,taxa_contato:80,taxa_resposta:50,taxa_agendamento:40,taxa_comparecimento:80,taxa_fechamento:25};
+
+function atualizarLabelFunilMes(){
+  const el=document.getElementById('funilMesLabel');
+  if(el) el.textContent=MESES_NOMES[funilMes]+' de '+funilAno;
+}
+function mudarFunilMes(delta){
+  funilMes+=delta;
+  if(funilMes>11){funilMes=0;funilAno++;}
+  if(funilMes<0){funilMes=11;funilAno--;}
+  atualizarLabelFunilMes();
+  renderFunil();
+}
+function mudarFunilPeriodo(){
+  funilPeriodo=document.getElementById('funilPeriodo').value;
+  document.getElementById('funilDateNav').style.display=funilPeriodo==='mes'?'':'none';
+  renderFunil();
+}
+
+// Faixa de datas + meta de referência do período selecionado
+function funilRange(){
+  const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(funilPeriodo==='mes'){
+    const ano=funilAno, mes=funilMes;
+    const dim=new Date(ano,mes+1,0).getDate();
+    const mm=String(mes+1).padStart(2,'0');
+    return{de:ano+'-'+mm+'-01',ate:ano+'-'+mm+'-'+String(dim).padStart(2,'0'),label:MESES_NOMES[mes]+' de '+ano,ano,mes,semanasNoMes:dim/7};
+  }
+  // semana anterior: segunda a domingo da semana passada
+  const hoje=new Date();
+  const dow=(hoje.getDay()+6)%7; // 0=segunda
+  const segDestaSemana=new Date(hoje); segDestaSemana.setDate(hoje.getDate()-dow);
+  const segAnterior=new Date(segDestaSemana); segAnterior.setDate(segDestaSemana.getDate()-7);
+  const domAnterior=new Date(segAnterior); domAnterior.setDate(segAnterior.getDate()+6);
+  const mes=segAnterior.getMonth(), ano=segAnterior.getFullYear();
+  const dim=new Date(ano,mes+1,0).getDate();
+  return{de:iso(segAnterior),ate:iso(domAnterior),label:'Semana de '+fmtDataBR(iso(segAnterior))+' a '+fmtDataBR(iso(domAnterior)),ano,mes,semanasNoMes:dim/7};
+}
+
+async function getFunilDados(de,ate){
+  const [funil,perf,vendas]=await Promise.all([
+    supaFetch('funil_prevendas?data=gte.'+de+'&data=lte.'+ate+'&select=*'),
+    supaFetch('registros_performance?data=gte.'+de+'&data=lte.'+ate+'&select=agendamentos,reunioes,vendas'),
+    supaFetch('vendas?data_venda=gte.'+de+'&data_venda=lte.'+ate+'&select=valor_liquido,status')
+  ]);
+  const soma=(arr,k)=>arr.reduce((s,r)=>s+(+r[k]||0),0);
+  const origem={}; FUNIL_CANAIS.forEach(c=>origem[c]=0);
+  funil.forEach(r=>{
+    let o=r.leads_origem; if(typeof o==='string'){try{o=JSON.parse(o);}catch(e){o={};}}
+    if(o&&typeof o==='object') Object.keys(o).forEach(k=>{origem[k]=(origem[k]||0)+(+o[k]||0);});
+  });
+  const vendasValidas=vendas.filter(v=>v.status!=='cancelada');
+  return{
+    leads:soma(funil,'leads_recebidos'),
+    qualificados:soma(funil,'leads_qualificados'),
+    contatados:soma(funil,'leads_contatados'),
+    respostas:soma(funil,'respostas'),
+    origem,
+    agenda:soma(perf,'agendamentos'),
+    calls:soma(perf,'reunioes'),
+    nVendas:vendasValidas.length,
+    faturamento:vendasValidas.reduce((s,v)=>s+(+v.valor_liquido||0),0)
+  };
+}
+
+async function getMetaFunil(ano,mes){ // mes 1-indexed
+  try{
+    const rows=await supaFetch('metas_funil?ano=eq.'+ano+'&mes=eq.'+mes+'&select=*');
+    if(rows.length) return {...META_FUNIL_DEFAULT,...rows[0]};
+  }catch(e){}
+  return {...META_FUNIL_DEFAULT};
+}
+
+const _funilPct=(v,base)=>base>0?(v/base)*100:0;
+function funilCor(real,meta){
+  if(meta<=0) return 'var(--muted)';
+  const r=real/meta*100;
+  if(r>=120) return '#C8951A';
+  if(r>=100) return '#3D8C5A';
+  if(r>=75)  return '#C8951A';
+  if(r>=50)  return '#D4572A';
+  return '#C0392B';
+}
+const _fmtN=n=>Math.round(n).toLocaleString('pt-BR');
+
+async function renderFunil(){
+  const cont=document.getElementById('funilContent');
+  if(!cont) return;
+  const isAdmin=!currentUser||currentUser.funcao==='admin';
+  const bN=document.getElementById('btnNovoFunil'); if(bN) bN.style.display=isAdmin?'':'none';
+  const bM=document.getElementById('btnEditarMetasFunil'); if(bM) bM.style.display=isAdmin?'':'none';
+  cont.innerHTML='<p style="color:var(--muted);padding:20px 4px;">Carregando…</p>';
+  const rg=funilRange();
+  let d,meta;
+  try{
+    [d,meta]=await Promise.all([getFunilDados(rg.de,rg.ate),getMetaFunil(rg.ano,rg.mes+1)]);
+  }catch(e){cont.innerHTML='<p style="color:var(--coral);padding:20px 4px;">Erro ao carregar: '+e.message+'</p>';return;}
+
+  const metaLeads=funilPeriodo==='mes'?(+meta.meta_leads||0):(+meta.meta_leads||0)/(rg.semanasNoMes||1);
+  // cascata de metas absolutas
+  const mq=metaLeads*(+meta.taxa_qualificacao||0)/100;
+  const mc=mq*(+meta.taxa_contato||0)/100;
+  const mr=mc*(+meta.taxa_resposta||0)/100;
+  const ma=mr*(+meta.taxa_agendamento||0)/100;
+  const mcall=ma*(+meta.taxa_comparecimento||0)/100;
+  const mv=mcall*(+meta.taxa_fechamento||0)/100;
+
+  const ticket=d.nVendas>0?d.faturamento/d.nVendas:0;
+  const etapas=[
+    {nome:'Leads recebidos',sub:'total + origem por canal',real:d.leads,meta:metaLeads},
+    {nome:'Leads qualificados',sub:'perfil certo (SQL)',real:d.qualificados,meta:mq},
+    {nome:'Leads contatados',sub:'quantos foram chamados',real:d.contatados,meta:mc},
+    {nome:'Respostas',sub:'quantos responderam',real:d.respostas,meta:mr},
+    {nome:'Agenda marcada',sub:'calls agendadas',real:d.agenda,meta:ma},
+    {nome:'Calls realizadas',sub:'marcadas − no-show',real:d.calls,meta:mcall},
+    {nome:'Vendas',sub:d.nVendas+' venda(s) · ticket '+fmtBRL(ticket)+' · '+fmtBRL(d.faturamento),real:d.nVendas,meta:mv,destaque:true}
+  ];
+  const taxas=[
+    {nome:'% qualificação',real:_funilPct(d.qualificados,d.leads),meta:+meta.taxa_qualificacao||0},
+    {nome:'% de contato',real:_funilPct(d.contatados,d.qualificados),meta:+meta.taxa_contato||0},
+    {nome:'% de resposta',real:_funilPct(d.respostas,d.contatados),meta:+meta.taxa_resposta||0},
+    {nome:'% de agendamento',real:_funilPct(d.agenda,d.respostas),meta:+meta.taxa_agendamento||0},
+    {nome:'% comparecimento (1 − no-show)',real:_funilPct(d.calls,d.agenda),meta:+meta.taxa_comparecimento||0},
+    {nome:'% de fechamento',real:_funilPct(d.nVendas,d.calls),meta:+meta.taxa_fechamento||0}
+  ];
+
+  const stageCard=e=>{
+    const ratio=e.meta>0?(e.real/e.meta)*100:0;
+    const cor=funilCor(e.real,e.meta);
+    const bg=e.destaque?'#FBF6EE':'#fff';
+    const bd=e.destaque?'#E2B85A':'var(--border)';
+    return `<div style="border:1px solid ${bd};border-radius:14px;padding:15px 20px;background:${bg};display:flex;align-items:center;gap:18px;">
+      <div style="flex:1;min-width:0;"><div style="font-weight:700;color:var(--text);font-size:15px;">${e.nome}</div><div style="font-size:12px;color:var(--muted);">${e.sub}</div></div>
+      <div style="text-align:right;min-width:150px;">
+        <div style="font-size:26px;font-weight:800;color:var(--green);line-height:1;">${_fmtN(e.real)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">meta ${_fmtN(e.meta)}${e.meta>0?' · '+ratio.toFixed(0)+'%':''}</div>
+        <div style="height:6px;background:var(--cream2);border-radius:4px;margin-top:6px;overflow:hidden;"><div style="height:100%;width:${Math.min(ratio,100)}%;background:${cor};"></div></div>
+      </div></div>`;
+  };
+  const rateRow=t=>{
+    const cor=funilCor(t.real,t.meta);
+    const ok=t.meta>0&&t.real>=t.meta;
+    return `<div style="display:flex;justify-content:center;align-items:center;gap:9px;padding:5px 0;font-size:12px;">
+      <span style="width:1px;height:14px;background:var(--border);"></span>
+      <span style="color:var(--muted);">${t.nome}</span>
+      <strong style="color:${cor};">${t.real.toFixed(1)}%</strong>
+      <span style="color:var(--muted);">/ meta ${(+t.meta||0).toFixed(0)}% ${ok?'✓':''}</span>
+    </div>`;
+  };
+
+  let funilHTML='';
+  for(let i=0;i<etapas.length;i++){
+    funilHTML+=stageCard(etapas[i]);
+    if(i<taxas.length) funilHTML+=rateRow(taxas[i]);
+  }
+
+  // leads por canal
+  const totLeads=d.leads||1;
+  const canaisHTML=FUNIL_CANAIS.map(c=>{
+    const v=d.origem[c]||0; const p=(v/totLeads)*100;
+    return `<div style="display:flex;align-items:center;gap:10px;font-size:13px;padding:5px 0;">
+      <span style="flex:1;color:var(--text);">${c}</span>
+      <span style="width:140px;height:7px;background:var(--cream2);border-radius:4px;overflow:hidden;"><span style="display:block;height:100%;width:${p}%;background:var(--green);"></span></span>
+      <strong style="width:46px;text-align:right;color:var(--green);">${_fmtN(v)}</strong>
+      <span style="width:46px;text-align:right;color:var(--muted);">${p.toFixed(0)}%</span>
+    </div>`;
+  }).join('');
+
+  cont.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin:6px 0 18px;">
+      <p style="color:var(--muted);font-size:13px;margin:0;">Período: <strong style="color:var(--text);">${rg.label}</strong></p>
+      <p style="color:var(--muted);font-size:12px;margin:0;">Taxas-alvo definidas em <strong>Metas do funil</strong>. Na semana, a meta de leads é o mês ÷ semanas.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr;gap:0;max-width:760px;">${funilHTML}</div>
+    <div style="margin-top:34px;max-width:560px;">
+      <p class="chart-title" style="margin-bottom:8px;">Leads recebidos por canal</p>
+      ${canaisHTML}
+    </div>`;
+}
+
+function toggleFormFunil(reg){
+  if(currentUser&&currentUser.funcao!=='admin') return;
+  const f=document.getElementById('novoFormFunil');
+  const abrir=f.style.display==='none';
+  if(abrir){
+    funilFormEditId=(reg&&reg.id)||null;
+    const o=(reg&&reg.leads_origem)||{};
+    const canais=FUNIL_CANAIS.map(c=>`<div class="form-field"><label>↳ ${c}</label><input type="number" min="0" value="${o[c]||0}" data-canal="${c}" class="funil-canal-input"></div>`).join('');
+    document.getElementById('funilFormGrid').innerHTML=`
+      <div class="form-field"><label>Data</label><input type="date" id="ffData" value="${reg?reg.data:new Date().toISOString().split('T')[0]}" ${reg?'readonly':''}></div>
+      <div class="form-field"><label>Leads recebidos (total)</label><input type="number" id="ffLeads" min="0" value="${reg?reg.leads_recebidos:0}"></div>
+      <div class="form-field"><label>Leads qualificados</label><input type="number" id="ffQual" min="0" value="${reg?reg.leads_qualificados:0}"></div>
+      <div class="form-field"><label>Leads contatados</label><input type="number" id="ffCont" min="0" value="${reg?reg.leads_contatados:0}"></div>
+      <div class="form-field"><label>Respostas</label><input type="number" id="ffResp" min="0" value="${reg?reg.respostas:0}"></div>
+      ${canais}`;
+    document.getElementById('formFunilTitle').textContent=reg?('Editar registro — '+fmtDataBR(reg.data)):'Novo registro diário — pré-vendas';
+    f.style.display='block';
+  } else {
+    f.style.display='none'; funilFormEditId=null;
+  }
+}
+
+async function salvarRegistroFunil(){
+  if(currentUser&&currentUser.funcao!=='admin'){await pmmAlert('Você não tem permissão para esta ação.','🔒','Acesso restrito');return;}
+  const data=document.getElementById('ffData').value;
+  if(!data){await pmmAlert('Informe a data.','📅','Data obrigatória');return;}
+  const origem={};
+  document.querySelectorAll('.funil-canal-input').forEach(i=>{origem[i.dataset.canal]=parseInt(i.value)||0;});
+  const body={
+    data,
+    leads_recebidos:parseInt(document.getElementById('ffLeads').value)||0,
+    leads_qualificados:parseInt(document.getElementById('ffQual').value)||0,
+    leads_contatados:parseInt(document.getElementById('ffCont').value)||0,
+    respostas:parseInt(document.getElementById('ffResp').value)||0,
+    leads_origem:origem
+  };
+  try{
+    await supaFetch('funil_prevendas',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
+    toggleFormFunil();
+    renderFunil();
+  }catch(e){pmmAlert('Erro ao salvar: '+e.message,'❌','Erro');}
+}
+
+function abrirEditarMetasFunil(){
+  const rg=funilRange();
+  getMetaFunil(rg.ano,rg.mes+1).then(m=>{
+    document.getElementById('mfMesLabel').textContent=MESES_NOMES[rg.mes]+' de '+rg.ano;
+    document.getElementById('mfLeads').value=m.meta_leads||0;
+    document.getElementById('mfQual').value=m.taxa_qualificacao;
+    document.getElementById('mfCont').value=m.taxa_contato;
+    document.getElementById('mfResp').value=m.taxa_resposta;
+    document.getElementById('mfAgend').value=m.taxa_agendamento;
+    document.getElementById('mfComp').value=m.taxa_comparecimento;
+    document.getElementById('mfFech').value=m.taxa_fechamento;
+    document.getElementById('modalMetasFunil').classList.add('open');
+  });
+}
+function fecharModalMetasFunil(){document.getElementById('modalMetasFunil').classList.remove('open');}
+async function salvarMetasFunil(){
+  const rg=funilRange();
+  const body={
+    ano:rg.ano, mes:rg.mes+1,
+    meta_leads:parseInt(document.getElementById('mfLeads').value)||0,
+    taxa_qualificacao:parseFloat(document.getElementById('mfQual').value)||0,
+    taxa_contato:parseFloat(document.getElementById('mfCont').value)||0,
+    taxa_resposta:parseFloat(document.getElementById('mfResp').value)||0,
+    taxa_agendamento:parseFloat(document.getElementById('mfAgend').value)||0,
+    taxa_comparecimento:parseFloat(document.getElementById('mfComp').value)||0,
+    taxa_fechamento:parseFloat(document.getElementById('mfFech').value)||0
+  };
+  try{
+    await supaFetch('metas_funil',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
+    fecharModalMetasFunil();
+    renderFunil();
   }catch(e){pmmAlert('Erro ao salvar metas: '+e.message,'❌','Erro');}
 }
 
