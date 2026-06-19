@@ -2787,16 +2787,20 @@ async function renderFunil(){
     if(!temMeta){
       pacingHTML=`<div style="border:1px dashed var(--border);border-radius:14px;background:#FBFAF7;padding:16px 18px;margin-bottom:22px;font-size:13px;color:var(--muted);">Defina as <strong style="color:var(--green);">Metas do funil</strong> (botão 🎯) para acompanhar o pacing do mês — onde estamos vs. onde deveríamos estar, a projeção de fechamento e os gargalos.</div>`;
     } else {
-      const espLeads=metaLeads*frac, espVendas=mv*frac;
       const projLeads=proj(d.leads), projVendas=proj(d.nVendas), projFat=proj(d.faturamento);
-      // Card 1 — onde estamos vs. onde deveríamos estar
+      // Card 1 — % da META de leads do mês (protagonista) + marcador de ritmo ideal
+      const leadsPct=metaLeads>0?(d.leads/metaLeads*100):0;
+      const noRitmo=leadsPct>=fracPct;
+      const corBar=noRitmo?'#3D8C5A':'#C0392B';
       const card1=pcard(
-        eyebrow('Ritmo do mês')+
-        `<div style="font-size:30px;font-weight:800;color:var(--green);line-height:1;">${fracPct}%</div>`+
-        `<div style="font-size:11px;color:var(--muted);margin-top:2px;">do mês decorrido · ${diasDecorridos}/${diasNoMes} dias</div>`+
-        `<div style="height:5px;background:var(--cream2);border-radius:3px;margin:10px 0 12px;overflow:hidden;"><div style="height:100%;width:${fracPct}%;background:var(--green-light);"></div></div>`+
-        linha('Leads',`<b style="color:var(--green);">${_fmtN(d.leads)}</b> ${mut('/ '+_fmtN(espLeads)+' até hoje')} ${chip(d.leads>=espLeads,d.leads>=espLeads?'no ritmo':'atrasado')}`)+
-        linha('Vendas',`<b style="color:var(--green);">${_fmtN(d.nVendas)}</b> ${mut('/ '+_fmtN(espVendas)+' até hoje')} ${chip(d.nVendas>=espVendas,d.nVendas>=espVendas?'no ritmo':'atrasado')}`)
+        `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);">Meta de leads do mês</span>${chip(noRitmo,noRitmo?'no ritmo':'atrasado')}</div>`+
+        `<div style="font-size:34px;font-weight:800;color:${corBar};line-height:1;">${Math.round(leadsPct)}%</div>`+
+        `<div style="font-size:11px;color:var(--muted);margin-top:3px;">atingida · <b style="color:var(--text);">${_fmtN(d.leads)}</b> de ${_fmtN(metaLeads)} leads</div>`+
+        `<div style="position:relative;height:9px;background:var(--cream2);border-radius:4px;margin:13px 0 7px;">`+
+          `<div style="height:100%;width:${Math.min(leadsPct,100)}%;background:${corBar};border-radius:4px;"></div>`+
+          `<div style="position:absolute;top:-3px;bottom:-3px;left:${Math.min(fracPct,100)}%;width:2px;background:var(--text);opacity:.55;"></div>`+
+        `</div>`+
+        `<div style="font-size:11px;color:var(--muted);">${diasDecorridos}/${diasNoMes} dias decorridos · <span style="color:var(--text);">┃ ritmo ideal hoje: ${fracPct}%</span></div>`
       );
       // Card 2 — projeção de fechamento do ciclo
       const card2=pcard(
