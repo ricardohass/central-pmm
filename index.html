@@ -2765,33 +2765,46 @@ async function renderFunil(){
     </div>`;
   };
 
+  // Coluna do funil (todas as etapas + taxas)
   let funilHTML='';
   for(let i=0;i<etapas.length;i++){
     funilHTML+=stageCard(etapas[i]);
     if(i<taxas.length) funilHTML+=rateRow(taxas[i]);
   }
 
-  // leads por canal
+  // Box lateral: origens dos leads recebidos (subcategoria conectada à 1ª etapa)
   const totLeads=d.leads||1;
   const canaisHTML=FUNIL_CANAIS.map(c=>{
     const v=d.origem[c]||0; const p=(v/totLeads)*100;
-    return `<div style="display:flex;align-items:center;gap:10px;font-size:13px;padding:5px 0;">
-      <span style="flex:1;color:var(--text);">${c}</span>
-      <span style="width:140px;height:7px;background:var(--cream2);border-radius:4px;overflow:hidden;"><span style="display:block;height:100%;width:${p}%;background:var(--green);"></span></span>
-      <strong style="width:46px;text-align:right;color:var(--green);">${_fmtN(v)}</strong>
-      <span style="width:46px;text-align:right;color:var(--muted);">${p.toFixed(0)}%</span>
+    return `<div style="padding:5px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12.5px;">
+        <span style="color:var(--text);">${c}</span>
+        <span><strong style="color:var(--green);">${_fmtN(v)}</strong> <span style="color:var(--muted);font-size:11px;">${p.toFixed(0)}%</span></span>
+      </div>
+      <div style="height:5px;background:var(--cream2);border-radius:3px;margin-top:4px;overflow:hidden;"><div style="height:100%;width:${p}%;background:var(--green-light);"></div></div>
     </div>`;
   }).join('');
+
+  const conector=`<div style="flex:0 0 42px;display:flex;align-items:center;margin-top:31px;align-self:flex-start;">
+    <span style="width:8px;height:8px;border-radius:50%;background:var(--green-light);flex:0 0 auto;"></span>
+    <span style="flex:1;border-top:2px dashed var(--green-light);opacity:.6;"></span>
+    <span style="width:8px;height:8px;border-radius:50%;background:var(--green-light);flex:0 0 auto;"></span>
+  </div>`;
+
+  const canaisBox=`<div style="flex:0 0 260px;max-width:260px;align-self:flex-start;border:1px solid var(--border);border-radius:14px;background:#FBFAF7;padding:13px 16px;">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--green);margin-bottom:8px;">↳ Origem dos leads recebidos</div>
+    ${canaisHTML}
+  </div>`;
 
   cont.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin:6px 0 18px;">
       <p style="color:var(--muted);font-size:13px;margin:0;">Período: <strong style="color:var(--text);">${rg.label}</strong></p>
       <p style="color:var(--muted);font-size:12px;margin:0;">Taxas-alvo definidas em <strong>Metas do funil</strong>. Na semana, a meta de leads é o mês ÷ semanas.</p>
     </div>
-    <div style="display:grid;grid-template-columns:1fr;gap:0;max-width:760px;">${funilHTML}</div>
-    <div style="margin-top:34px;max-width:560px;">
-      <p class="chart-title" style="margin-bottom:8px;">Leads recebidos por canal</p>
-      ${canaisHTML}
+    <div style="display:flex;align-items:flex-start;flex-wrap:wrap;gap:0;max-width:900px;">
+      <div style="flex:1 1 360px;min-width:300px;max-width:540px;">${funilHTML}</div>
+      ${conector}
+      ${canaisBox}
     </div>`;
 }
 
