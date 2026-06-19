@@ -2765,6 +2765,66 @@ async function renderFunil(){
     </div>`;
   };
 
+  // ── PAINEL DE PACING (só na visão de mês) ──
+  let pacingHTML='';
+  if(funilPeriodo==='mes'){
+    const hoje=new Date();
+    const diasNoMes=new Date(funilAno,funilMes+1,0).getDate();
+    const ehMesAtual=(funilAno===hoje.getFullYear()&&funilMes===hoje.getMonth());
+    const ehFuturo=(funilAno>hoje.getFullYear()||(funilAno===hoje.getFullYear()&&funilMes>hoje.getMonth()));
+    const diasDecorridos=ehMesAtual?hoje.getDate():(ehFuturo?0:diasNoMes);
+    const frac=diasNoMes?diasDecorridos/diasNoMes:0;
+    const fracPct=Math.round(frac*100);
+    const proj=v=>frac>0?v/frac:0;
+    const temMeta=metaLeads>0;
+
+    const chip=(ok,txt)=>`<span style="display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;background:${ok?'rgba(61,140,90,.12)':'rgba(192,57,43,.12)'};color:${ok?'#2E7D4E':'#C0392B'};">${txt}</span>`;
+    const pcard=(inner,accent)=>`<div style="flex:1 1 250px;min-width:230px;border:1px solid var(--border);${accent?'border-top:3px solid '+accent+';':''}border-radius:14px;background:#fff;padding:16px 18px;">${inner}</div>`;
+    const eyebrow=t=>`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:10px;">${t}</div>`;
+    const linha=(lbl,html)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:4px 0;"><span style="color:var(--text);">${lbl}</span><span style="text-align:right;">${html}</span></div>`;
+    const mut=t=>`<span style="color:var(--muted);font-size:11px;">${t}</span>`;
+
+    if(!temMeta){
+      pacingHTML=`<div style="border:1px dashed var(--border);border-radius:14px;background:#FBFAF7;padding:16px 18px;margin-bottom:22px;font-size:13px;color:var(--muted);">Defina as <strong style="color:var(--green);">Metas do funil</strong> (botão 🎯) para acompanhar o pacing do mês — onde estamos vs. onde deveríamos estar, a projeção de fechamento e os gargalos.</div>`;
+    } else {
+      const espLeads=metaLeads*frac, espVendas=mv*frac;
+      const projLeads=proj(d.leads), projVendas=proj(d.nVendas), projFat=proj(d.faturamento);
+      // Card 1 — onde estamos vs. onde deveríamos estar
+      const card1=pcard(
+        eyebrow('Ritmo do mês')+
+        `<div style="font-size:30px;font-weight:800;color:var(--green);line-height:1;">${fracPct}%</div>`+
+        `<div style="font-size:11px;color:var(--muted);margin-top:2px;">do mês decorrido · ${diasDecorridos}/${diasNoMes} dias</div>`+
+        `<div style="height:5px;background:var(--cream2);border-radius:3px;margin:10px 0 12px;overflow:hidden;"><div style="height:100%;width:${fracPct}%;background:var(--green-light);"></div></div>`+
+        linha('Leads',`<b style="color:var(--green);">${_fmtN(d.leads)}</b> ${mut('/ '+_fmtN(espLeads)+' até hoje')} ${chip(d.leads>=espLeads,d.leads>=espLeads?'no ritmo':'atrasado')}`)+
+        linha('Vendas',`<b style="color:var(--green);">${_fmtN(d.nVendas)}</b> ${mut('/ '+_fmtN(espVendas)+' até hoje')} ${chip(d.nVendas>=espVendas,d.nVendas>=espVendas?'no ritmo':'atrasado')}`)
+      );
+      // Card 2 — projeção de fechamento do ciclo
+      const card2=pcard(
+        eyebrow('Projeção de fechamento')+
+        `<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">${frac>0?'No ritmo atual, o mês fecha com:':'Mês ainda não começou.'}</div>`+
+        (frac>0?(
+          linha('Leads',`~<b style="color:var(--green);">${_fmtN(projLeads)}</b> ${mut('meta '+_fmtN(metaLeads))} ${chip(projLeads>=metaLeads,projLeads>=metaLeads?'bate':'fura')}`)+
+          linha('Vendas',`~<b style="color:var(--green);">${_fmtN(projVendas)}</b> ${mut('meta '+_fmtN(mv))} ${chip(projVendas>=mv,projVendas>=mv?'bate':'fura')}`)+
+          linha('Faturamento',`~<b style="color:var(--green);">${fmtBRL(projFat)}</b>`)
+        ):'<div style="font-size:13px;color:var(--muted);padding:4px 0;">—</div>')
+      );
+      // Card 3 — pontos de atenção (gargalos em vermelho)
+      const gargalos=taxas.filter(t=>t.meta>0&&t.real<t.meta).map(t=>({...t,gap:(t.meta-t.real)/t.meta})).sort((a,b)=>b.gap-a.gap).slice(0,3);
+      const card3=pcard(
+        eyebrow('Pontos de atenção')+
+        (gargalos.length
+          ?`<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Maiores gargalos do funil:</div>`+gargalos.map((g,i)=>
+            `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:5px 0;${i?'border-top:1px solid var(--border);':''}">
+              <span style="color:var(--text);">${g.nome.replace(' (1 − no-show)','')}</span>
+              <span><b style="color:#C0392B;">${g.real.toFixed(0)}%</b> ${mut('meta '+g.meta.toFixed(0)+'%')}</span>
+            </div>`).join('')
+          :`<div style="font-size:13px;color:#2E7D4E;padding:6px 0;font-weight:600;">Todas as taxas dentro da meta ✓</div>`),
+        gargalos.length?'#C0392B':'#3D8C5A'
+      );
+      pacingHTML=`<div style="margin-bottom:22px;"><div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--green);margin-bottom:10px;">Pacing do mês — ${MESES_NOMES[funilMes]}</div><div style="display:flex;gap:14px;flex-wrap:wrap;">${card1}${card2}${card3}</div></div>`;
+    }
+  }
+
   // Coluna do funil (todas as etapas + taxas)
   let funilHTML='';
   for(let i=0;i<etapas.length;i++){
@@ -2801,6 +2861,7 @@ async function renderFunil(){
       <p style="color:var(--muted);font-size:13px;margin:0;">Período: <strong style="color:var(--text);">${rg.label}</strong></p>
       <p style="color:var(--muted);font-size:12px;margin:0;">Taxas-alvo definidas em <strong>Metas do funil</strong>. Na semana, a meta de leads é o mês ÷ semanas.</p>
     </div>
+    ${pacingHTML}
     <div style="display:flex;align-items:flex-start;flex-wrap:wrap;gap:0;max-width:900px;">
       <div style="flex:1 1 360px;min-width:300px;max-width:540px;">${funilHTML}</div>
       ${conector}
