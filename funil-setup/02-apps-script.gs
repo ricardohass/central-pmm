@@ -42,7 +42,7 @@ function enviarFunilParaCentral() {
 
   if (!payload.length) { Logger.log('Nada para enviar.'); return; }
 
-  const res = UrlFetchApp.fetch(SUPA_URL + '/rest/v1/funil_prevendas', {
+  const res = UrlFetchApp.fetch(SUPA_URL + '/rest/v1/funil_prevendas?on_conflict=data', {
     method: 'post',
     contentType: 'application/json',
     headers: {

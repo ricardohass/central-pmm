@@ -2844,7 +2844,7 @@ async function salvarRegistroFunil(){
     leads_origem:origem
   };
   try{
-    await supaFetch('funil_prevendas',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
+    await supaFetch('funil_prevendas?on_conflict=data',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
     toggleFormFunil();
     renderFunil();
   }catch(e){pmmAlert('Erro ao salvar: '+e.message,'❌','Erro');}
@@ -2878,7 +2878,7 @@ async function salvarMetasFunil(){
     taxa_fechamento:parseFloat(document.getElementById('mfFech').value)||0
   };
   try{
-    await supaFetch('metas_funil',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
+    await supaFetch('metas_funil?on_conflict=ano,mes',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates'},body:JSON.stringify(body)});
     fecharModalMetasFunil();
     renderFunil();
   }catch(e){pmmAlert('Erro ao salvar metas: '+e.message,'❌','Erro');}
