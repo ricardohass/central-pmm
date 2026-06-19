@@ -886,6 +886,11 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       <div class="novo-form" id="novoFormFunil" style="display:none;">
         <div class="novo-form-title" id="formFunilTitle">Novo registro diário — pré-vendas</div>
         <div class="novo-form-grid" id="funilFormGrid"></div>
+        <div id="funilFormCanaisWrap" style="margin-top:20px;padding-top:16px;border-top:1px dashed var(--border);">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--green);margin-bottom:2px;">↳ Origem dos leads recebidos</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Subcategoria de “Leads recebidos” — quebra por canal (a soma deve bater com o total).</div>
+          <div class="novo-form-grid" id="funilFormCanais"></div>
+        </div>
         <div class="novo-form-actions">
           <button class="btn-cancelar" onclick="toggleFormFunil()">Cancelar</button>
           <button class="btn-salvar" onclick="salvarRegistroFunil()">&#10003; Salvar</button>
@@ -2797,14 +2802,13 @@ function toggleFormFunil(reg){
   if(abrir){
     funilFormEditId=(reg&&reg.id)||null;
     const o=(reg&&reg.leads_origem)||{};
-    const canais=FUNIL_CANAIS.map(c=>`<div class="form-field"><label>↳ ${c}</label><input type="number" min="0" value="${o[c]||0}" data-canal="${c}" class="funil-canal-input"></div>`).join('');
     document.getElementById('funilFormGrid').innerHTML=`
       <div class="form-field"><label>Data</label><input type="date" id="ffData" value="${reg?reg.data:new Date().toISOString().split('T')[0]}" ${reg?'readonly':''}></div>
       <div class="form-field"><label>Leads recebidos (total)</label><input type="number" id="ffLeads" min="0" value="${reg?reg.leads_recebidos:0}"></div>
       <div class="form-field"><label>Leads qualificados</label><input type="number" id="ffQual" min="0" value="${reg?reg.leads_qualificados:0}"></div>
       <div class="form-field"><label>Leads contatados</label><input type="number" id="ffCont" min="0" value="${reg?reg.leads_contatados:0}"></div>
-      <div class="form-field"><label>Respostas</label><input type="number" id="ffResp" min="0" value="${reg?reg.respostas:0}"></div>
-      ${canais}`;
+      <div class="form-field"><label>Respostas</label><input type="number" id="ffResp" min="0" value="${reg?reg.respostas:0}"></div>`;
+    document.getElementById('funilFormCanais').innerHTML=FUNIL_CANAIS.map(c=>`<div class="form-field"><label>${c}</label><input type="number" min="0" value="${o[c]||0}" data-canal="${c}" class="funil-canal-input"></div>`).join('');
     document.getElementById('formFunilTitle').textContent=reg?('Editar registro — '+fmtDataBR(reg.data)):'Novo registro diário — pré-vendas';
     f.style.display='block';
   } else {
