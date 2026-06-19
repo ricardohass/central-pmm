@@ -2783,13 +2783,12 @@ async function renderFunil(){
     const chip=(ok,txt)=>`<span style="display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;background:${ok?'rgba(61,140,90,.12)':'rgba(192,57,43,.12)'};color:${ok?'#2E7D4E':'#C0392B'};">${txt}</span>`;
     const pcard=(inner,accent)=>`<div style="flex:1 1 250px;min-width:230px;border:1px solid var(--border);${accent?'border-top:3px solid '+accent+';':''}border-radius:14px;background:#fff;padding:16px 18px;">${inner}</div>`;
     const eyebrow=t=>`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:10px;">${t}</div>`;
-    const linha=(lbl,html)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:4px 0;"><span style="color:var(--text);">${lbl}</span><span style="text-align:right;">${html}</span></div>`;
     const mut=t=>`<span style="color:var(--muted);font-size:11px;">${t}</span>`;
 
     if(!temMeta){
       pacingHTML=`<div style="border:1px dashed var(--border);border-radius:14px;background:#FBFAF7;padding:16px 18px;margin-bottom:22px;font-size:13px;color:var(--muted);">Defina as <strong style="color:var(--green);">Metas do funil</strong> (botão 🎯) para acompanhar o pacing do mês — onde estamos vs. onde deveríamos estar, a projeção de fechamento e os gargalos.</div>`;
     } else {
-      const projLeads=proj(d.leads), projVendas=proj(d.nVendas), projFat=proj(d.faturamento);
+      const projVendas=proj(d.nVendas), projFat=proj(d.faturamento);
       // Card 1 — % da META de FATURAMENTO do mês (protagonista) + marcador de ritmo ideal
       const fatPct=metaFat>0?(d.faturamento/metaFat*100):0;
       const noRitmo=fatPct>=fracPct;
@@ -2806,28 +2805,28 @@ async function renderFunil(){
           `<div style="font-size:11px;color:var(--muted);">${diasDecorridos}/${diasNoMes} dias decorridos · <span style="color:var(--text);">┃ ritmo ideal hoje: ${fracPct}%</span></div>`
         ):`<div style="font-size:13px;color:var(--muted);padding:8px 0;">Defina a <strong style="color:var(--green);">meta de faturamento</strong> (botão 🎯) para ver o ritmo do mês.</div>`)
       );
-      // Card 2 — projeção de fechamento do ciclo
+      // Card 2 — projeção de fechamento do ciclo (só faturamento e vendas)
+      const projBlock=(lbl,valHtml,rightHtml,first)=>`<div style="padding:9px 0;${first?'':'border-top:1px solid var(--border);'}"><div style="font-size:12px;color:var(--muted);margin-bottom:3px;">${lbl}</div><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;"><span style="font-size:21px;font-weight:800;color:var(--green);white-space:nowrap;">~${valHtml}</span><span style="display:flex;align-items:center;gap:6px;">${rightHtml}</span></div></div>`;
       const card2=pcard(
         eyebrow('Projeção de fechamento')+
-        `<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">${frac>0?'No ritmo atual, o mês fecha com:':'Mês ainda não começou.'}</div>`+
+        `<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">${frac>0?'No ritmo atual, o mês fecha com:':'Mês ainda não começou.'}</div>`+
         (frac>0?(
-          linha('Faturamento',`~<b style="color:var(--green);">${fmtBRL(projFat)}</b> ${metaFat>0?mut('meta '+fmtBRL(metaFat))+' '+chip(projFat>=metaFat,projFat>=metaFat?'bate':'fura'):''}`)+
-          linha('Vendas',`~<b style="color:var(--green);">${_fmtN(projVendas)}</b> ${mut('meta '+_fmtN(mv))} ${chip(projVendas>=mv,projVendas>=mv?'bate':'fura')}`)+
-          linha('Leads',`~<b style="color:var(--green);">${_fmtN(projLeads)}</b> ${mut('meta '+_fmtN(metaLeads))} ${chip(projLeads>=metaLeads,projLeads>=metaLeads?'bate':'fura')}`)
+          projBlock('Faturamento',fmtBRL(projFat),metaFat>0?mut('meta '+fmtBRL(metaFat))+chip(projFat>=metaFat,projFat>=metaFat?'bate':'fura'):mut('sem meta'),true)+
+          projBlock('Vendas',_fmtN(projVendas),mut('meta '+_fmtN(mv))+chip(projVendas>=mv,projVendas>=mv?'bate':'fura'),false)
         ):'<div style="font-size:13px;color:var(--muted);padding:4px 0;">—</div>')
       );
-      // Card 3 — pontos de atenção (gargalos em vermelho)
-      const gargalos=taxas.filter(t=>t.meta>0&&t.real<t.meta).map(t=>({...t,gap:(t.meta-t.real)/t.meta})).sort((a,b)=>b.gap-a.gap).slice(0,3);
+      // Card 3 — pontos de atenção: sempre 3 taxas, do pior para o melhor
+      const ranked=taxas.map(t=>({...t,ratio:t.meta>0?t.real/t.meta:99})).sort((a,b)=>a.ratio-b.ratio).slice(0,3);
+      const algumVermelho=ranked.length&&ranked[0].real<ranked[0].meta;
       const card3=pcard(
         eyebrow('Pontos de atenção')+
-        (gargalos.length
-          ?`<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Maiores gargalos do funil:</div>`+gargalos.map((g,i)=>
-            `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:5px 0;${i?'border-top:1px solid var(--border);':''}">
-              <span style="color:var(--text);">${g.nome.replace(' (1 − no-show)','')}</span>
-              <span><b style="color:#C0392B;">${g.real.toFixed(0)}%</b> ${mut('meta '+g.meta.toFixed(0)+'%')}</span>
-            </div>`).join('')
-          :`<div style="font-size:13px;color:#2E7D4E;padding:6px 0;font-weight:600;">Todas as taxas dentro da meta ✓</div>`),
-        gargalos.length?'#C0392B':'#3D8C5A'
+        `<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Taxas do pior para o melhor:</div>`+
+        ranked.map((g,i)=>{
+          const below=g.real<g.meta;
+          const cor=below?'#C0392B':'#2E7D4E';
+          return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:6px 0;${i?'border-top:1px solid var(--border);':''}"><span style="color:var(--text);">${g.nome.replace(' (1 − no-show)','')}</span><span><b style="color:${cor};">${g.real.toFixed(0)}%</b> ${mut('meta '+g.meta.toFixed(0)+'%')}</span></div>`;
+        }).join(''),
+        algumVermelho?'#C0392B':'#3D8C5A'
       );
       pacingHTML=`<div style="margin-bottom:22px;"><div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--green);margin-bottom:10px;">Pacing do mês — ${MESES_NOMES[funilMes]}</div><div style="display:flex;gap:14px;flex-wrap:wrap;">${card1}${card2}${card3}</div></div>`;
     }
