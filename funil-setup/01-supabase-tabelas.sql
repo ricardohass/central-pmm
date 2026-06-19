@@ -20,6 +20,7 @@ create table if not exists public.metas_funil (
   id                  bigint generated always as identity primary key,
   ano                 integer not null,
   mes                 integer not null,               -- 1-12
+  meta_faturamento    numeric not null default 0,     -- meta final do mês (R$)
   meta_leads          integer not null default 0,
   taxa_qualificacao   numeric not null default 60,
   taxa_contato        numeric not null default 80,
@@ -35,3 +36,7 @@ create table if not exists public.metas_funil (
 grant select, insert, update, delete on public.funil_prevendas to anon, authenticated;
 grant select, insert, update, delete on public.metas_funil      to anon, authenticated;
 grant usage, select on all sequences in schema public to anon, authenticated;
+
+-- Para instalações que já criaram metas_funil antes da meta de faturamento:
+alter table public.metas_funil
+  add column if not exists meta_faturamento numeric not null default 0;
