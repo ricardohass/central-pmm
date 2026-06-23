@@ -941,6 +941,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         <table class="vendas-table" style="min-width:700px;">
           <thead>
             <tr>
+              <th></th>
               <th>O que é</th>
               <th>Link</th>
               <th>Login</th>
@@ -3030,13 +3031,13 @@ function renderAcessosTbody(rows,tbody){
       ?`<div class="senha-toggle"><span id="${senhaId}" style="filter:blur(4px);user-select:none;">${a.senha}</span><button class="btn-toggle-senha" onclick="toggleSenha('${senhaId}',this)" title="Mostrar/ocultar">👁</button></div>`
       :'—';
     const aJson=JSON.stringify(a).replace(/'/g,"\'");
-    return`<tr draggable="true" data-id="${a.id}">
-      <td style="color:var(--muted);font-size:18px;padding:12px 6px 12px 16px;cursor:grab;user-select:none;" title="Arrastar">⠿</td>
-      <td style="font-weight:500;">${a.nome}</td>
+    return`<tr data-id="${a.id}">
+      <td class="acesso-drag" draggable="true" style="color:var(--muted);font-size:18px;padding:12px 6px 12px 16px;cursor:grab;user-select:none;" title="Arrastar">⠿</td>
+      <td style="font-weight:500;user-select:text;">${a.nome}</td>
       <td>${linkHTML}</td>
-      <td style="font-size:12px;color:var(--muted);">${a.login||'—'}</td>
+      <td style="font-size:12px;color:var(--muted);user-select:all;cursor:text;" title="Clique para selecionar">${a.login||'—'}</td>
       <td>${senhaHTML}</td>
-      <td style="font-size:12px;color:var(--muted);">${a.observacao||'—'}</td>
+      <td style="font-size:12px;color:var(--muted);user-select:text;">${a.observacao||'—'}</td>
       <td style="white-space:nowrap;">
         <button class="btn-edit" onclick="editarAcesso(${aJson})" title="Editar">&#9998;</button>
         <button class="btn-del" onclick="excluirAcesso('${a.id}')" title="Excluir">&#10005;</button>
@@ -3048,8 +3049,11 @@ function renderAcessosTbody(rows,tbody){
 function initAcessosDrag(tbody){
   let dragSrc=null;
   tbody.querySelectorAll('tr').forEach(tr=>{
-    tr.addEventListener('dragstart',e=>{dragSrc=tr;tr.style.opacity='0.4';e.dataTransfer.effectAllowed='move';});
-    tr.addEventListener('dragend',e=>{tr.style.opacity='1';tbody.querySelectorAll('tr').forEach(t=>t.style.background='');});
+    const handle=tr.querySelector('.acesso-drag');
+    if(handle){
+      handle.addEventListener('dragstart',e=>{dragSrc=tr;tr.style.opacity='0.4';e.dataTransfer.effectAllowed='move';});
+      handle.addEventListener('dragend',e=>{tr.style.opacity='1';tbody.querySelectorAll('tr').forEach(t=>t.style.background='');});
+    }
     tr.addEventListener('dragover',e=>{e.preventDefault();tbody.querySelectorAll('tr').forEach(t=>t.style.background='');tr.style.background='var(--cream2)';});
     tr.addEventListener('drop',e=>{
       e.preventDefault();
