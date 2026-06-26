@@ -2979,6 +2979,7 @@ const DADOS_INICIAIS_ACESSOS = [
 let acessosPopulados=false;
 
 let _acessosOrdem=[];
+let _acessosById={};
 
 async function carregarAcessos(){
   const isAdminAcessos=currentUser.funcao==='admin';
@@ -3022,6 +3023,8 @@ async function carregarAcessos(){
 }
 
 function renderAcessosTbody(rows,tbody){
+  _acessosById={};
+  rows.forEach(a=>{_acessosById[a.id]=a;});
   tbody.innerHTML=rows.map(a=>{
     const linkHTML=a.link&&a.link!=='-'&&a.link!==''
       ?`<a href="${a.link}" target="_blank" style="color:var(--coral);font-size:12px;text-decoration:none;">${a.link.replace('https://','').replace('http://','').split('/')[0]}</a>`
@@ -3030,7 +3033,6 @@ function renderAcessosTbody(rows,tbody){
     const senhaHTML=a.senha&&a.senha!=='-'&&a.senha!==''
       ?`<div class="senha-toggle"><span id="${senhaId}" style="filter:blur(4px);user-select:none;">${a.senha}</span><button class="btn-toggle-senha" onclick="toggleSenha('${senhaId}',this)" title="Mostrar/ocultar">👁</button></div>`
       :'—';
-    const aJson=JSON.stringify(a).replace(/'/g,"\'");
     return`<tr data-id="${a.id}">
       <td class="acesso-drag" draggable="true" style="color:var(--muted);font-size:18px;padding:12px 6px 12px 16px;cursor:grab;user-select:none;" title="Arrastar">⠿</td>
       <td style="font-weight:500;user-select:text;">${a.nome}</td>
@@ -3039,7 +3041,7 @@ function renderAcessosTbody(rows,tbody){
       <td>${senhaHTML}</td>
       <td style="font-size:12px;color:var(--muted);user-select:text;">${a.observacao||'—'}</td>
       <td style="white-space:nowrap;">
-        <button class="btn-edit" onclick="editarAcesso(${aJson})" title="Editar">&#9998;</button>
+        <button class="btn-edit" onclick="editarAcesso('${a.id}')" title="Editar">&#9998;</button>
         <button class="btn-del" onclick="excluirAcesso('${a.id}')" title="Excluir">&#10005;</button>
       </td>
     </tr>`;
@@ -3090,7 +3092,9 @@ function abrirFormAcesso(){
   document.getElementById('modalAcesso').classList.add('open');
 }
 
-function editarAcesso(a){
+function editarAcesso(id){
+  const a=_acessosById[id];
+  if(!a){pmmAlert('Não foi possível abrir este acesso.','❌','Erro');return;}
   document.getElementById('modalAcessoTitle').textContent='Editar acesso';
   document.getElementById('maId').value=a.id;
   document.getElementById('maNome').value=a.nome||'';
