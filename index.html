@@ -500,6 +500,13 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .reemb-tl-item { border-left:2px solid var(--coral); padding:2px 0 6px 12px; margin-bottom:8px; }
 .reemb-tl-meta { font-size:11px; color:var(--muted); margin-bottom:3px; }
 .reemb-tl-texto { font-size:13px; color:var(--text); white-space:pre-wrap; }
+.reemb-analise { display:flex; flex-wrap:wrap; gap:8px 20px; background:#fff; border:0.5px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:12px; color:var(--muted); }
+.reemb-analise b { color:var(--text); font-weight:600; }
+.reemb-acomp-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+.reemb-acomp-field { display:flex; flex-direction:column; gap:5px; }
+.reemb-acomp-field label { font-size:11px; font-weight:500; color:var(--muted); display:flex; align-items:center; }
+.reemb-acomp-field select { width:100%; }
+.reemb-badge-neutro { background:#EFEFEC; color:#6B6B6B; }
 .cal-wrap { background:#fff; border:0.5px solid var(--border); border-radius:12px; overflow:hidden; }
 .cal-grid-header { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:0.5px solid var(--border); }
 .cal-day-name { padding:10px 0; text-align:center; font-size:11px; font-weight:600; color:var(--muted); }
@@ -1294,6 +1301,41 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         <button type="button" onclick="addParcelaRow()" style="font-family:Inter,sans-serif;font-size:12px;color:var(--coral);background:none;border:0.5px solid var(--coral);border-radius:7px;padding:5px 12px;cursor:pointer;">+ Adicionar parcela</button>
       </div>
       <p id="rfParcelasEditNota" style="display:none;font-size:12px;color:var(--muted);margin-top:14px;">As parcelas deste caso são gerenciadas no detalhe (marcar pago, editar vencimento, adicionar/remover).</p>
+    </div>
+
+    <div class="vf-section">
+      <p class="vf-section-title">Acompanhamento interno</p>
+      <div class="vf-grid-2">
+        <div class="vf-field"><label>Status do reembolso</label>
+          <select id="rfStatusReemb">
+            <option value="pendente">Pendente</option>
+            <option value="reembolsado">Reembolsado</option>
+            <option value="nao_necessario">Não foi necessário</option>
+            <option value="revertido">Revertido</option>
+          </select>
+        </div>
+        <div class="vf-field"><label>Baixa no sistema</label>
+          <select id="rfStatusBaixa">
+            <option value="pendente">Pendente</option>
+            <option value="efetivada">Efetivada</option>
+          </select>
+        </div>
+        <div class="vf-field"><label>Distrato</label>
+          <select id="rfStatusDistrato">
+            <option value="pendente">Pendente</option>
+            <option value="enviado">Enviado</option>
+            <option value="assinado">Assinado</option>
+            <option value="nao_aplicavel">N/A</option>
+          </select>
+        </div>
+        <div class="vf-field"><label>Nota fiscal</label>
+          <select id="rfStatusNf">
+            <option value="nao_aplicavel">N/A</option>
+            <option value="pendente">Pendente</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+        </div>
+      </div>
     </div>
 
     <div class="vf-section">
@@ -4611,6 +4653,18 @@ let todosReembolsos=[];
 let vendasParaReemb=[];
 const REEMB_TIPO_LABEL={cancelamento:'Cancelamento',desistencia:'Desistência'};
 const REEMB_STATUS_LABEL={em_aberto:'Em aberto',negociando:'Negociando',resolvido:'Resolvido'};
+// Status operacionais (acompanhamento interno)
+const STATUS_REEMB={pendente:'Pendente',reembolsado:'Reembolsado',nao_necessario:'Não foi necessário',revertido:'Revertido'};
+const STATUS_BAIXA={pendente:'Pendente',efetivada:'Efetivada'};
+const STATUS_DISTRATO={pendente:'Pendente',enviado:'Enviado',assinado:'Assinado',nao_aplicavel:'N/A'};
+const STATUS_NF={pendente:'Pendente',cancelada:'Cancelada',nao_aplicavel:'N/A'};
+// valor -> classe de badge (verde/âmbar/vermelho/azul/cinza)
+const REEMB_BADGE={
+  reembolsado:'s-confirmada', efetivada:'s-confirmada', assinado:'s-confirmada', cancelada:'s-confirmada',
+  enviado:'badge-admin', revertido:'badge-admin',
+  pendente:'s-pendente',
+  nao_necessario:'reemb-badge-neutro', nao_aplicavel:'reemb-badge-neutro'
+};
 
 function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function reembDataRef(r){return (r.data_solicitacao||r.created_at||'').split('T')[0];}
@@ -4669,6 +4723,11 @@ function renderReembolsos(){
   const desist=doMes.filter(r=>r.tipo==='desistencia').length;
   const aReembolsar=doMes.reduce((s,r)=>s+reembPrevisto(r),0);
   const pago=doMes.reduce((s,r)=>s+reembPago(r),0);
+  // análise interna
+  const reembFeitos=doMes.filter(r=>r.status_reembolso==='reembolsado').length;
+  const reembReverts=doMes.filter(r=>r.status_reembolso==='revertido'||r.status_reembolso==='nao_necessario').length;
+  const baixaPend=doMes.filter(r=>(r.status_baixa||'pendente')==='pendente').length;
+  const distratoPend=doMes.filter(r=>['pendente','enviado'].includes(r.status_distrato||'pendente')).length;
 
   let lista=doMes.slice();
   if(reembFiltroTipo) lista=lista.filter(r=>r.tipo===reembFiltroTipo);
@@ -4687,6 +4746,12 @@ function renderReembolsos(){
       <div class="cob-card"><div class="cob-card-label">Desistências</div><div class="cob-card-value" style="color:#C07A00;">${desist}</div></div>
       <div class="cob-card"><div class="cob-card-label">A reembolsar</div><div class="cob-card-value">${fmtBRL(aReembolsar)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${fmtBRL(pago)} pago</div></div>
       <div class="cob-card"><div class="cob-card-label">Pendente</div><div class="cob-card-value coral">${fmtBRL(aReembolsar-pago)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">a pagar</div></div>
+    </div>
+    <div class="reemb-analise">
+      <span>💸 Reembolsados: <b>${reembFeitos}</b></span>
+      <span>↩️ Revertidos / não necessários: <b>${reembReverts}</b></span>
+      <span>📉 Baixas pendentes: <b>${baixaPend}</b></span>
+      <span>📄 Distratos a resolver: <b>${distratoPend}</b></span>
     </div>
     <div class="section-tabs" style="margin-bottom:16px;align-items:center;">
       <button class="section-tab ${reembFiltroTipo===''?'active':''}" onclick="setReembTipo('')">Todos os tipos</button>
@@ -4801,6 +4866,16 @@ function renderReembDetalhe(id){
     </div>
 
     <div class="reemb-det-sec">
+      <div class="reemb-det-sec-head"><span>Acompanhamento interno</span></div>
+      <div class="reemb-acomp-grid">
+        ${campoSelectReemb(id,'status_reembolso',STATUS_REEMB,r.status_reembolso||'pendente','Status do reembolso')}
+        ${campoSelectReemb(id,'status_baixa',STATUS_BAIXA,r.status_baixa||'pendente','Baixa no sistema')}
+        ${campoSelectReemb(id,'status_distrato',STATUS_DISTRATO,r.status_distrato||'pendente','Distrato')}
+        ${campoSelectReemb(id,'status_nf',STATUS_NF,r.status_nf||'nao_aplicavel','Nota fiscal')}
+      </div>
+    </div>
+
+    <div class="reemb-det-sec">
       <div class="reemb-det-sec-head"><span>Parcelas do reembolso</span><span style="color:var(--muted);font-weight:400;">${fmtBRL(reembPago(r))} de ${fmtBRL(reembPrevisto(r))}</span></div>
       ${parcelasHTML}
       <div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;">
@@ -4873,6 +4948,24 @@ async function addParcelaCaso(id){
 function _acharParcela(id,pid){
   const r=todosReembolsos.find(x=>x.id===id);
   return r&&(r.reembolsos_pagamentos||[]).find(x=>x.id===pid);
+}
+
+// ── Acompanhamento interno ──
+function campoSelectReemb(id,campo,mapa,valor,label){
+  const cls=REEMB_BADGE[valor]||'s-pendente';
+  const opts=Object.keys(mapa).map(k=>`<option value="${k}" ${valor===k?'selected':''}>${mapa[k]}</option>`).join('');
+  return `<div class="reemb-acomp-field">
+    <label>${label} <span class="status-badge ${cls}" style="margin-left:4px;">${mapa[valor]||valor}</span></label>
+    <select class="reemb-inline-input" onchange="atualizarCampoReemb('${id}','${campo}',this.value)">${opts}</select>
+  </div>`;
+}
+async function atualizarCampoReemb(id,campo,valor){
+  try{
+    const body={updated_at:new Date().toISOString()}; body[campo]=valor;
+    await supaFetch('reembolsos?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
+    const r=todosReembolsos.find(x=>x.id===id); if(r)r[campo]=valor;
+    refreshReembDetalhe(id);
+  }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
 }
 
 // ── Status e atualizações ──
@@ -4971,6 +5064,10 @@ async function abrirFormReemb(id){
     g('rfValor').value=r.valor_total||0;
     g('rfMotivo').value=r.motivo||'';
     g('rfObs').value=r.observacoes||'';
+    g('rfStatusReemb').value=r.status_reembolso||'pendente';
+    g('rfStatusBaixa').value=r.status_baixa||'pendente';
+    g('rfStatusDistrato').value=r.status_distrato||'pendente';
+    g('rfStatusNf').value=r.status_nf||'nao_aplicavel';
     if(parcSec) parcSec.style.display='none';
     if(parcNota) parcNota.style.display='block';
   } else {
@@ -4981,6 +5078,8 @@ async function abrirFormReemb(id){
     g('rfDataSolic').value=new Date().toISOString().split('T')[0];
     g('rfContrato').value=''; g('rfCloser').value=''; g('rfEstrategista').value='';
     g('rfResponsavel').value=''; g('rfValor').value=0; g('rfMotivo').value=''; g('rfObs').value='';
+    g('rfStatusReemb').value='pendente'; g('rfStatusBaixa').value='pendente';
+    g('rfStatusDistrato').value='pendente'; g('rfStatusNf').value='nao_aplicavel';
     if(parcSec) parcSec.style.display='';
     if(parcNota) parcNota.style.display='none';
     g('rfParcelasWrap').innerHTML=''; addParcelaRow();
@@ -5004,6 +5103,10 @@ async function salvarReemb(){
     valor_total:parseFloat(document.getElementById('rfValor').value)||0,
     motivo:document.getElementById('rfMotivo').value.trim()||null,
     observacoes:document.getElementById('rfObs').value.trim()||null,
+    status_reembolso:document.getElementById('rfStatusReemb').value,
+    status_baixa:document.getElementById('rfStatusBaixa').value,
+    status_distrato:document.getElementById('rfStatusDistrato').value,
+    status_nf:document.getElementById('rfStatusNf').value,
     updated_at:new Date().toISOString()
   };
   const id=document.getElementById('rfId').value;
