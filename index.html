@@ -475,6 +475,31 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .cob-card-value { font-family:'Playfair Display',serif; font-size:24px; font-weight:400; color:var(--green); line-height:1.2; }
 .cob-card-value.coral { color:var(--coral); }
 .cob-card-value.amber { color:#C07A00; }
+/* Reembolsos */
+.reemb-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; margin-bottom:10px; overflow:hidden; }
+.reemb-card-head { display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer; }
+.reemb-card-head:hover { background:var(--cream); }
+.reemb-avatar { width:34px; height:34px; border-radius:50%; background:var(--green); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:14px; flex-shrink:0; }
+.reemb-nome { font-size:14px; font-weight:600; color:var(--text); }
+.reemb-meta { font-size:12px; color:var(--muted); margin-top:3px; }
+.reemb-valor { font-size:14px; font-weight:600; color:var(--green); }
+.reemb-detalhe { border-top:0.5px solid var(--border); padding:16px; background:var(--cream); }
+.reemb-det-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:14px; }
+.reemb-det-lbl { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:2px; }
+.reemb-det-val { font-size:13px; color:var(--text); }
+.reemb-det-sec { background:#fff; border:0.5px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:12px; }
+.reemb-det-sec-head { display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:600; color:var(--text); margin-bottom:10px; }
+.reemb-parc { display:flex; align-items:center; gap:10px; padding:7px 0; border-top:0.5px solid var(--border); flex-wrap:wrap; }
+.reemb-parc:first-of-type { border-top:none; }
+.reemb-parc-valor { font-size:13px; font-weight:600; color:var(--text); min-width:90px; }
+.reemb-status-btn { font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); background:#fff; border:0.5px solid var(--border); border-radius:7px; padding:6px 12px; cursor:pointer; }
+.reemb-status-btn.active { background:var(--green); color:#fff; border-color:var(--green); }
+.reemb-mini-btn { font-family:'Inter',sans-serif; font-size:11px; color:var(--muted); background:none; border:none; cursor:pointer; }
+.reemb-mini-btn-coral { font-family:'Inter',sans-serif; font-size:12px; color:var(--coral); background:none; border:0.5px solid var(--coral); border-radius:7px; padding:5px 12px; cursor:pointer; }
+.reemb-inline-input { font-family:'Inter',sans-serif; font-size:13px; color:var(--text); border:0.5px solid var(--border); border-radius:8px; background:#fff; padding:8px 10px; outline:none; }
+.reemb-tl-item { border-left:2px solid var(--coral); padding:2px 0 6px 12px; margin-bottom:8px; }
+.reemb-tl-meta { font-size:11px; color:var(--muted); margin-bottom:3px; }
+.reemb-tl-texto { font-size:13px; color:var(--text); white-space:pre-wrap; }
 .cal-wrap { background:#fff; border:0.5px solid var(--border); border-radius:12px; overflow:hidden; }
 .cal-grid-header { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:0.5px solid var(--border); }
 .cal-day-name { padding:10px 0; text-align:center; font-size:11px; font-weight:600; color:var(--muted); }
@@ -536,6 +561,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <button class="nav-tab" id="tab-depoimentos" onclick="sp('depoimentos',this)">Depoimentos</button>
     <button class="nav-tab" id="tab-links"       onclick="sp('links',this)">Links de venda</button>
     <button class="nav-tab" id="tab-cobrancas"  onclick="sp('cobrancas',this)">Cobranças</button>
+    <button class="nav-tab" id="tab-reembolsos" onclick="sp('reembolsos',this)">Reembolsos</button>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbarUser"></span>
     <button class="logout-btn" onclick="fazerLogout()">Sair</button>
@@ -1002,6 +1028,27 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       </div>
     </div>
 
+    <!-- REEMBOLSOS -->
+    <div id="page-reembolsos" class="page">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <p class="page-eyebrow">Pós-venda · financeiro</p>
+          <p class="page-title" style="margin-bottom:0;">Reembolsos &amp; Desistências</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <div class="date-nav">
+            <button class="date-btn" onclick="mudarReembMes(-1)">&#8249;</button>
+            <span class="date-label" id="reembMesLabel"></span>
+            <button class="date-btn" onclick="mudarReembMes(1)">&#8250;</button>
+          </div>
+          <button class="btn-novo" onclick="abrirFormReemb()">+ Novo caso</button>
+        </div>
+      </div>
+      <div id="reembolsosContent">
+        <p class="empty-state">Abrindo...</p>
+      </div>
+    </div>
+
     <!-- DEPOIMENTOS -->
     <div id="page-depoimentos" class="page">
       <div class="dep-header">
@@ -1179,6 +1226,84 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <div class="vf-actions">
       <button class="btn-vf-cancel" onclick="fecharFormVenda()">Cancelar</button>
       <button class="btn-vf-save" onclick="salvarVenda()">Cadastrar venda</button>
+    </div>
+  </div>
+</div>
+
+<!-- FORM REEMBOLSO -->
+<div class="venda-form-overlay" id="reembFormOverlay">
+  <div class="venda-form-box">
+    <p class="vf-title" id="reembFormTitle">Novo caso de reembolso</p>
+    <p class="vf-sub">Registre o caso de cancelamento ou desistência</p>
+    <input type="hidden" id="rfId">
+
+    <div class="vf-section">
+      <p class="vf-section-title">Identificação do caso</p>
+      <div class="vf-grid-2">
+        <div class="vf-field"><label>Tipo *</label>
+          <select id="rfTipo">
+            <option value="cancelamento">Cancelamento</option>
+            <option value="desistencia">Desistência</option>
+          </select>
+        </div>
+        <div class="vf-field"><label>Status *</label>
+          <select id="rfStatus">
+            <option value="em_aberto">Em aberto</option>
+            <option value="negociando">Negociando</option>
+            <option value="resolvido">Resolvido</option>
+          </select>
+        </div>
+        <div class="vf-field vf-full"><label>Vincular venda (opcional)</label>
+          <select id="rfVenda" onchange="aoVincularVenda()">
+            <option value="">Nenhuma / não cadastrada</option>
+          </select>
+        </div>
+        <div class="vf-field vf-full"><label>Nome do cliente *</label><input type="text" id="rfCliente" placeholder="Nome completo do cliente"></div>
+        <div class="vf-field"><label>Data da solicitação</label><input type="date" id="rfDataSolic"></div>
+        <div class="vf-field"><label>Contrato (link)</label><input type="text" id="rfContrato" placeholder="https://drive.google.com/..."></div>
+      </div>
+    </div>
+
+    <div class="vf-section">
+      <p class="vf-section-title">Responsáveis</p>
+      <div class="vf-grid-3">
+        <div class="vf-field"><label>Closer</label>
+          <select id="rfCloser">
+            <option value="">Selecione</option>
+            <option value="Lígia Oliveira">Lígia Oliveira</option>
+            <option value="Gabriel Rocha">Gabriel Rocha</option>
+            <option value="Caroline Neiva">Caroline Neiva</option>
+            <option value="Gabriel Mor">Gabriel Mor</option>
+            <option value="Janaina Xavier">Janaina Xavier</option>
+          </select>
+        </div>
+        <div class="vf-field"><label>Estrategista</label><input type="text" id="rfEstrategista" placeholder="Ex: Lucas Batista"></div>
+        <div class="vf-field"><label>Responsável pelo acompanhamento</label><input type="text" id="rfResponsavel" placeholder="Quem cuida do reembolso"></div>
+      </div>
+    </div>
+
+    <div class="vf-section">
+      <p class="vf-section-title">Financeiro</p>
+      <div class="vf-grid-2">
+        <div class="vf-field"><label>Valor total a reembolsar (R$)</label><input type="number" id="rfValor" min="0" step="0.01" value="0" oninput="recalcParcelasInfo()"></div>
+        <div class="vf-field"><label>Motivo</label><input type="text" id="rfMotivo" placeholder="Ex: arrependimento, financeiro..."></div>
+      </div>
+      <div id="rfParcelasSec">
+        <p class="vf-section-title" style="margin-top:14px;">Parcelas do reembolso <span id="rfParcInfo" style="font-weight:400;color:var(--muted);font-size:11px;"></span></p>
+        <div id="rfParcelasWrap" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>
+        <button type="button" onclick="addParcelaRow()" style="font-family:Inter,sans-serif;font-size:12px;color:var(--coral);background:none;border:0.5px solid var(--coral);border-radius:7px;padding:5px 12px;cursor:pointer;">+ Adicionar parcela</button>
+      </div>
+      <p id="rfParcelasEditNota" style="display:none;font-size:12px;color:var(--muted);margin-top:14px;">As parcelas deste caso são gerenciadas no detalhe (marcar pago, editar vencimento, adicionar/remover).</p>
+    </div>
+
+    <div class="vf-section">
+      <p class="vf-section-title">Observações</p>
+      <div class="vf-field vf-full"><textarea id="rfObs" placeholder="Observações gerais sobre o caso..."></textarea></div>
+    </div>
+
+    <div class="vf-actions">
+      <button class="btn-vf-cancel" onclick="fecharFormReemb()">Cancelar</button>
+      <button class="btn-vf-save" onclick="salvarReemb()">Salvar caso</button>
     </div>
   </div>
 </div>
@@ -1446,9 +1571,10 @@ const TODAS_TELAS=[
   {id:'depoimentos',nome:'Depoimentos'},
   {id:'links',nome:'Links de venda'},
   {id:'cobrancas',nome:'Cobranças'},
+  {id:'reembolsos',nome:'Reembolsos'},
 ];
 const PERM_DEFAULT={
-  admin:['dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas'],
+  admin:['dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos'],
   closer:['performance','analises','metas'],
   sdr:[],
   social_seller:[],
@@ -1506,6 +1632,7 @@ const HOME_CARDS={
   depoimentos:{icon:'&#127942;',label:'Depoimentos',sub:'Cases de sucesso do PMM'},
   links:{icon:'&#128279;',label:'Links de venda',sub:'Checkouts e pagamentos'},
   cobrancas:{icon:'&#128197;',label:'Cobranças',sub:'Calendário de cobranças'},
+  reembolsos:{icon:'&#128184;',label:'Reembolsos',sub:'Cancelamentos e desistências'},
 };
 
 function iniciarApp(){
@@ -1529,7 +1656,7 @@ function aplicarPermissoes(){
   const perms=getPerms();
   const funcao=currentUser.funcao;
   const telasPermitidas=['home',...(perms[funcao]||[])];
-  ['home','dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas'].forEach(p=>{
+  ['home','dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos'].forEach(p=>{
     const tab=document.getElementById('tab-'+p);
     if(tab) tab.style.display=telasPermitidas.includes(p)?'':'none';
   });
@@ -1603,6 +1730,7 @@ function sp(name,btn){
   if(name==='depoimentos') carregarDepoimentos();
   if(name==='links') carregarLinks();
   if(name==='cobrancas') carregarCobrancas();
+  if(name==='reembolsos') carregarReembolsos();
 }
 function switchTab(tab,btn){
   document.querySelectorAll('.section-tab').forEach(t=>t.classList.remove('active'));
@@ -4474,6 +4602,429 @@ async function atualizarDataPagamento(id,novaData,dateStrOriginal){
     // Abre o detalhe no novo dia
     mostrarDetalheCalDia(novaData);
   }catch(e){pmmAlert('Erro ao atualizar data: '+e.message,'❌','Erro');}
+}
+
+// ══════════════════════════ REEMBOLSOS ══════════════════════════
+let reembAno=new Date().getFullYear(), reembMes=new Date().getMonth();
+let reembFiltroTipo='', reembFiltroStatus='';
+let todosReembolsos=[];
+let vendasParaReemb=[];
+const REEMB_TIPO_LABEL={cancelamento:'Cancelamento',desistencia:'Desistência'};
+const REEMB_STATUS_LABEL={em_aberto:'Em aberto',negociando:'Negociando',resolvido:'Resolvido'};
+
+function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function reembDataRef(r){return (r.data_solicitacao||r.created_at||'').split('T')[0];}
+function reembNoMes(r){
+  const d=reembDataRef(r); if(!d) return false;
+  const p=d.split('-'); return Number(p[0])===reembAno && Number(p[1])===reembMes+1;
+}
+function reembPago(r){return (r.reembolsos_pagamentos||[]).filter(p=>p.status==='pago').reduce((s,p)=>s+Number(p.valor||0),0);}
+function reembPrevisto(r){
+  const somaParc=(r.reembolsos_pagamentos||[]).reduce((s,p)=>s+Number(p.valor||0),0);
+  return Number(r.valor_total||0)||somaParc;
+}
+function reembProxVenc(r){
+  const pend=(r.reembolsos_pagamentos||[]).filter(p=>p.status==='pendente'&&p.data_prevista)
+    .sort((a,b)=>a.data_prevista.localeCompare(b.data_prevista));
+  return pend.length?pend[0].data_prevista.split('T')[0]:null;
+}
+function reembDiasAtras(iso){
+  if(!iso) return '';
+  const diff=Math.floor((new Date()-new Date(iso))/86400000);
+  if(diff<=0) return 'hoje'; if(diff===1) return 'há 1 dia'; return 'há '+diff+' dias';
+}
+
+async function carregarReembolsos(){
+  const container=document.getElementById('reembolsosContent');
+  if(!container) return;
+  container.innerHTML='<p class="empty-state">Carregando casos...</p>';
+  try{
+    todosReembolsos=await supaFetch('reembolsos?select=*,reembolsos_pagamentos(*),reembolsos_atualizacoes(*)&order=created_at.desc');
+    atualizarLabelReembMes();
+    renderReembolsos();
+  }catch(e){
+    container.innerHTML='<div style="text-align:center;padding:48px;color:var(--coral);font-size:13px;">Erro ao carregar reembolsos.<br><span style="color:var(--muted);font-size:12px;">'+escHtml(e.message)+'</span></div>';
+  }
+}
+function atualizarLabelReembMes(){
+  const el=document.getElementById('reembMesLabel');
+  if(el) el.textContent=MESES_NOMES[reembMes]+' '+reembAno;
+}
+function mudarReembMes(d){
+  reembMes+=d;
+  if(reembMes>11){reembMes=0;reembAno++;}
+  if(reembMes<0){reembMes=11;reembAno--;}
+  atualizarLabelReembMes(); renderReembolsos();
+}
+function setReembTipo(t){reembFiltroTipo=t;renderReembolsos();}
+function setReembStatus(s){reembFiltroStatus=s;renderReembolsos();}
+
+function renderReembolsos(){
+  const container=document.getElementById('reembolsosContent');
+  if(!container) return;
+  const doMes=todosReembolsos.filter(reembNoMes);
+  const total=doMes.length;
+  const emAberto=doMes.filter(r=>r.status!=='resolvido').length;
+  const cancel=doMes.filter(r=>r.tipo==='cancelamento').length;
+  const desist=doMes.filter(r=>r.tipo==='desistencia').length;
+  const aReembolsar=doMes.reduce((s,r)=>s+reembPrevisto(r),0);
+  const pago=doMes.reduce((s,r)=>s+reembPago(r),0);
+
+  let lista=doMes.slice();
+  if(reembFiltroTipo) lista=lista.filter(r=>r.tipo===reembFiltroTipo);
+  if(reembFiltroStatus) lista=lista.filter(r=>r.status===reembFiltroStatus);
+  lista.sort((a,b)=>{
+    const ra=a.status==='resolvido'?1:0, rb=b.status==='resolvido'?1:0;
+    if(ra!==rb) return ra-rb;
+    return reembDataRef(b).localeCompare(reembDataRef(a));
+  });
+
+  container.innerHTML=`
+    <div class="cal-summary">
+      <div class="cob-card"><div class="cob-card-label">Total de casos</div><div class="cob-card-value">${total}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">no mês</div></div>
+      <div class="cob-card"><div class="cob-card-label">Em aberto</div><div class="cob-card-value amber">${emAberto}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">não resolvidos</div></div>
+      <div class="cob-card"><div class="cob-card-label">Cancelamentos</div><div class="cob-card-value coral">${cancel}</div></div>
+      <div class="cob-card"><div class="cob-card-label">Desistências</div><div class="cob-card-value" style="color:#C07A00;">${desist}</div></div>
+      <div class="cob-card"><div class="cob-card-label">A reembolsar</div><div class="cob-card-value">${fmtBRL(aReembolsar)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${fmtBRL(pago)} pago</div></div>
+      <div class="cob-card"><div class="cob-card-label">Pendente</div><div class="cob-card-value coral">${fmtBRL(aReembolsar-pago)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">a pagar</div></div>
+    </div>
+    <div class="section-tabs" style="margin-bottom:16px;align-items:center;">
+      <button class="section-tab ${reembFiltroTipo===''?'active':''}" onclick="setReembTipo('')">Todos os tipos</button>
+      <button class="section-tab ${reembFiltroTipo==='cancelamento'?'active':''}" onclick="setReembTipo('cancelamento')">Cancelamento</button>
+      <button class="section-tab ${reembFiltroTipo==='desistencia'?'active':''}" onclick="setReembTipo('desistencia')">Desistência</button>
+      <select class="filtro-input" style="margin-left:auto;width:auto;" onchange="setReembStatus(this.value)">
+        <option value="" ${reembFiltroStatus===''?'selected':''}>Status: todos</option>
+        <option value="em_aberto" ${reembFiltroStatus==='em_aberto'?'selected':''}>Em aberto</option>
+        <option value="negociando" ${reembFiltroStatus==='negociando'?'selected':''}>Negociando</option>
+        <option value="resolvido" ${reembFiltroStatus==='resolvido'?'selected':''}>Resolvido</option>
+      </select>
+    </div>
+    <div id="reembLista">${lista.length?lista.map(renderReembCard).join(''):'<p class="empty-state">Nenhum caso neste mês com esse filtro.</p>'}</div>`;
+}
+
+function renderReembCard(r){
+  const tipoBadge=r.tipo==='cancelamento'?'s-cancelada':'s-pendente';
+  const statusBadge=r.status==='resolvido'?'s-confirmada':r.status==='negociando'?'s-pendente':'badge-admin';
+  const inicial=(r.nome_cliente||'?').trim().charAt(0).toUpperCase();
+  const prox=reembProxVenc(r);
+  const previsto=reembPrevisto(r), pago=reembPago(r);
+  const nAtu=(r.reembolsos_atualizacoes||[]).length;
+  const sub='Aberto por '+(r.aberto_por||'—')+' · '+reembDiasAtras(r.created_at)
+    +(r.estrategista?' · Estrategista: '+escHtml(r.estrategista):'')
+    +(r.closer?' · Closer: <strong>'+escHtml(r.closer)+'</strong>':'');
+  let venc;
+  if(prox) venc='vence '+fmtDataBR(prox);
+  else if(previsto>0&&pago>=previsto) venc='quitado';
+  else venc='sem vencimento';
+  return `<div class="reemb-card">
+    <div class="reemb-card-head" onclick="toggleReembDetalhe('${r.id}')">
+      <div class="reemb-avatar">${inicial}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span class="reemb-nome">${escHtml(r.nome_cliente||'Sem nome')}</span>
+          <span class="status-badge ${tipoBadge}">${REEMB_TIPO_LABEL[r.tipo]||r.tipo}</span>
+          <span class="status-badge ${statusBadge}">${REEMB_STATUS_LABEL[r.status]||r.status}</span>
+        </div>
+        <div class="reemb-meta">${sub}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div class="reemb-valor">${fmtBRL(previsto)}</div>
+        <div style="font-size:11px;color:var(--muted);">${venc}</div>
+      </div>
+      <span style="font-size:11px;color:var(--muted);flex-shrink:0;white-space:nowrap;">${nAtu} att ▾</span>
+    </div>
+    <div class="reemb-detalhe" id="reemb-det-${r.id}" style="display:none;"></div>
+  </div>`;
+}
+
+function toggleReembDetalhe(id){
+  const el=document.getElementById('reemb-det-'+id);
+  if(!el) return;
+  if(el.style.display==='none'){ el.innerHTML=renderReembDetalhe(id); el.style.display='block'; }
+  else { el.style.display='none'; }
+}
+function refreshReembDetalhe(id){
+  renderReembolsos();
+  const el=document.getElementById('reemb-det-'+id);
+  if(el){ el.innerHTML=renderReembDetalhe(id); el.style.display='block'; }
+}
+
+function renderReembDetalhe(id){
+  const r=todosReembolsos.find(x=>x.id===id);
+  if(!r) return '';
+  const hoje=new Date().toISOString().split('T')[0];
+  const parcelas=(r.reembolsos_pagamentos||[]).slice().sort((a,b)=>((a.data_prevista||'')+'').localeCompare((b.data_prevista||'')+''));
+  const atualizacoes=(r.reembolsos_atualizacoes||[]).slice().sort((a,b)=>((b.created_at||'')+'').localeCompare((a.created_at||'')+''));
+
+  const parcelasHTML=parcelas.length?parcelas.map(p=>{
+    const dPrev=(p.data_prevista||'').split('T')[0];
+    const atrasada=p.status==='pendente'&&dPrev&&dPrev<hoje;
+    const sCls=p.status==='pago'?'s-confirmada':atrasada?'s-cancelada':'s-pendente';
+    const sLbl=p.status==='pago'?'Pago':atrasada?'Atrasada':'Pendente';
+    return `<div class="reemb-parc">
+      <span class="reemb-parc-valor">${fmtBRL(p.valor)}</span>
+      ${p.status==='pago'
+        ? `<span style="font-size:12px;color:var(--muted);flex:1;">pago em ${p.data_pagamento?fmtDataBR(p.data_pagamento):'—'}</span>`
+        : `<input type="date" class="cob-date-input" value="${dPrev}" onchange="atualizarParcelaData('${p.id}','${id}',this.value)">`}
+      <span class="status-badge ${sCls}">${sLbl}</span>
+      ${p.status==='pago'
+        ? `<button class="reemb-mini-btn" onclick="desfazerParcela('${p.id}','${id}')">desfazer</button>`
+        : `<button class="btn-receber" onclick="marcarParcelaPaga('${p.id}','${id}')">✓ Pago</button>`}
+      <button class="reemb-mini-btn" onclick="excluirParcela('${p.id}','${id}')" title="Remover parcela">✕</button>
+    </div>`;
+  }).join(''):'<p style="font-size:12px;color:var(--muted);padding:6px 0;">Nenhuma parcela cadastrada.</p>';
+
+  const timelineHTML=atualizacoes.length?atualizacoes.map(a=>`
+    <div class="reemb-tl-item">
+      <div class="reemb-tl-meta">${escHtml(a.autor||'—')} · ${a.created_at?fmtDataBR(a.created_at.split('T')[0]):''}
+        <button class="reemb-mini-btn" onclick="excluirAtualizacao('${a.id}','${id}')" style="margin-left:6px;">remover</button>
+      </div>
+      <div class="reemb-tl-texto">${escHtml(a.texto||'')}</div>
+    </div>`).join(''):'<p style="font-size:12px;color:var(--muted);padding:6px 0;">Nenhuma atualização ainda.</p>';
+
+  return `
+    <div class="reemb-det-grid">
+      <div><span class="reemb-det-lbl">Solicitação</span><span class="reemb-det-val">${r.data_solicitacao?fmtDataBR(r.data_solicitacao):'—'}</span></div>
+      <div><span class="reemb-det-lbl">Responsável</span><span class="reemb-det-val">${escHtml(r.responsavel||'—')}</span></div>
+      <div><span class="reemb-det-lbl">Closer</span><span class="reemb-det-val">${escHtml(r.closer||'—')}</span></div>
+      <div><span class="reemb-det-lbl">Estrategista</span><span class="reemb-det-val">${escHtml(r.estrategista||'—')}</span></div>
+      <div><span class="reemb-det-lbl">Motivo</span><span class="reemb-det-val">${escHtml(r.motivo||'—')}</span></div>
+      <div><span class="reemb-det-lbl">Contrato</span><span class="reemb-det-val">${r.contrato_url?`<a href="${escHtml(r.contrato_url)}" target="_blank" rel="noopener" style="color:var(--coral);">abrir contrato ↗</a>`:'—'}</span></div>
+    </div>
+    ${r.observacoes?`<div style="font-size:12px;color:var(--text);background:#fff;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px;white-space:pre-wrap;">${escHtml(r.observacoes)}</div>`:''}
+
+    <div class="reemb-det-sec">
+      <div class="reemb-det-sec-head"><span>Status do caso</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${['em_aberto','negociando','resolvido'].map(s=>`<button class="reemb-status-btn ${r.status===s?'active':''}" onclick="mudarStatusReemb('${id}','${s}')">${REEMB_STATUS_LABEL[s]}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="reemb-det-sec">
+      <div class="reemb-det-sec-head"><span>Parcelas do reembolso</span><span style="color:var(--muted);font-weight:400;">${fmtBRL(reembPago(r))} de ${fmtBRL(reembPrevisto(r))}</span></div>
+      ${parcelasHTML}
+      <div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;">
+        <input type="number" id="np-valor-${id}" placeholder="Valor R$" step="0.01" min="0" class="reemb-inline-input" style="width:120px;">
+        <input type="date" id="np-data-${id}" class="reemb-inline-input">
+        <button class="reemb-mini-btn-coral" onclick="addParcelaCaso('${id}')">+ Parcela</button>
+      </div>
+    </div>
+
+    <div class="reemb-det-sec">
+      <div class="reemb-det-sec-head"><span>Atualizações</span></div>
+      ${timelineHTML}
+      <div style="margin-top:10px;">
+        <textarea id="nt-texto-${id}" class="reemb-inline-input" style="width:100%;min-height:60px;resize:vertical;" placeholder="Escreva uma atualização sobre o andamento..."></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+          <button class="btn-vf-save" onclick="addAtualizacaoCaso('${id}')">Salvar atualização</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;margin-top:14px;">
+      <button class="reemb-mini-btn" onclick="excluirReemb('${id}')" style="color:var(--coral);">🗑 Excluir caso</button>
+      <button class="reemb-mini-btn-coral" onclick="abrirFormReemb('${id}')">✎ Editar dados do caso</button>
+    </div>`;
+}
+
+// ── Ações em parcelas ──
+async function marcarParcelaPaga(pid,id){
+  const hoje=new Date().toISOString().split('T')[0];
+  try{
+    await supaFetch('reembolsos_pagamentos?id=eq.'+pid,{method:'PATCH',body:JSON.stringify({status:'pago',data_pagamento:hoje})});
+    const p=_acharParcela(id,pid); if(p){p.status='pago';p.data_pagamento=hoje;}
+    refreshReembDetalhe(id);
+  }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
+}
+async function desfazerParcela(pid,id){
+  try{
+    await supaFetch('reembolsos_pagamentos?id=eq.'+pid,{method:'PATCH',body:JSON.stringify({status:'pendente',data_pagamento:null})});
+    const p=_acharParcela(id,pid); if(p){p.status='pendente';p.data_pagamento=null;}
+    refreshReembDetalhe(id);
+  }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
+}
+async function atualizarParcelaData(pid,id,val){
+  if(!val) return;
+  try{
+    await supaFetch('reembolsos_pagamentos?id=eq.'+pid,{method:'PATCH',body:JSON.stringify({data_prevista:val})});
+    const p=_acharParcela(id,pid); if(p)p.data_prevista=val;
+    refreshReembDetalhe(id);
+  }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
+}
+async function excluirParcela(pid,id){
+  try{
+    await supaFetch('reembolsos_pagamentos?id=eq.'+pid,{method:'DELETE',headers:{'Prefer':''}});
+    const r=todosReembolsos.find(x=>x.id===id);
+    if(r)r.reembolsos_pagamentos=(r.reembolsos_pagamentos||[]).filter(x=>x.id!==pid);
+    refreshReembDetalhe(id);
+  }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
+}
+async function addParcelaCaso(id){
+  const valor=parseFloat(document.getElementById('np-valor-'+id).value)||0;
+  const data=document.getElementById('np-data-'+id).value||null;
+  if(valor<=0){pmmAlert('Informe um valor para a parcela.','⚠️','Valor obrigatório');return;}
+  try{
+    const novo=await supaFetch('reembolsos_pagamentos',{method:'POST',body:JSON.stringify({reembolso_id:id,valor,data_prevista:data,status:'pendente'})});
+    const r=todosReembolsos.find(x=>x.id===id);
+    if(r){ if(!r.reembolsos_pagamentos)r.reembolsos_pagamentos=[]; r.reembolsos_pagamentos.push(novo[0]); }
+    refreshReembDetalhe(id);
+  }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
+}
+function _acharParcela(id,pid){
+  const r=todosReembolsos.find(x=>x.id===id);
+  return r&&(r.reembolsos_pagamentos||[]).find(x=>x.id===pid);
+}
+
+// ── Status e atualizações ──
+async function mudarStatusReemb(id,s){
+  try{
+    await supaFetch('reembolsos?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:s,updated_at:new Date().toISOString()})});
+    const r=todosReembolsos.find(x=>x.id===id); if(r)r.status=s;
+    refreshReembDetalhe(id);
+  }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
+}
+async function addAtualizacaoCaso(id){
+  const ta=document.getElementById('nt-texto-'+id);
+  const texto=(ta.value||'').trim();
+  if(!texto){pmmAlert('Escreva algo antes de salvar.','⚠️','Texto vazio');return;}
+  const autor=currentUser?currentUser.nome:'—';
+  try{
+    const novo=await supaFetch('reembolsos_atualizacoes',{method:'POST',body:JSON.stringify({reembolso_id:id,texto,autor})});
+    const r=todosReembolsos.find(x=>x.id===id);
+    if(r){ if(!r.reembolsos_atualizacoes)r.reembolsos_atualizacoes=[]; r.reembolsos_atualizacoes.push(novo[0]); }
+    refreshReembDetalhe(id);
+  }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
+}
+async function excluirAtualizacao(aid,id){
+  try{
+    await supaFetch('reembolsos_atualizacoes?id=eq.'+aid,{method:'DELETE',headers:{'Prefer':''}});
+    const r=todosReembolsos.find(x=>x.id===id);
+    if(r)r.reembolsos_atualizacoes=(r.reembolsos_atualizacoes||[]).filter(x=>x.id!==aid);
+    refreshReembDetalhe(id);
+  }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
+}
+async function excluirReemb(id){
+  const ok=await pmmConfirm('Excluir este caso de reembolso? As parcelas e atualizações também serão removidas.','🗑','Excluir caso');
+  if(!ok) return;
+  try{
+    await supaFetch('reembolsos?id=eq.'+id,{method:'DELETE',headers:{'Prefer':''}});
+    todosReembolsos=todosReembolsos.filter(x=>x.id!==id);
+    renderReembolsos();
+  }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
+}
+
+// ── Formulário de caso ──
+async function loadVendasParaReemb(){
+  try{
+    vendasParaReemb=await supaFetch('vendas?select=id,nome_cliente,data_venda,closer,valor_bruto,valor_liquido&order=data_venda.desc&limit=300');
+  }catch(e){vendasParaReemb=[];}
+  const sel=document.getElementById('rfVenda');
+  if(sel) sel.innerHTML='<option value="">Nenhuma / não cadastrada</option>'+vendasParaReemb.map(v=>`<option value="${v.id}">${escHtml(v.nome_cliente||'Sem nome')} — ${v.data_venda?fmtDataBR(v.data_venda):''}${v.closer?' ('+escHtml(v.closer)+')':''}</option>`).join('');
+}
+function aoVincularVenda(){
+  const v=vendasParaReemb.find(x=>x.id===document.getElementById('rfVenda').value);
+  if(!v) return;
+  document.getElementById('rfCliente').value=v.nome_cliente||document.getElementById('rfCliente').value;
+  if(v.closer){const cs=document.getElementById('rfCloser');for(let i=0;i<cs.options.length;i++){if(cs.options[i].value===v.closer){cs.selectedIndex=i;break;}}}
+  const valEl=document.getElementById('rfValor');
+  if(!parseFloat(valEl.value)) valEl.value=(v.valor_liquido||v.valor_bruto||0);
+  recalcParcelasInfo();
+}
+function addParcelaRow(valor,data){
+  const wrap=document.getElementById('rfParcelasWrap');
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;gap:6px;align-items:center;';
+  const inStyle='font-family:Inter,sans-serif;font-size:13px;border:0.5px solid var(--border);border-radius:8px;background:var(--cream);padding:9px 12px;outline:none;flex:1;';
+  div.innerHTML=`<input type="number" class="rf-parc-valor" placeholder="Valor R$" step="0.01" min="0" value="${valor||''}" style="${inStyle}" oninput="recalcParcelasInfo()">
+    <input type="date" class="rf-parc-data" value="${data||''}" style="${inStyle}">
+    <button type="button" onclick="this.parentNode.remove();recalcParcelasInfo();" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;padding:0 4px;line-height:1;">✕</button>`;
+  wrap.appendChild(div);
+}
+function recalcParcelasInfo(){
+  const info=document.getElementById('rfParcInfo'); if(!info) return;
+  let soma=0;
+  document.querySelectorAll('#rfParcelasWrap .rf-parc-valor').forEach(i=>{soma+=parseFloat(i.value)||0;});
+  const total=parseFloat(document.getElementById('rfValor').value)||0;
+  if(soma===0&&total===0){info.textContent='';return;}
+  const dif=total-soma;
+  info.textContent='— parcelas somam '+fmtBRL(soma)+(Math.abs(dif)>0.005?' (faltam '+fmtBRL(dif)+' do total)':' ✓');
+}
+async function abrirFormReemb(id){
+  document.getElementById('reembFormOverlay').classList.add('open');
+  await loadVendasParaReemb();
+  const parcSec=document.getElementById('rfParcelasSec');
+  const parcNota=document.getElementById('rfParcelasEditNota');
+  const g=x=>document.getElementById(x);
+  if(id&&typeof id==='string'){
+    const r=todosReembolsos.find(x=>x.id===id);
+    if(!r){fecharFormReemb();return;}
+    g('reembFormTitle').textContent='Editar caso de reembolso';
+    g('rfId').value=r.id;
+    g('rfTipo').value=r.tipo; g('rfStatus').value=r.status;
+    g('rfVenda').value=r.venda_id||'';
+    g('rfCliente').value=r.nome_cliente||'';
+    g('rfDataSolic').value=(r.data_solicitacao||'').split('T')[0];
+    g('rfContrato').value=r.contrato_url||'';
+    g('rfCloser').value=r.closer||'';
+    g('rfEstrategista').value=r.estrategista||'';
+    g('rfResponsavel').value=r.responsavel||'';
+    g('rfValor').value=r.valor_total||0;
+    g('rfMotivo').value=r.motivo||'';
+    g('rfObs').value=r.observacoes||'';
+    if(parcSec) parcSec.style.display='none';
+    if(parcNota) parcNota.style.display='block';
+  } else {
+    g('reembFormTitle').textContent='Novo caso de reembolso';
+    g('rfId').value='';
+    g('rfTipo').value='cancelamento'; g('rfStatus').value='em_aberto';
+    g('rfVenda').value=''; g('rfCliente').value='';
+    g('rfDataSolic').value=new Date().toISOString().split('T')[0];
+    g('rfContrato').value=''; g('rfCloser').value=''; g('rfEstrategista').value='';
+    g('rfResponsavel').value=''; g('rfValor').value=0; g('rfMotivo').value=''; g('rfObs').value='';
+    if(parcSec) parcSec.style.display='';
+    if(parcNota) parcNota.style.display='none';
+    g('rfParcelasWrap').innerHTML=''; addParcelaRow();
+  }
+  recalcParcelasInfo();
+}
+function fecharFormReemb(){document.getElementById('reembFormOverlay').classList.remove('open');}
+async function salvarReemb(){
+  const cliente=document.getElementById('rfCliente').value.trim();
+  if(!cliente){pmmAlert('Informe o nome do cliente.','⚠️','Campo obrigatório');return;}
+  const body={
+    tipo:document.getElementById('rfTipo').value,
+    status:document.getElementById('rfStatus').value,
+    venda_id:document.getElementById('rfVenda').value||null,
+    nome_cliente:cliente,
+    data_solicitacao:document.getElementById('rfDataSolic').value||null,
+    contrato_url:document.getElementById('rfContrato').value.trim()||null,
+    closer:document.getElementById('rfCloser').value||null,
+    estrategista:document.getElementById('rfEstrategista').value.trim()||null,
+    responsavel:document.getElementById('rfResponsavel').value.trim()||null,
+    valor_total:parseFloat(document.getElementById('rfValor').value)||0,
+    motivo:document.getElementById('rfMotivo').value.trim()||null,
+    observacoes:document.getElementById('rfObs').value.trim()||null,
+    updated_at:new Date().toISOString()
+  };
+  const id=document.getElementById('rfId').value;
+  try{
+    if(id){
+      await supaFetch('reembolsos?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
+    } else {
+      body.aberto_por=currentUser?currentUser.nome:null;
+      const novo=await supaFetch('reembolsos',{method:'POST',body:JSON.stringify(body)});
+      const novoId=novo[0].id;
+      const parcelas=[...document.querySelectorAll('#rfParcelasWrap > div')].map(row=>({
+        reembolso_id:novoId,
+        valor:parseFloat(row.querySelector('.rf-parc-valor').value)||0,
+        data_prevista:row.querySelector('.rf-parc-data').value||null,
+        status:'pendente'
+      })).filter(p=>p.valor>0);
+      if(parcelas.length) await supaFetch('reembolsos_pagamentos',{method:'POST',body:JSON.stringify(parcelas)});
+    }
+    fecharFormReemb();
+    carregarReembolsos();
+  }catch(e){pmmAlert('Erro ao salvar: '+e.message,'❌','Erro');}
 }
 </script>
 </body>
