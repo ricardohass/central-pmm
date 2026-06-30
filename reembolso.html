@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Registrar caso de reembolso — PMM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#3D5C4A; --green-light:#4E7260; --coral:#D4572A;
+    --cream:#F5F0E8; --cream2:#EDE7DA; --text:#2A3D30; --muted:#7A8A80;
+    --border:rgba(61,92,74,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--cream);font-family:'Inter',sans-serif;color:var(--text);padding:24px 16px;min-height:100vh;}
+  .wrap{max-width:560px;margin:0 auto;}
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+  .brand-logo{width:40px;height:40px;border-radius:10px;background:var(--coral);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;}
+  .brand-name{font-weight:600;font-size:15px;color:var(--green);line-height:1.2;}
+  .brand-sub{font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
+  .card{background:#fff;border:0.5px solid var(--border);border-radius:16px;padding:28px;}
+  h1{font-family:'Playfair Display',serif;font-size:24px;font-weight:400;color:var(--green);margin:0 0 4px;}
+  .lead{font-size:13px;color:var(--muted);margin:0 0 22px;}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+  .field label{font-size:12px;font-weight:500;color:var(--text);}
+  .field .req{color:var(--coral);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  input,select,textarea{font-family:'Inter',sans-serif;font-size:14px;color:var(--text);border:0.5px solid var(--border);border-radius:9px;background:var(--cream);padding:11px 13px;outline:none;width:100%;transition:border-color .15s;}
+  input:focus,select:focus,textarea:focus{border-color:var(--coral);}
+  textarea{resize:vertical;min-height:90px;}
+  .radio-row{display:flex;gap:10px;}
+  .radio-opt{flex:1;display:flex;align-items:center;gap:8px;border:0.5px solid var(--border);border-radius:9px;padding:11px 13px;cursor:pointer;background:var(--cream);font-size:14px;}
+  .radio-opt input{width:auto;}
+  .radio-opt.sel{border-color:var(--coral);background:#FBEAE3;}
+  .hp{position:absolute;left:-9999px;top:-9999px;}
+  .btn{width:100%;margin-top:6px;background:var(--coral);color:#fff;border:none;border-radius:10px;padding:14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:background .15s;}
+  .btn:hover{background:#bd4a22;}
+  .btn:disabled{opacity:.6;cursor:default;}
+  .msg{margin-top:14px;font-size:13px;padding:12px 14px;border-radius:9px;display:none;}
+  .msg.err{display:block;background:#FEE2E2;color:#991B1B;}
+  .ok-state{display:none;text-align:center;padding:20px 0;}
+  .ok-state .ico{width:60px;height:60px;border-radius:50%;background:#ECFDF5;color:#065F46;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 16px;}
+  .ok-state h2{font-family:'Playfair Display',serif;font-weight:400;color:var(--green);margin:0 0 6px;}
+  .ok-state p{font-size:13px;color:var(--muted);margin:0 0 18px;}
+  .link-btn{background:none;border:0.5px solid var(--coral);color:var(--coral);border-radius:9px;padding:10px 18px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;}
+  .foot{text-align:center;font-size:11px;color:var(--muted);margin-top:18px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-logo">PMM</div>
+    <div><div class="brand-name">PMM Central</div><div class="brand-sub">Programa Multiplique e Monetize</div></div>
+  </div>
+
+  <div class="card">
+    <div id="formView">
+      <h1>Registrar caso de reembolso</h1>
+      <p class="lead">Preencha os dados do pedido de reembolso. A equipe vai acompanhar internamente a partir daqui.</p>
+
+      <div class="field">
+        <label>Nome do cliente que pediu o reembolso <span class="req">*</span></label>
+        <input type="text" id="f-nome" placeholder="Nome completo do cliente">
+      </div>
+
+      <div class="grid2">
+        <div class="field"><label>Data da compra</label><input type="date" id="f-compra"></div>
+        <div class="field"><label>Data da solicitação</label><input type="date" id="f-solic"></div>
+      </div>
+
+      <div class="field">
+        <label>Link do contrato</label>
+        <input type="text" id="f-contrato" placeholder="https://drive.google.com/...">
+      </div>
+
+      <div class="grid2">
+        <div class="field"><label>Closer responsável</label>
+          <select id="f-closer">
+            <option value="">Selecione</option>
+            <option>Lígia Oliveira</option>
+            <option>Gabriel Rocha</option>
+            <option>Caroline Neiva</option>
+            <option>Gabriel Mor</option>
+            <option>Janaina Xavier</option>
+          </select>
+        </div>
+        <div class="field"><label>Estrategista responsável</label><input type="text" id="f-estrategista" placeholder="Ex: Lucas Batista"></div>
+      </div>
+
+      <div class="field">
+        <label>Motivo do pedido de reembolso</label>
+        <select id="f-motivo">
+          <option value="">Selecione o motivo</option>
+          <option>Arrependimento (até 7 dias)</option>
+          <option>Dificuldade financeira</option>
+          <option>Expectativa não atendida</option>
+          <option>Falta de tempo para acompanhar</option>
+          <option>Insatisfação com o método/conteúdo</option>
+          <option>Insatisfação com atendimento/suporte</option>
+          <option>Problema pessoal ou de saúde</option>
+          <option>Cobrança indevida/duplicada</option>
+          <option>Não era o perfil ideal pro programa</option>
+          <option>Encontrou outra solução/concorrente</option>
+          <option>Outro (ver observações)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Já deu baixa no sistema interno de entrega?</label>
+        <div class="radio-row">
+          <label class="radio-opt sel" id="opt-nao"><input type="radio" name="baixa" value="nao" checked> Não</label>
+          <label class="radio-opt" id="opt-sim"><input type="radio" name="baixa" value="sim"> Sim</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Observações</label>
+        <textarea id="f-obs" placeholder="Escreva aqui qualquer detalhe relevante sobre o caso..."></textarea>
+      </div>
+
+      <!-- honeypot anti-spam -->
+      <input type="text" class="hp" id="f-website" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+      <button class="btn" id="btnEnviar" onclick="enviar()">Registrar caso</button>
+      <div class="msg err" id="msgErr"></div>
+    </div>
+
+    <div class="ok-state" id="okView">
+      <div class="ico">✓</div>
+      <h2>Caso registrado!</h2>
+      <p>O pedido de reembolso foi enviado para a central. A equipe vai acompanhar a partir de agora.</p>
+      <button class="link-btn" onclick="novoCaso()">Registrar outro caso</button>
+    </div>
+  </div>
+
+  <p class="foot">PMM Central · uso interno</p>
+</div>
+
+<script>
+const SUPA_URL='https://ebcydqqhvdapruhnwbce.supabase.co';
+const SUPA_KEY=atob('ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW1WaVkzbGtjWEZvZG1SaGNISjFhRzUzWW1ObElpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTnprNU9ETXlOaklzSW1WNGNDSTZNakE1TlRVMU9USTJNbjAuME9SaTlGUlpWU3Q2V09iM1EzVnhWWXoyVWtYR1JDYlptcTJCVTUwWEpGMA==');
+
+// destaque visual do radio selecionado
+document.querySelectorAll('input[name="baixa"]').forEach(r=>r.addEventListener('change',()=>{
+  document.getElementById('opt-sim').classList.toggle('sel',document.querySelector('input[name=baixa]:checked').value==='sim');
+  document.getElementById('opt-nao').classList.toggle('sel',document.querySelector('input[name=baixa]:checked').value==='nao');
+}));
+
+function val(id){return (document.getElementById(id).value||'').trim();}
+
+async function enviar(){
+  const err=document.getElementById('msgErr');
+  err.style.display='none';
+  const nome=val('f-nome');
+  if(!nome){ err.textContent='Por favor, informe o nome do cliente.'; err.style.display='block'; return; }
+  // honeypot: se preenchido, é bot — finge sucesso e não grava
+  if(val('f-website')){ document.getElementById('formView').style.display='none'; document.getElementById('okView').style.display='block'; return; }
+
+  const baixa=document.querySelector('input[name=baixa]:checked').value;
+  const body={
+    nome_cliente:nome,
+    tipo:'cancelamento',                 // classificado internamente depois
+    status:'em_aberto',
+    aberto_por:'Formulário externo',
+    data_compra:val('f-compra')||null,
+    data_solicitacao:val('f-solic')||null,
+    contrato_url:val('f-contrato')||null,
+    closer:val('f-closer')||null,
+    estrategista:val('f-estrategista')||null,
+    motivo:val('f-motivo')||null,
+    status_baixa: baixa==='sim' ? 'efetivada' : 'pendente',
+    observacoes:val('f-obs')||null
+  };
+
+  const btn=document.getElementById('btnEnviar');
+  btn.disabled=true; btn.textContent='Enviando...';
+  try{
+    const res=await fetch(SUPA_URL+'/rest/v1/reembolsos',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify(body)
+    });
+    if(!res.ok) throw new Error(await res.text());
+    document.getElementById('formView').style.display='none';
+    document.getElementById('okView').style.display='block';
+  }catch(e){
+    err.textContent='Não consegui registrar agora. Tente novamente em instantes.';
+    err.style.display='block';
+  }finally{
+    btn.disabled=false; btn.textContent='Registrar caso';
+  }
+}
+
+function novoCaso(){
+  ['f-nome','f-compra','f-solic','f-contrato','f-closer','f-estrategista','f-motivo','f-obs','f-website'].forEach(id=>document.getElementById(id).value='');
+  document.querySelector('input[name=baixa][value=nao]').checked=true;
+  document.getElementById('opt-nao').classList.add('sel');
+  document.getElementById('opt-sim').classList.remove('sel');
+  document.getElementById('okView').style.display='none';
+  document.getElementById('formView').style.display='block';
+}
+</script>
+</body>
+</html>

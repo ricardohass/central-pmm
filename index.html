@@ -1399,7 +1399,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <option value="revertido">Revertido</option>
           </select>
         </div>
-        <div class="vf-field"><label>Baixa no sistema</label>
+        <div class="vf-field"><label>Baixa no sistema interno de entrega</label>
           <select id="rfStatusBaixa">
             <option value="pendente">Pendente</option>
             <option value="efetivada">Efetivada</option>
@@ -5279,7 +5279,7 @@ function renderReembDetalhe(id){
       <div class="reemb-det-sec-head"><span>Acompanhamento interno</span></div>
       <div class="reemb-acomp-grid">
         ${campoSelectReemb(id,'status_reembolso',STATUS_REEMB,r.status_reembolso||'pendente','Status do reembolso')}
-        ${campoSelectReemb(id,'status_baixa',STATUS_BAIXA,r.status_baixa||'pendente','Baixa no sistema')}
+        ${campoSelectReemb(id,'status_baixa',STATUS_BAIXA,r.status_baixa||'pendente','Baixa no sistema interno de entrega')}
         ${campoSelectReemb(id,'status_distrato',STATUS_DISTRATO,r.status_distrato||'pendente','Distrato')}
         ${campoSelectReemb(id,'status_nf',STATUS_NF,r.status_nf||'nao_aplicavel','Nota fiscal')}
       </div>
