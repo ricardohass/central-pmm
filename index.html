@@ -536,6 +536,18 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .reemb-dd-opt { display:flex; align-items:center; gap:9px; font-size:13px; color:var(--text); padding:8px 10px; border-radius:7px; cursor:pointer; white-space:nowrap; }
 .reemb-dd-opt:hover { background:var(--cream); }
 .reemb-dd-opt input { width:15px; height:15px; accent-color:var(--coral); cursor:pointer; margin:0; }
+.reemb-atraso { background:#FEF2F2; border:0.5px solid #FCA5A5; border-radius:12px; padding:12px 16px; margin-bottom:16px; }
+.reemb-atraso-top { font-size:13px; font-weight:600; color:#991B1B; margin-bottom:8px; }
+.reemb-atraso-itens { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.reemb-atraso-item { font-family:'Inter',sans-serif; font-size:12px; color:#991B1B; background:#fff; border:0.5px solid #FCA5A5; border-radius:20px; padding:4px 11px; cursor:pointer; }
+.reemb-atraso-item:hover { background:#991B1B; color:#fff; }
+.reemb-rank { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:16px; }
+.reemb-rank-row { display:flex; align-items:center; gap:12px; padding:6px 0; }
+.reemb-rank-nome { font-size:13px; color:var(--text); min-width:120px; }
+.reemb-rank-bar { flex:1; height:7px; background:var(--cream2); border-radius:4px; overflow:hidden; min-width:60px; }
+.reemb-rank-fill { height:100%; background:var(--coral); border-radius:4px; }
+.reemb-rank-n { font-size:12px; color:var(--muted); min-width:64px; text-align:right; }
+.reemb-rank-v { font-size:13px; font-weight:600; color:var(--green); min-width:90px; text-align:right; white-space:nowrap; }
 .cal-wrap { background:#fff; border:0.5px solid var(--border); border-radius:12px; overflow:hidden; }
 .cal-grid-header { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:0.5px solid var(--border); }
 .cal-day-name { padding:10px 0; text-align:center; font-size:11px; font-weight:600; color:var(--muted); }
@@ -1295,8 +1307,10 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           </select>
         </div>
         <div class="vf-field vf-full"><label>Nome do cliente *</label><input type="text" id="rfCliente" placeholder="Nome completo do cliente"></div>
-        <div class="vf-field"><label>Data da solicitação</label><input type="date" id="rfDataSolic"></div>
-        <div class="vf-field"><label>Contrato (link)</label><input type="text" id="rfContrato" placeholder="https://drive.google.com/..."></div>
+        <div class="vf-field"><label>Data da solicitação</label><input type="date" id="rfDataSolic" onchange="recalcJanelaArrep()"></div>
+        <div class="vf-field"><label>Data da compra</label><input type="date" id="rfDataCompra" onchange="recalcJanelaArrep()"></div>
+        <div class="vf-field vf-full"><label>Contrato (link)</label><input type="text" id="rfContrato" placeholder="https://drive.google.com/..."></div>
+        <div class="vf-field vf-full" id="rfJanelaArrep" style="display:none;margin:0;"></div>
       </div>
     </div>
 
@@ -1321,7 +1335,19 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <div class="vf-section">
       <p class="vf-section-title">Financeiro</p>
       <div class="vf-grid-2">
-        <div class="vf-field"><label>Valor total a reembolsar (R$)</label><input type="number" id="rfValor" min="0" step="0.01" value="0" oninput="recalcParcelasInfo()"></div>
+        <div class="vf-field"><label>Valor total a reembolsar (R$)</label><input type="number" id="rfValor" min="0" step="0.01" value="0" oninput="recalcParcelasInfo();recalcRetido()"></div>
+        <div class="vf-field"><label>Valor retido — multa/taxa (R$)</label><input type="number" id="rfValorRetido" min="0" step="0.01" value="0" oninput="recalcRetido()"></div>
+        <div class="vf-field"><label>Forma do reembolso</label>
+          <select id="rfForma">
+            <option value="">Selecione</option>
+            <option value="PIX">PIX</option>
+            <option value="Estorno no cartão">Estorno no cartão</option>
+            <option value="Estorno no gateway">Estorno no gateway</option>
+            <option value="Transferência/TED">Transferência/TED</option>
+            <option value="Não reembolsado">Não reembolsado</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
         <div class="vf-field"><label>Motivo</label>
           <select id="rfMotivo">
             <option value="">Selecione o motivo</option>
@@ -1339,6 +1365,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           </select>
         </div>
       </div>
+      <p id="rfVendaRef" style="font-size:12px;color:var(--muted);margin:2px 0 0;"></p>
       <div id="rfParcelasSec">
         <p class="vf-section-title" style="margin-top:14px;">Parcelas do reembolso <span id="rfParcInfo" style="font-weight:400;color:var(--muted);font-size:11px;"></span></p>
         <div id="rfParcelasWrap" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>
@@ -4733,6 +4760,14 @@ function reembDiasAtras(iso){
   const diff=Math.floor((new Date()-new Date(iso))/86400000);
   if(diff<=0) return 'hoje'; if(diff===1) return 'há 1 dia'; return 'há '+diff+' dias';
 }
+function reembJanelaBadge(r){
+  if(!r.data_compra||!r.data_solicitacao) return '—';
+  const dias=Math.round((new Date(r.data_solicitacao.split('T')[0])-new Date(r.data_compra.split('T')[0]))/86400000);
+  if(dias<0) return '<span class="status-badge s-pendente">verificar datas</span>';
+  return dias<=7
+    ?`<span class="status-badge s-cancelada">Dentro dos 7 dias</span> <span style="font-size:11px;color:var(--muted);">${dias}d · obrigatório</span>`
+    :`<span class="status-badge s-confirmada">Fora dos 7 dias</span> <span style="font-size:11px;color:var(--muted);">${dias}d · negociável</span>`;
+}
 
 async function carregarReembolsos(){
   const container=document.getElementById('reembolsosContent');
@@ -4829,6 +4864,7 @@ function renderReembolsos(){
   const distratoPend=doMes.filter(r=>['pendente','enviado'].includes(r.status_distrato||'pendente')).length;
 
   container.innerHTML=`
+    ${buildOverdueBanner()}
     <div class="cal-summary">
       <div class="cob-card"><div class="cob-card-label">Total de casos</div><div class="cob-card-value">${total}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">no mês</div></div>
       <div class="cob-card"><div class="cob-card-label">Em aberto</div><div class="cob-card-value amber">${emAberto}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">não resolvidos</div></div>
@@ -4857,6 +4893,7 @@ function renderReembolsos(){
       <span>📉 Baixas pendentes: <b>${baixaPend}</b></span>
       <span>📄 Distratos a resolver: <b>${distratoPend}</b></span>
     </div>
+    ${buildRankingHTML(doMes)}
     <div class="section-tabs" style="margin-bottom:16px;align-items:center;">
       <button class="section-tab ${reembFiltroTipo===''?'active':''}" onclick="setReembTipo('')">Todos os tipos</button>
       <button class="section-tab ${reembFiltroTipo==='cancelamento'?'active':''}" onclick="setReembTipo('cancelamento')">Cancelamento</button>
@@ -4880,6 +4917,55 @@ function renderReembolsos(){
   renderReembChart();
 }
 
+function buildOverdueBanner(){
+  const hoje=new Date().toISOString().split('T')[0];
+  const atrasadas=[];
+  todosReembolsos.forEach(r=>{
+    (r.reembolsos_pagamentos||[]).forEach(p=>{
+      if(p.status==='pendente'&&p.data_prevista&&p.data_prevista.split('T')[0]<hoje)
+        atrasadas.push({r,p,dias:Math.floor((new Date(hoje)-new Date(p.data_prevista.split('T')[0]))/86400000)});
+    });
+  });
+  if(!atrasadas.length) return '';
+  atrasadas.sort((a,b)=>b.dias-a.dias);
+  const total=atrasadas.reduce((s,x)=>s+Number(x.p.valor||0),0);
+  const itens=atrasadas.slice(0,6).map(x=>`<button class="reemb-atraso-item" onclick="irParaReemb('${x.r.id}')">${escHtml((x.r.nome_cliente||'—').split(' ').slice(0,2).join(' '))} · ${fmtBRL(x.p.valor)} · ${x.dias}d</button>`).join('');
+  const mais=atrasadas.length>6?`<span style="font-size:11px;color:#991B1B;">+${atrasadas.length-6} mais</span>`:'';
+  return `<div class="reemb-atraso">
+    <div class="reemb-atraso-top">⚠️ ${atrasadas.length} pagamento(s) de reembolso atrasado(s) — ${fmtBRL(total)}</div>
+    <div class="reemb-atraso-itens">${itens}${mais}</div>
+  </div>`;
+}
+function buildRankingHTML(doMes){
+  const by={};
+  doMes.forEach(r=>{
+    const c=r.closer||'Sem closer';
+    if(!by[c]) by[c]={n:0,v:0};
+    by[c].n++; by[c].v+=reembPrevisto(r);
+  });
+  const arr=Object.keys(by).map(c=>({closer:c,n:by[c].n,v:by[c].v})).sort((a,b)=>b.n-a.n||b.v-a.v);
+  if(!arr.length) return '';
+  const max=arr[0].n;
+  return `<div class="reemb-rank">
+    <p class="reemb-viz-title">Reembolsos por closer — ${MESES_NOMES[reembMes]}</p>
+    ${arr.map(x=>`<div class="reemb-rank-row">
+      <span class="reemb-rank-nome">${escHtml(x.closer)}</span>
+      <div class="reemb-rank-bar"><div class="reemb-rank-fill" style="width:${Math.round(x.n/max*100)}%;"></div></div>
+      <span class="reemb-rank-n">${x.n} caso(s)</span>
+      <span class="reemb-rank-v">${fmtBRL(x.v)}</span>
+    </div>`).join('')}
+  </div>`;
+}
+function irParaReemb(id){
+  const r=todosReembolsos.find(x=>x.id===id);
+  if(!r) return;
+  const d=reembDataRef(r);
+  if(d){ const p=d.split('-'); reembAno=Number(p[0]); reembMes=Number(p[1])-1; atualizarLabelReembMes(); }
+  reembFiltroTipo='';reembFiltroStatus='';reembFiltroStatusReemb=[];reembFiltroBaixa=[];reembFiltroDistrato=[];reembFiltroNf=[];
+  renderReembolsos();
+  const det=document.getElementById('reemb-det-'+id);
+  if(det){ det.innerHTML=renderReembDetalhe(id); det.style.display='block'; det.scrollIntoView({behavior:'smooth',block:'center'}); }
+}
 function buildReembListaHTML(){
   const doMes=todosReembolsos.filter(reembNoMes);
   let base=doMes.slice();
@@ -5050,6 +5136,10 @@ function renderReembDetalhe(id){
       <div><span class="reemb-det-lbl">Estrategista</span><span class="reemb-det-val">${escHtml(r.estrategista||'—')}</span></div>
       <div><span class="reemb-det-lbl">Motivo</span><span class="reemb-det-val">${escHtml(r.motivo||'—')}</span></div>
       <div><span class="reemb-det-lbl">Contrato</span><span class="reemb-det-val">${r.contrato_url?`<a href="${escHtml(r.contrato_url)}" target="_blank" rel="noopener" style="color:var(--coral);">abrir contrato ↗</a>`:'—'}</span></div>
+      <div><span class="reemb-det-lbl">Data da compra</span><span class="reemb-det-val">${r.data_compra?fmtDataBR(r.data_compra):'—'}</span></div>
+      <div><span class="reemb-det-lbl">Forma do reembolso</span><span class="reemb-det-val">${escHtml(r.forma_reembolso||'—')}</span></div>
+      <div><span class="reemb-det-lbl">Valor retido</span><span class="reemb-det-val">${Number(r.valor_retido)>0?fmtBRL(r.valor_retido):'—'}</span></div>
+      ${(r.data_compra&&r.data_solicitacao)?`<div><span class="reemb-det-lbl">Janela arrependimento</span><span class="reemb-det-val">${reembJanelaBadge(r)}</span></div>`:''}
     </div>
     ${r.observacoes?`<div style="font-size:12px;color:var(--text);background:#fff;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px;white-space:pre-wrap;">${escHtml(r.observacoes)}</div>`:''}
 
@@ -5209,14 +5299,40 @@ async function loadVendasParaReemb(){
   const sel=document.getElementById('rfVenda');
   if(sel) sel.innerHTML='<option value="">Nenhuma / não cadastrada</option>'+vendasParaReemb.map(v=>`<option value="${v.id}">${escHtml(v.nome_cliente||'Sem nome')} — ${v.data_venda?fmtDataBR(v.data_venda):''}${v.closer?' ('+escHtml(v.closer)+')':''}</option>`).join('');
 }
+let _rfVendaValor=0;
 function aoVincularVenda(){
   const v=vendasParaReemb.find(x=>x.id===document.getElementById('rfVenda').value);
-  if(!v) return;
+  if(!v){ _rfVendaValor=0; recalcRetido(); return; }
   document.getElementById('rfCliente').value=v.nome_cliente||document.getElementById('rfCliente').value;
   if(v.closer){const cs=document.getElementById('rfCloser');for(let i=0;i<cs.options.length;i++){if(cs.options[i].value===v.closer){cs.selectedIndex=i;break;}}}
+  _rfVendaValor=Number(v.valor_bruto||v.valor_liquido||0);
   const valEl=document.getElementById('rfValor');
   if(!parseFloat(valEl.value)) valEl.value=(v.valor_liquido||v.valor_bruto||0);
-  recalcParcelasInfo();
+  if(v.data_venda && !document.getElementById('rfDataCompra').value) document.getElementById('rfDataCompra').value=v.data_venda.split('T')[0];
+  recalcParcelasInfo(); recalcRetido(); recalcJanelaArrep();
+}
+function recalcRetido(){
+  const ref=document.getElementById('rfVendaRef'); if(!ref) return;
+  const reemb=parseFloat(document.getElementById('rfValor').value)||0;
+  const retido=parseFloat(document.getElementById('rfValorRetido').value)||0;
+  const partes=[];
+  if(_rfVendaValor>0) partes.push('Venda: '+fmtBRL(_rfVendaValor));
+  partes.push('Reembolso: '+fmtBRL(reemb));
+  if(retido>0) partes.push('Retido: '+fmtBRL(retido));
+  if(_rfVendaValor>0 && (reemb+retido)>0 && Math.abs(_rfVendaValor-(reemb+retido))>0.01)
+    partes.push('⚠️ venda ≠ reembolso+retido');
+  ref.textContent=partes.join('  ·  ');
+}
+function recalcJanelaArrep(){
+  const el=document.getElementById('rfJanelaArrep'); if(!el) return;
+  const compra=document.getElementById('rfDataCompra').value;
+  const pedido=document.getElementById('rfDataSolic').value;
+  if(!compra||!pedido){ el.style.display='none'; return; }
+  const dias=Math.round((new Date(pedido)-new Date(compra))/86400000);
+  el.style.display='block';
+  if(dias<0){ el.innerHTML='<span class="status-badge s-pendente">Data do pedido anterior à compra — confira</span>'; return; }
+  const dentro=dias<=7;
+  el.innerHTML=`<span class="status-badge ${dentro?'s-cancelada':'s-confirmada'}">${dentro?'Dentro dos 7 dias':'Fora dos 7 dias'}</span> <span style="font-size:12px;color:var(--muted);">${dias} dia(s) entre compra e pedido${dentro?' — reembolso obrigatório (arrependimento)':' — negociável'}</span>`;
 }
 function addParcelaRow(valor,data){
   const wrap=document.getElementById('rfParcelasWrap');
@@ -5257,6 +5373,11 @@ async function abrirFormReemb(id){
     g('rfEstrategista').value=r.estrategista||'';
     g('rfResponsavel').value=r.responsavel||'';
     g('rfValor').value=r.valor_total||0;
+    g('rfValorRetido').value=r.valor_retido||0;
+    g('rfForma').value=r.forma_reembolso||'';
+    g('rfDataCompra').value=(r.data_compra||'').split('T')[0];
+    const vv=vendasParaReemb.find(x=>x.id===r.venda_id);
+    _rfVendaValor=vv?Number(vv.valor_bruto||vv.valor_liquido||0):0;
     g('rfMotivo').value=r.motivo||'';
     g('rfObs').value=r.observacoes||'';
     g('rfStatusReemb').value=r.status_reembolso||'pendente';
@@ -5273,13 +5394,15 @@ async function abrirFormReemb(id){
     g('rfDataSolic').value=new Date().toISOString().split('T')[0];
     g('rfContrato').value=''; g('rfCloser').value=''; g('rfEstrategista').value='';
     g('rfResponsavel').value=''; g('rfValor').value=0; g('rfMotivo').value=''; g('rfObs').value='';
+    g('rfValorRetido').value=0; g('rfForma').value=''; g('rfDataCompra').value='';
+    _rfVendaValor=0;
     g('rfStatusReemb').value='pendente'; g('rfStatusBaixa').value='pendente';
     g('rfStatusDistrato').value='pendente'; g('rfStatusNf').value='nao_aplicavel';
     if(parcSec) parcSec.style.display='';
     if(parcNota) parcNota.style.display='none';
     g('rfParcelasWrap').innerHTML=''; addParcelaRow();
   }
-  recalcParcelasInfo();
+  recalcParcelasInfo(); recalcRetido(); recalcJanelaArrep();
 }
 function fecharFormReemb(){document.getElementById('reembFormOverlay').classList.remove('open');}
 async function salvarReemb(){
@@ -5296,6 +5419,9 @@ async function salvarReemb(){
     estrategista:document.getElementById('rfEstrategista').value.trim()||null,
     responsavel:document.getElementById('rfResponsavel').value.trim()||null,
     valor_total:parseFloat(document.getElementById('rfValor').value)||0,
+    valor_retido:parseFloat(document.getElementById('rfValorRetido').value)||0,
+    forma_reembolso:document.getElementById('rfForma').value||null,
+    data_compra:document.getElementById('rfDataCompra').value||null,
     motivo:document.getElementById('rfMotivo').value.trim()||null,
     observacoes:document.getElementById('rfObs').value.trim()||null,
     status_reembolso:document.getElementById('rfStatusReemb').value,
