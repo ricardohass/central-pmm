@@ -890,6 +890,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <option value="Janaina Xavier">Janaina Xavier</option>
           </select>
           <button class="btn-novo" onclick="toggleForm()">+ Novo registro</button>
+          <button class="btn-novo" id="btnRelatorioSemanal" onclick="abrirRelatorioSemanal()" style="background:var(--green);">📋 Relatório semanal</button>
         </div>
       </div>
       <div class="perf-totals">
@@ -1538,6 +1539,24 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
   </div>
 </div>
 
+<!-- MODAL RELATÓRIO SEMANAL -->
+<div class="modal-overlay" id="modalRelatorio">
+  <div class="modal-box" style="max-width:520px;">
+    <p class="modal-title">Relatório semanal PMM</p>
+    <p class="modal-sub">Gera o texto pronto pra colar no WhatsApp, direto do banco.</p>
+    <div style="display:flex;gap:10px;align-items:flex-end;margin:14px 0;flex-wrap:wrap;">
+      <div class="modal-field" style="margin:0;flex:1;min-width:130px;"><label>De</label><input type="date" id="relDe"></div>
+      <div class="modal-field" style="margin:0;flex:1;min-width:130px;"><label>Até</label><input type="date" id="relAte"></div>
+      <button class="btn-salvar" onclick="gerarRelatorioSemanal()">Gerar</button>
+    </div>
+    <pre id="relOutput" style="white-space:pre-wrap;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);background:#fff;border:0.5px solid var(--border);border-radius:10px;padding:14px;max-height:340px;overflow:auto;margin:0;">Escolha o período e clique em Gerar.</pre>
+    <div class="modal-actions">
+      <button class="btn-cancelar" onclick="document.getElementById('modalRelatorio').classList.remove('open')">Fechar</button>
+      <button class="btn-salvar" id="relCopiarBtn" onclick="copiarRelatorio()">📋 Copiar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL PMM (alert/confirm) -->
 <div class="pmm-modal-overlay" id="pmmModal">
   <div class="pmm-modal-box">
@@ -1767,6 +1786,8 @@ function iniciarApp(){
   // Ocultar botão novo registro de performance para closers
   const btnNovoPerf=document.querySelector('.perf-controls .btn-novo');
   if(btnNovoPerf) btnNovoPerf.style.display=currentUser.funcao==='admin'?'':'none';
+  const btnRel=document.getElementById('btnRelatorioSemanal');
+  if(btnRel) btnRel.style.display=currentUser.funcao==='admin'?'':'none';
 }
 
 function aplicarPermissoes(){
@@ -5562,6 +5583,64 @@ async function sincronizarParcelas(id){
   for(const eid of existentes){
     if(!mantidos.includes(eid)) await supaFetch('reembolsos_pagamentos?id=eq.'+eid,{method:'DELETE',headers:{'Prefer':''}});
   }
+}
+
+// ══════════════════════ RELATÓRIO SEMANAL PMM ══════════════════════
+function abrirRelatorioSemanal(){
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const dow=hoje.getDay();
+  const thisMon=new Date(hoje); thisMon.setDate(hoje.getDate()-((dow+6)%7));
+  const lastMon=new Date(thisMon); lastMon.setDate(thisMon.getDate()-7);
+  const lastFri=new Date(lastMon); lastFri.setDate(lastMon.getDate()+4);
+  const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  document.getElementById('relDe').value=iso(lastMon);
+  document.getElementById('relAte').value=iso(lastFri);
+  document.getElementById('modalRelatorio').classList.add('open');
+  gerarRelatorioSemanal();
+}
+function fmtIntervaloRel(de,ate){
+  const a=de.split('-'), b=ate.split('-');
+  if(a[1]===b[1]&&a[0]===b[0]) return Number(a[2])+' a '+Number(b[2])+' de '+MESES_NOMES[Number(a[1])-1].toLowerCase()+' de '+a[0];
+  return a[2]+'/'+a[1]+' a '+b[2]+'/'+b[1]+' de '+b[0];
+}
+async function gerarRelatorioSemanal(){
+  const de=document.getElementById('relDe').value, ate=document.getElementById('relAte').value;
+  const out=document.getElementById('relOutput');
+  if(!de||!ate){ out.textContent='Informe o período.'; return; }
+  out.textContent='Gerando...';
+  try{
+    const [perf,vendas]=await Promise.all([
+      supaFetch('registros_performance?data=gte.'+de+'&data=lte.'+ate+'&select=closer,agendamentos,reunioes'),
+      supaFetch('vendas?data_venda=gte.'+de+'&data_venda=lte.'+ate+'&status=eq.confirmada&select=closer'),
+    ]);
+    const norm=c=>{c=(c||'').trim(); return c==='Janaina'?'Janaina Xavier':c;};
+    const map={};
+    perf.forEach(r=>{const c=norm(r.closer); if(!c)return; if(!map[c])map[c]={agend:0,reun:0,vendas:0}; map[c].agend+=Number(r.agendamentos||0); map[c].reun+=Number(r.reunioes||0);});
+    const fora={};
+    vendas.forEach(v=>{const c=norm(v.closer); if(!c)return; if(map[c])map[c].vendas++; else fora[c]=(fora[c]||0)+1;});
+    const closers=Object.keys(map).sort((a,b)=>map[b].agend-map[a].agend);
+    if(!closers.length){ out.textContent='Nenhum registro de performance nesse período.'; return; }
+    const pct=(v,r)=>r>0?(v/r*100).toFixed(1).replace('.',','):'0,0';
+    let txt='📊 RELATÓRIO SEMANAL PMM\n'+fmtIntervaloRel(de,ate)+'\n\n';
+    let tA=0,tR=0,tV=0;
+    closers.forEach(c=>{
+      const m=map[c], ns=Math.max(0,m.agend-m.reun);
+      tA+=m.agend;tR+=m.reun;tV+=m.vendas;
+      txt+='👤 '+c+'\n📅 Agendamentos: '+m.agend+'\n✅ Reuniões: '+m.reun+'\n👻 No-shows: '+ns+'\n💰 Vendas: '+m.vendas+'\n📈 Conversão: '+pct(m.vendas,m.reun)+'%\n➖➖➖➖➖\n';
+    });
+    txt+='🏆 CONSOLIDADO DO TIME\n📅 Agendamentos: '+tA+'\n✅ Reuniões: '+tR+'\n👻 No-shows: '+Math.max(0,tA-tR)+'\n💰 Vendas: '+tV+'\n📈 Conversão: '+pct(tV,tR)+'%';
+    const ex=Object.keys(fora);
+    if(ex.length) txt+='\n\nℹ️ '+ex.map(c=>fora[c]+' venda(s) de '+c+' sem performance lançada na semana').join('; ')+'.';
+    out.textContent=txt;
+  }catch(e){ out.textContent='Erro ao gerar: '+e.message; }
+}
+function copiarRelatorio(){
+  const txt=document.getElementById('relOutput').textContent;
+  const btn=document.getElementById('relCopiarBtn');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(()=>{ if(btn){const o=btn.textContent;btn.textContent='✓ Copiado!';setTimeout(()=>btn.textContent=o,1500);} })
+      .catch(()=>pmmAlert('Selecione o texto e copie manualmente.','📋','Copiar'));
+  } else pmmAlert('Selecione o texto e copie manualmente.','📋','Copiar');
 }
 
 // ══════════════ FECHAR POP-UPS AO CLICAR FORA / ESC ══════════════
