@@ -5334,13 +5334,16 @@ function recalcJanelaArrep(){
   const dentro=dias<=7;
   el.innerHTML=`<span class="status-badge ${dentro?'s-cancelada':'s-confirmada'}">${dentro?'Dentro dos 7 dias':'Fora dos 7 dias'}</span> <span style="font-size:12px;color:var(--muted);">${dias} dia(s) entre compra e pedido${dentro?' — reembolso obrigatório (arrependimento)':' — negociável'}</span>`;
 }
-function addParcelaRow(valor,data){
+function addParcelaRow(valor,data,pid,status){
   const wrap=document.getElementById('rfParcelasWrap');
   const div=document.createElement('div');
   div.style.cssText='display:flex;gap:6px;align-items:center;';
+  div.dataset.pid=pid||'';
   const inStyle='font-family:Inter,sans-serif;font-size:13px;border:0.5px solid var(--border);border-radius:8px;background:var(--cream);padding:9px 12px;outline:none;flex:1;';
+  const pago=status==='pago'?'<span class="status-badge s-confirmada" style="flex-shrink:0;">pago</span>':'';
   div.innerHTML=`<input type="number" class="rf-parc-valor" placeholder="Valor R$" step="0.01" min="0" value="${valor||''}" style="${inStyle}" oninput="recalcParcelasInfo()">
     <input type="date" class="rf-parc-data" value="${data||''}" style="${inStyle}">
+    ${pago}
     <button type="button" onclick="this.parentNode.remove();recalcParcelasInfo();" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;padding:0 4px;line-height:1;">✕</button>`;
   wrap.appendChild(div);
 }
@@ -5384,8 +5387,12 @@ async function abrirFormReemb(id){
     g('rfStatusBaixa').value=r.status_baixa||'pendente';
     g('rfStatusDistrato').value=r.status_distrato||'pendente';
     g('rfStatusNf').value=r.status_nf||'nao_aplicavel';
-    if(parcSec) parcSec.style.display='none';
-    if(parcNota) parcNota.style.display='block';
+    if(parcSec) parcSec.style.display='';
+    if(parcNota) parcNota.style.display='none';
+    g('rfParcelasWrap').innerHTML='';
+    const ps=(r.reembolsos_pagamentos||[]).slice().sort((a,b)=>((a.data_prevista||'')+'').localeCompare((b.data_prevista||'')+''));
+    if(ps.length) ps.forEach(p=>addParcelaRow(p.valor,(p.data_prevista||'').split('T')[0],p.id,p.status));
+    else addParcelaRow();
   } else {
     g('reembFormTitle').textContent='Novo caso de reembolso';
     g('rfId').value='';
@@ -5434,6 +5441,7 @@ async function salvarReemb(){
   try{
     if(id){
       await supaFetch('reembolsos?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
+      await sincronizarParcelas(id);
     } else {
       body.aberto_por=currentUser?currentUser.nome:null;
       const novo=await supaFetch('reembolsos',{method:'POST',body:JSON.stringify(body)});
@@ -5449,6 +5457,27 @@ async function salvarReemb(){
     fecharFormReemb();
     carregarReembolsos();
   }catch(e){pmmAlert('Erro ao salvar: '+e.message,'❌','Erro');}
+}
+async function sincronizarParcelas(id){
+  const r=todosReembolsos.find(x=>x.id===id);
+  const existentes=((r&&r.reembolsos_pagamentos)||[]).map(p=>p.id);
+  const rows=[...document.querySelectorAll('#rfParcelasWrap > div')];
+  const mantidos=[];
+  for(const row of rows){
+    const valor=parseFloat(row.querySelector('.rf-parc-valor').value)||0;
+    const data=row.querySelector('.rf-parc-data').value||null;
+    const pid=row.dataset.pid;
+    if(valor<=0) continue; // linha vazia/zerada é ignorada (e removida abaixo se tinha id)
+    if(pid){
+      mantidos.push(pid);
+      await supaFetch('reembolsos_pagamentos?id=eq.'+pid,{method:'PATCH',body:JSON.stringify({valor,data_prevista:data})});
+    } else {
+      await supaFetch('reembolsos_pagamentos',{method:'POST',body:JSON.stringify({reembolso_id:id,valor,data_prevista:data,status:'pendente'})});
+    }
+  }
+  for(const eid of existentes){
+    if(!mantidos.includes(eid)) await supaFetch('reembolsos_pagamentos?id=eq.'+eid,{method:'DELETE',headers:{'Prefer':''}});
+  }
 }
 
 // ══════════════ FECHAR POP-UPS AO CLICAR FORA / ESC ══════════════
