@@ -522,15 +522,20 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .reemb-resolv-head { width:100%; display:flex; justify-content:space-between; align-items:center; background:none; border:none; border-top:0.5px solid var(--border); padding:14px 2px 4px; cursor:pointer; font-family:'Inter',sans-serif; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
 .reemb-resolv-count { background:var(--cream2); color:var(--text); border-radius:20px; padding:1px 9px; margin-left:6px; font-size:11px; }
 @media (max-width:760px){ .reemb-viz { grid-template-columns:1fr; } }
-.reemb-filtros { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:12px 16px; margin:-6px 0 18px; display:flex; flex-direction:column; gap:9px; }
-.reemb-filtros-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-.reemb-filtros-lbl { font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
-.reemb-filtro-linha { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.reemb-filtro-nome { font-size:12px; color:var(--text); min-width:80px; font-weight:500; }
-.reemb-chips { display:flex; flex-wrap:wrap; gap:6px; }
-.reemb-chip { font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); background:var(--cream); border:0.5px solid var(--border); border-radius:20px; padding:4px 12px; cursor:pointer; transition:background .12s,color .12s,border-color .12s; }
-.reemb-chip:hover { border-color:var(--coral); color:var(--text); }
-.reemb-chip.on { background:var(--coral); color:#fff; border-color:var(--coral); }
+.reemb-filtros { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:-6px 0 18px; }
+.reemb-filtros-lbl { font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-right:2px; }
+.reemb-dd { position:relative; }
+.reemb-dd-btn { display:flex; align-items:center; gap:10px; font-family:'Inter',sans-serif; font-size:13px; color:var(--text); background:#fff; border:0.5px solid var(--border); border-radius:8px; padding:8px 12px; cursor:pointer; transition:border-color .12s; }
+.reemb-dd-btn:hover { border-color:var(--coral); }
+.reemb-dd.open .reemb-dd-btn { border-color:var(--coral); }
+.reemb-dd-btn.ativo { background:#FBEAE3; border-color:var(--coral); color:var(--coral); font-weight:500; }
+.reemb-dd-caret { color:var(--muted); font-size:10px; }
+.reemb-dd-btn.ativo .reemb-dd-caret { color:var(--coral); }
+.reemb-dd-panel { display:none; position:absolute; top:calc(100% + 4px); left:0; z-index:60; background:#fff; border:0.5px solid var(--border); border-radius:10px; box-shadow:0 8px 28px rgba(42,61,48,0.15); padding:6px; min-width:210px; }
+.reemb-dd.open .reemb-dd-panel { display:block; }
+.reemb-dd-opt { display:flex; align-items:center; gap:9px; font-size:13px; color:var(--text); padding:8px 10px; border-radius:7px; cursor:pointer; white-space:nowrap; }
+.reemb-dd-opt:hover { background:var(--cream); }
+.reemb-dd-opt input { width:15px; height:15px; accent-color:var(--coral); cursor:pointer; margin:0; }
 .cal-wrap { background:#fff; border:0.5px solid var(--border); border-radius:12px; overflow:hidden; }
 .cal-grid-header { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:0.5px solid var(--border); }
 .cal-day-name { padding:10px 0; text-align:center; font-size:11px; font-weight:600; color:var(--muted); }
@@ -4760,15 +4765,46 @@ function _reembArrFiltro(qual){
   if(qual==='nf')return reembFiltroNf;
   return [];
 }
-function filtroChips(qual,label,mapa,arrSel){
-  const chips=Object.keys(mapa).map(k=>`<button class="reemb-chip${arrSel.includes(k)?' on':''}" onclick="toggleReembFiltroOp('${qual}','${k}')">${mapa[k]}</button>`).join('');
-  return `<div class="reemb-filtro-linha"><span class="reemb-filtro-nome">${label}</span><div class="reemb-chips">${chips}</div></div>`;
+const DD_LABEL={reembolso:'Reembolso',baixa:'Baixa',distrato:'Distrato',nf:'Nota fiscal'};
+function filtroDropdown(qual,label,mapa,arrSel){
+  const opts=Object.keys(mapa).map(k=>`<label class="reemb-dd-opt"><input type="checkbox" ${arrSel.includes(k)?'checked':''} onchange="toggleReembFiltroOp('${qual}','${k}')">${mapa[k]}</label>`).join('');
+  const cnt=arrSel.length?` (${arrSel.length})`:'';
+  return `<div class="reemb-dd" id="dd-${qual}">
+    <button class="reemb-dd-btn${arrSel.length?' ativo':''}" id="ddbtn-${qual}" onclick="toggleDD(event,'${qual}')">
+      <span class="reemb-dd-txt">${label}${cnt}</span><span class="reemb-dd-caret">▾</span>
+    </button>
+    <div class="reemb-dd-panel">${opts}</div>
+  </div>`;
+}
+function toggleDD(ev,qual){
+  ev.stopPropagation();
+  const dd=document.getElementById('dd-'+qual);
+  const abrir=!dd.classList.contains('open');
+  document.querySelectorAll('.reemb-dd.open').forEach(d=>d.classList.remove('open'));
+  if(abrir) dd.classList.add('open');
 }
 function toggleReembFiltroOp(qual,val){
   const arr=_reembArrFiltro(qual);
   const i=arr.indexOf(val);
   if(i>=0)arr.splice(i,1); else arr.push(val);
-  renderReembolsos();
+  // atualiza só o botão e a lista — mantém o pop-up aberto
+  const btn=document.getElementById('ddbtn-'+qual);
+  if(btn){
+    btn.classList.toggle('ativo',arr.length>0);
+    btn.querySelector('.reemb-dd-txt').textContent=DD_LABEL[qual]+(arr.length?` (${arr.length})`:'');
+  }
+  atualizarLimparFiltro();
+  aplicarFiltrosReemb();
+}
+function aplicarFiltrosReemb(){
+  const wrap=document.getElementById('reembListaWrap');
+  if(wrap) wrap.innerHTML=buildReembListaHTML();
+}
+function atualizarLimparFiltro(){
+  const wrap=document.getElementById('reembLimparWrap');
+  if(!wrap) return;
+  const any=reembFiltroStatusReemb.length||reembFiltroBaixa.length||reembFiltroDistrato.length||reembFiltroNf.length||reembFiltroStatus||reembFiltroTipo;
+  wrap.innerHTML=any?'<button class="btn-limpar" onclick="limparFiltrosReemb()">Limpar filtros</button>':'';
 }
 function limparFiltrosReemb(){
   reembFiltroTipo='';reembFiltroStatus='';
@@ -4791,36 +4827,6 @@ function renderReembolsos(){
   const reembReverts=doMes.filter(r=>r.status_reembolso==='revertido'||r.status_reembolso==='nao_necessario').length;
   const baixaPend=doMes.filter(r=>(r.status_baixa||'pendente')==='pendente').length;
   const distratoPend=doMes.filter(r=>['pendente','enviado'].includes(r.status_distrato||'pendente')).length;
-
-  let base=doMes.slice();
-  if(reembFiltroTipo) base=base.filter(r=>r.tipo===reembFiltroTipo);
-  if(reembFiltroStatusReemb.length) base=base.filter(r=>reembFiltroStatusReemb.includes(r.status_reembolso||'pendente'));
-  if(reembFiltroBaixa.length) base=base.filter(r=>reembFiltroBaixa.includes(r.status_baixa||'pendente'));
-  if(reembFiltroDistrato.length) base=base.filter(r=>reembFiltroDistrato.includes(r.status_distrato||'pendente'));
-  if(reembFiltroNf.length) base=base.filter(r=>reembFiltroNf.includes(r.status_nf||'nao_aplicavel'));
-  const ordena=(a,b)=>reembDataRef(b).localeCompare(reembDataRef(a));
-  const temFiltroPlano=reembFiltroStatus||reembFiltroStatusReemb.length||reembFiltroBaixa.length||reembFiltroDistrato.length||reembFiltroNf.length;
-  let listaHTML;
-  if(temFiltroPlano){
-    // qualquer filtro de status/operacional → lista plana (sem separar resolvidos)
-    let flat=base.slice();
-    if(reembFiltroStatus) flat=flat.filter(r=>r.status===reembFiltroStatus);
-    flat.sort(ordena);
-    listaHTML=`<div id="reembLista">${flat.length?flat.map(renderReembCard).join(''):'<p class="empty-state">Nenhum caso com esse filtro neste mês.</p>'}</div>`;
-  } else {
-    const ativos=base.filter(r=>r.status!=='resolvido').sort(ordena);
-    const resolvidos=base.filter(r=>r.status==='resolvido').sort(ordena);
-    const ativosHTML=ativos.length?ativos.map(renderReembCard).join(''):'<p class="empty-state">Nenhum caso em aberto neste mês.</p>';
-    const resolvHTML=resolvidos.length?`
-      <div class="reemb-resolv">
-        <button class="reemb-resolv-head" onclick="toggleReembResolvidos()">
-          <span>Resolvidos <span class="reemb-resolv-count">${resolvidos.length}</span></span>
-          <span id="reembResolvCaret">${reembResolvidosOpen?'▴':'▾'}</span>
-        </button>
-        <div id="reembResolvLista" style="display:${reembResolvidosOpen?'block':'none'};margin-top:10px;">${resolvidos.map(renderReembCard).join('')}</div>
-      </div>`:'';
-    listaHTML=`<div id="reembLista">${ativosHTML}</div>${resolvHTML}`;
-  }
 
   container.innerHTML=`
     <div class="cal-summary">
@@ -4863,17 +4869,45 @@ function renderReembolsos(){
       </select>
     </div>
     <div class="reemb-filtros">
-      <div class="reemb-filtros-head">
-        <span class="reemb-filtros-lbl">Acompanhamento — marque um ou mais</span>
-        ${(reembFiltroStatusReemb.length||reembFiltroBaixa.length||reembFiltroDistrato.length||reembFiltroNf.length||reembFiltroStatus||reembFiltroTipo)?'<button class="btn-limpar" onclick="limparFiltrosReemb()">Limpar filtros</button>':''}
-      </div>
-      ${filtroChips('reembolso','Reembolso',STATUS_REEMB,reembFiltroStatusReemb)}
-      ${filtroChips('baixa','Baixa',STATUS_BAIXA,reembFiltroBaixa)}
-      ${filtroChips('distrato','Distrato',STATUS_DISTRATO,reembFiltroDistrato)}
-      ${filtroChips('nf','Nota fiscal',STATUS_NF,reembFiltroNf)}
+      <span class="reemb-filtros-lbl">Acompanhamento:</span>
+      ${filtroDropdown('reembolso','Reembolso',STATUS_REEMB,reembFiltroStatusReemb)}
+      ${filtroDropdown('baixa','Baixa',STATUS_BAIXA,reembFiltroBaixa)}
+      ${filtroDropdown('distrato','Distrato',STATUS_DISTRATO,reembFiltroDistrato)}
+      ${filtroDropdown('nf','Nota fiscal',STATUS_NF,reembFiltroNf)}
+      <span id="reembLimparWrap">${(reembFiltroStatusReemb.length||reembFiltroBaixa.length||reembFiltroDistrato.length||reembFiltroNf.length||reembFiltroStatus||reembFiltroTipo)?'<button class="btn-limpar" onclick="limparFiltrosReemb()">Limpar filtros</button>':''}</span>
     </div>
-    ${listaHTML}`;
+    <div id="reembListaWrap">${buildReembListaHTML()}</div>`;
   renderReembChart();
+}
+
+function buildReembListaHTML(){
+  const doMes=todosReembolsos.filter(reembNoMes);
+  let base=doMes.slice();
+  if(reembFiltroTipo) base=base.filter(r=>r.tipo===reembFiltroTipo);
+  if(reembFiltroStatusReemb.length) base=base.filter(r=>reembFiltroStatusReemb.includes(r.status_reembolso||'pendente'));
+  if(reembFiltroBaixa.length) base=base.filter(r=>reembFiltroBaixa.includes(r.status_baixa||'pendente'));
+  if(reembFiltroDistrato.length) base=base.filter(r=>reembFiltroDistrato.includes(r.status_distrato||'pendente'));
+  if(reembFiltroNf.length) base=base.filter(r=>reembFiltroNf.includes(r.status_nf||'nao_aplicavel'));
+  const ordena=(a,b)=>reembDataRef(b).localeCompare(reembDataRef(a));
+  const temFiltroPlano=reembFiltroStatus||reembFiltroStatusReemb.length||reembFiltroBaixa.length||reembFiltroDistrato.length||reembFiltroNf.length;
+  if(temFiltroPlano){
+    let flat=base.slice();
+    if(reembFiltroStatus) flat=flat.filter(r=>r.status===reembFiltroStatus);
+    flat.sort(ordena);
+    return `<div id="reembLista">${flat.length?flat.map(renderReembCard).join(''):'<p class="empty-state">Nenhum caso com esse filtro neste mês.</p>'}</div>`;
+  }
+  const ativos=base.filter(r=>r.status!=='resolvido').sort(ordena);
+  const resolvidos=base.filter(r=>r.status==='resolvido').sort(ordena);
+  const ativosHTML=ativos.length?ativos.map(renderReembCard).join(''):'<p class="empty-state">Nenhum caso em aberto neste mês.</p>';
+  const resolvHTML=resolvidos.length?`
+    <div class="reemb-resolv">
+      <button class="reemb-resolv-head" onclick="toggleReembResolvidos()">
+        <span>Resolvidos <span class="reemb-resolv-count">${resolvidos.length}</span></span>
+        <span id="reembResolvCaret">${reembResolvidosOpen?'▴':'▾'}</span>
+      </button>
+      <div id="reembResolvLista" style="display:${reembResolvidosOpen?'block':'none'};margin-top:10px;">${resolvidos.map(renderReembCard).join('')}</div>
+    </div>`:'';
+  return `<div id="reembLista">${ativosHTML}</div>${resolvHTML}`;
 }
 
 function renderReembChart(){
@@ -5309,10 +5343,18 @@ async function salvarReemb(){
   });
   document.addEventListener('keydown',function(e){
     if(e.key!=='Escape') return;
+    const ddAberto=document.querySelector('.reemb-dd.open');
+    if(ddAberto){ ddAberto.classList.remove('open'); return; }
     const aberto=document.querySelector(OVERLAYS);
     if(aberto){ aberto.classList.remove('open'); return; }
     const pmm=document.querySelector('.pmm-modal-overlay.open');
     if(pmm) fecharPmmModal(false);
+  });
+  // fecha dropdowns de filtro ao clicar fora
+  document.addEventListener('click',function(e){
+    if(!e.target.closest('.reemb-dd')){
+      document.querySelectorAll('.reemb-dd.open').forEach(d=>d.classList.remove('open'));
+    }
   });
 })();
 </script>
