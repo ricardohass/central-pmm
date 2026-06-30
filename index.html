@@ -782,8 +782,8 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         <div class="metrics">
           <div class="mcard"><p class="mcard-label">Recebido no mês (bruto)</p><p class="mcard-value" id="dash-fat-bruto">—</p><p class="mcard-meta" id="dash-fat-bruto-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-bruto" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-bruto">0%</span></div></div>
           <div class="mcard"><p class="mcard-label">Recebido no mês (líquido)</p><p class="mcard-value" id="dash-fat-liq">—</p><p class="mcard-meta">Meta: R$ 1.000.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-liq" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-liq">0%</span></div></div>
-          <div class="mcard"><p class="mcard-label">Total de vendas</p><p class="mcard-value big" id="dash-total-vendas">—</p><p class="mcard-meta">todas (exceto canceladas)</p></div>
-          <div class="mcard"><p class="mcard-label">Reembolsos</p><p class="mcard-value big coral" id="dash-reembolsos">—</p><p class="mcard-meta">no mês</p></div>
+          <div class="mcard"><p class="mcard-label">Total de vendas</p><p class="mcard-value big" id="dash-total-vendas">—</p><p class="mcard-meta">exceto canceladas e reembolsadas</p></div>
+          <div class="mcard"><p class="mcard-label">Reembolsos (abatido)</p><p class="mcard-value coral" id="dash-reembolsos">—</p><p class="mcard-meta">no mês</p></div>
           <div class="mcard"><p class="mcard-label">A receber</p><p class="mcard-value coral" id="dash-a-receber">—</p><p class="mcard-meta">valor restante pendente</p></div>
         </div>
         <div class="charts-row">
@@ -1886,13 +1886,18 @@ async function carregarHomeSnapshot(){
     const ultimoDia=anoMes+'-'+new Date(hoje.getFullYear(),hoje.getMonth()+1,0).getDate();
     const hojStr=hoje.toISOString().split('T')[0];
 
-    const [todasMes, vendaHoje, pgRecebidosMes] = await Promise.all([
+    const [todasMes, vendaHoje, pgRecebidosMes, reembMes] = await Promise.all([
       supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=not.in.(cancelada,reembolso)&select=*'),
       supaFetch('vendas?data_venda=eq.'+hojStr+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,closer'),
-      supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+primeiroDia+'&data_prevista=lte.'+ultimoDia+'&select=valor_bruto')
+      supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+primeiroDia+'&data_prevista=lte.'+ultimoDia+'&select=valor_bruto'),
+      supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,vendas!inner(data_venda),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
     ]);
 
-    const recebidoMes=pgRecebidosMes.reduce((s,p)=>s+Number(p.valor_bruto||0),0);
+    const totalReembMes=(reembMes||[]).reduce((s,r)=>{
+      const pago=(r.reembolsos_pagamentos||[]).filter(p=>p.status==='pago').reduce((a,p)=>a+Number(p.valor||0),0);
+      return s+(r.status_reembolso==='reembolsado'?Number(r.valor_total||0):pago);
+    },0);
+    const recebidoMes=Math.max(0,pgRecebidosMes.reduce((s,p)=>s+Number(p.valor_bruto||0),0)-totalReembMes);
     const fatHoje=vendaHoje.reduce((s,v)=>s+Number(v.valor_bruto||0),0);
 
     document.getElementById('snap-vendas').textContent=todasMes.length;
@@ -1932,20 +1937,30 @@ async function carregarDashboard(){
   const ultimoDia=anoMes+'-'+new Date(dashAno,dashMes+1,0).getDate();
 
   try{
-    const [todas, pgRecebidos]=await Promise.all([
+    const [todas, pgRecebidos, reembImpacto]=await Promise.all([
       supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&select=*'),
-      supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+primeiroDia+'&data_prevista=lte.'+ultimoDia+'&select=valor_bruto,valor_liquido')
+      supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+primeiroDia+'&data_prevista=lte.'+ultimoDia+'&select=valor_bruto,valor_liquido'),
+      supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,vendas!inner(data_venda),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
     ]);
-    const vendas=todas.filter(v=>v.status!=='cancelada');
-    const fatBruto=pgRecebidos.reduce((s,p)=>s+Number(p.valor_bruto||0),0);
-    const fatLiq=pgRecebidos.reduce((s,p)=>s+Number(p.valor_liquido||0),0);
+    const vendas=todas.filter(v=>v.status!=='cancelada'&&v.status!=='reembolso');
+    // Valor reembolsado atribuído às vendas deste mês:
+    //  - integral marcado 'reembolsado' → valor total do caso
+    //  - parcial/em andamento → só o que já foi pago (parcelas pagas)
+    const totalReemb=(reembImpacto||[]).reduce((s,r)=>{
+      const pago=(r.reembolsos_pagamentos||[]).filter(p=>p.status==='pago').reduce((a,p)=>a+Number(p.valor||0),0);
+      return s+(r.status_reembolso==='reembolsado'?Number(r.valor_total||0):pago);
+    },0);
+    const reembCount=(reembImpacto||[]).length;
+    const fatBruto=Math.max(0,pgRecebidos.reduce((s,p)=>s+Number(p.valor_bruto||0),0)-totalReemb);
+    const fatLiq=Math.max(0,pgRecebidos.reduce((s,p)=>s+Number(p.valor_liquido||0),0)-totalReemb);
     const aReceber=todas.reduce((s,v)=>s+Number(v.valor_restante||0),0);
-    const reembolsos=todas.filter(v=>v.status==='reembolso').length;
 
     document.getElementById('dash-fat-bruto').textContent=fmtBRL(fatBruto);
     document.getElementById('dash-fat-liq').textContent=fmtBRL(fatLiq);
     document.getElementById('dash-total-vendas').textContent=vendas.length;
-    document.getElementById('dash-reembolsos').textContent=reembolsos;
+    document.getElementById('dash-reembolsos').textContent=fmtBRL(totalReemb);
+    const reembMeta=document.querySelector('#dash-reembolsos').parentNode.querySelector('.mcard-meta');
+    if(reembMeta) reembMeta.textContent=reembCount+' caso(s) · abatido do faturamento';
     document.getElementById('dash-a-receber').textContent=fmtBRL(aReceber);
 
     const pctB=Math.min(Math.round((fatBruto/1530000)*100),100);
@@ -2481,7 +2496,7 @@ async function renderPerf(){
     try{
       const primeiroDia=anoMes+'-01';
       const ultimoDia=anoMes+'-'+new Date(perfAno,perfMes+1,0).getDate();
-      const vendas=await supaFetch('vendas?closer=eq.'+encodeURIComponent(closer)+'&data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=neq.cancelada&select=*');
+      const vendas=await supaFetch('vendas?closer=eq.'+encodeURIComponent(closer)+'&data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=not.in.(cancelada,reembolso)&select=*');
       const baseTotal=vendas.reduce((s,v)=>s+Number(v.base_comissao||0),0);
       const faixa=cp!==null?getFaixa(cp):null;
       const pctComissao=faixa?faixa.pct:0;
@@ -2515,7 +2530,7 @@ async function getDadosCloser(closer,ano,mes){
   try{
     const primeiroDia=anoMes+'-01';
     const ultimoDia=anoMes+'-'+new Date(ano,mes,0).getDate();
-    const vendas=await supaFetch('vendas?closer=eq.'+encodeURIComponent(closer)+'&data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=neq.cancelada&select=valor_bruto,valor_liquido');
+    const vendas=await supaFetch('vendas?closer=eq.'+encodeURIComponent(closer)+'&data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,valor_liquido');
     const bruto=vendas.reduce((s,v)=>s+Number(v.valor_bruto||0),0);
     const liq=vendas.reduce((s,v)=>s+Number(v.valor_liquido||0),0);
     pctLiquidez=bruto>0?((liq/bruto)*100):0;
@@ -2934,7 +2949,7 @@ async function getFunilDados(de,ate){
     let o=r.leads_origem; if(typeof o==='string'){try{o=JSON.parse(o);}catch(e){o={};}}
     if(o&&typeof o==='object') Object.keys(o).forEach(k=>{origem[k]=(origem[k]||0)+(+o[k]||0);});
   });
-  const vendasValidas=vendas.filter(v=>v.status!=='cancelada');
+  const vendasValidas=vendas.filter(v=>v.status!=='cancelada'&&v.status!=='reembolso');
   return{
     leads:soma(funil,'leads_recebidos'),
     qualificados:soma(funil,'leads_qualificados'),
@@ -3433,7 +3448,7 @@ async function getDadosMes(closer,ano,mes){
   const p1=am+'-01', p2=am+'-'+ultimoDia(ano,mes);
   let bruto=0,liq=0,nVendas=0;
   try{
-    const vs=await supaFetch('vendas?closer=eq.'+encodeURIComponent(closer)+'&data_venda=gte.'+p1+'&data_venda=lte.'+p2+'&status=neq.cancelada&select=valor_bruto,valor_liquido');
+    const vs=await supaFetch('vendas?closer=eq.'+encodeURIComponent(closer)+'&data_venda=gte.'+p1+'&data_venda=lte.'+p2+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,valor_liquido');
     nVendas=vs.length;
     bruto=vs.reduce((s,v)=>s+Number(v.valor_bruto||0),0);
     liq=vs.reduce((s,v)=>s+Number(v.valor_liquido||0),0);
@@ -5347,12 +5362,16 @@ async function atualizarCampoReemb(id,campo,valor){
 async function sincronizarVendaDoReembolso(r){
   if(!r||!r.venda_id) return;
   try{
-    if(r.status_reembolso==='reembolsado'){
-      await supaFetch('vendas?id=eq.'+r.venda_id,{method:'PATCH',body:JSON.stringify({status:'reembolso'})});
+    const v=await supaFetch('vendas?id=eq.'+r.venda_id+'&select=status,valor_bruto');
+    if(!v[0]) return;
+    const valVenda=Number(v[0].valor_bruto||0);
+    // integral = reembolsado e o valor do reembolso cobre a venda toda
+    const integral = r.status_reembolso==='reembolsado' && valVenda>0 && Number(r.valor_total||0)>=valVenda-0.01;
+    if(integral){
+      if(v[0].status!=='reembolso') await supaFetch('vendas?id=eq.'+r.venda_id,{method:'PATCH',body:JSON.stringify({status:'reembolso'})});
     } else {
-      const v=await supaFetch('vendas?id=eq.'+r.venda_id+'&select=status');
-      if(v[0] && v[0].status==='reembolso')
-        await supaFetch('vendas?id=eq.'+r.venda_id,{method:'PATCH',body:JSON.stringify({status:'confirmada'})});
+      // parcial ou não reembolsado: a venda segue contando (abatimento é por valor); restaura se estava 'reembolso'
+      if(v[0].status==='reembolso') await supaFetch('vendas?id=eq.'+r.venda_id,{method:'PATCH',body:JSON.stringify({status:'confirmada'})});
     }
   }catch(e){ console.warn('sync venda↔reembolso:',e.message); }
 }
@@ -5558,7 +5577,7 @@ async function salvarReemb(){
       })).filter(p=>p.valor>0);
       if(parcelas.length) await supaFetch('reembolsos_pagamentos',{method:'POST',body:JSON.stringify(parcelas)});
     }
-    await sincronizarVendaDoReembolso({venda_id:body.venda_id,status_reembolso:body.status_reembolso});
+    await sincronizarVendaDoReembolso({venda_id:body.venda_id,status_reembolso:body.status_reembolso,valor_total:body.valor_total});
     fecharFormReemb();
     carregarReembolsos();
   }catch(e){pmmAlert('Erro ao salvar: '+e.message,'❌','Erro');}
