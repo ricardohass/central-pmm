@@ -5317,8 +5317,23 @@ async function atualizarCampoReemb(id,campo,valor){
     const body={updated_at:new Date().toISOString()}; body[campo]=valor;
     await supaFetch('reembolsos?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
     const r=todosReembolsos.find(x=>x.id===id); if(r)r[campo]=valor;
+    if(campo==='status_reembolso' && r) await sincronizarVendaDoReembolso(r);
     refreshReembDetalhe(id);
   }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
+}
+// Fecha o loop: reembolsado → venda vinculada vira status 'reembolso';
+// se deixou de ser reembolsado e a venda estava como 'reembolso', restaura 'confirmada'.
+async function sincronizarVendaDoReembolso(r){
+  if(!r||!r.venda_id) return;
+  try{
+    if(r.status_reembolso==='reembolsado'){
+      await supaFetch('vendas?id=eq.'+r.venda_id,{method:'PATCH',body:JSON.stringify({status:'reembolso'})});
+    } else {
+      const v=await supaFetch('vendas?id=eq.'+r.venda_id+'&select=status');
+      if(v[0] && v[0].status==='reembolso')
+        await supaFetch('vendas?id=eq.'+r.venda_id,{method:'PATCH',body:JSON.stringify({status:'confirmada'})});
+    }
+  }catch(e){ console.warn('sync venda↔reembolso:',e.message); }
 }
 
 // ── Status e atualizações ──
@@ -5522,6 +5537,7 @@ async function salvarReemb(){
       })).filter(p=>p.valor>0);
       if(parcelas.length) await supaFetch('reembolsos_pagamentos',{method:'POST',body:JSON.stringify(parcelas)});
     }
+    await sincronizarVendaDoReembolso({venda_id:body.venda_id,status_reembolso:body.status_reembolso});
     fecharFormReemb();
     carregarReembolsos();
   }catch(e){pmmAlert('Erro ao salvar: '+e.message,'❌','Erro');}
