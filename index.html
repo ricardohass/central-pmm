@@ -5241,6 +5241,31 @@ async function salvarReemb(){
     carregarReembolsos();
   }catch(e){pmmAlert('Erro ao salvar: '+e.message,'❌','Erro');}
 }
+
+// ══════════════ FECHAR POP-UPS AO CLICAR FORA / ESC ══════════════
+// Cobre todos os overlays do sistema. Clicar no backdrop (fora da caixa)
+// ou apertar Esc fecha o pop-up SEM salvar as alterações.
+(function(){
+  const OVERLAYS='.modal-overlay.open, .venda-form-overlay.open, .dep-form-overlay.open';
+  let _downAlvo=null;
+  document.addEventListener('mousedown',function(e){ _downAlvo=e.target; });
+  document.addEventListener('click',function(e){
+    const t=e.target;
+    if(t!==_downAlvo||!t.classList) return; // ignora arrasto iniciado dentro da caixa
+    if(t.classList.contains('open')&&(t.classList.contains('modal-overlay')||t.classList.contains('venda-form-overlay')||t.classList.contains('dep-form-overlay'))){
+      t.classList.remove('open');
+    } else if(t.classList.contains('pmm-modal-overlay')&&t.classList.contains('open')){
+      fecharPmmModal(false); // alerta/confirmação: fechar = cancelar
+    }
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='Escape') return;
+    const aberto=document.querySelector(OVERLAYS);
+    if(aberto){ aberto.classList.remove('open'); return; }
+    const pmm=document.querySelector('.pmm-modal-overlay.open');
+    if(pmm) fecharPmmModal(false);
+  });
+})();
 </script>
 </body>
 </html>
