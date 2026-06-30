@@ -1308,7 +1308,22 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       <p class="vf-section-title">Financeiro</p>
       <div class="vf-grid-2">
         <div class="vf-field"><label>Valor total a reembolsar (R$)</label><input type="number" id="rfValor" min="0" step="0.01" value="0" oninput="recalcParcelasInfo()"></div>
-        <div class="vf-field"><label>Motivo</label><input type="text" id="rfMotivo" placeholder="Ex: arrependimento, financeiro..."></div>
+        <div class="vf-field"><label>Motivo</label>
+          <select id="rfMotivo">
+            <option value="">Selecione o motivo</option>
+            <option value="Arrependimento (até 7 dias)">Arrependimento (até 7 dias)</option>
+            <option value="Dificuldade financeira">Dificuldade financeira</option>
+            <option value="Expectativa não atendida">Expectativa não atendida</option>
+            <option value="Falta de tempo para acompanhar">Falta de tempo para acompanhar</option>
+            <option value="Insatisfação com o método/conteúdo">Insatisfação com o método/conteúdo</option>
+            <option value="Insatisfação com atendimento/suporte">Insatisfação com atendimento/suporte</option>
+            <option value="Problema pessoal ou de saúde">Problema pessoal ou de saúde</option>
+            <option value="Cobrança indevida/duplicada">Cobrança indevida/duplicada</option>
+            <option value="Não era o perfil ideal pro programa">Não era o perfil ideal pro programa</option>
+            <option value="Encontrou outra solução/concorrente">Encontrou outra solução/concorrente</option>
+            <option value="Outro (ver observações)">Outro (ver observações)</option>
+          </select>
+        </div>
       </div>
       <div id="rfParcelasSec">
         <p class="vf-section-title" style="margin-top:14px;">Parcelas do reembolso <span id="rfParcInfo" style="font-weight:400;color:var(--muted);font-size:11px;"></span></p>
