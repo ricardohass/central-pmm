@@ -507,6 +507,21 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .reemb-acomp-field label { font-size:11px; font-weight:500; color:var(--muted); display:flex; align-items:center; }
 .reemb-acomp-field select { width:100%; }
 .reemb-badge-neutro { background:#EFEFEC; color:#6B6B6B; }
+.reemb-viz { display:grid; grid-template-columns:1.4fr 1fr; gap:12px; margin-bottom:16px; }
+.reemb-viz-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:16px 18px; }
+.reemb-viz-title { font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+.reemb-legend { display:flex; gap:16px; justify-content:center; font-size:11px; color:var(--muted); margin-top:8px; }
+.reemb-leg-dot { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle; }
+.reemb-motivos { display:flex; flex-direction:column; gap:12px; }
+.reemb-motivo-top { display:flex; justify-content:space-between; font-size:13px; color:var(--text); margin-bottom:5px; gap:10px; }
+.reemb-motivo-top span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.reemb-motivo-top b { color:var(--green); flex-shrink:0; }
+.reemb-motivo-bar { height:6px; background:var(--cream2); border-radius:4px; overflow:hidden; }
+.reemb-motivo-fill { height:100%; background:var(--coral); border-radius:4px; }
+.reemb-resolv { margin-top:18px; }
+.reemb-resolv-head { width:100%; display:flex; justify-content:space-between; align-items:center; background:none; border:none; border-top:0.5px solid var(--border); padding:14px 2px 4px; cursor:pointer; font-family:'Inter',sans-serif; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.reemb-resolv-count { background:var(--cream2); color:var(--text); border-radius:20px; padding:1px 9px; margin-left:6px; font-size:11px; }
+@media (max-width:760px){ .reemb-viz { grid-template-columns:1fr; } }
 .cal-wrap { background:#fff; border:0.5px solid var(--border); border-radius:12px; overflow:hidden; }
 .cal-grid-header { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:0.5px solid var(--border); }
 .cal-day-name { padding:10px 0; text-align:center; font-size:11px; font-weight:600; color:var(--muted); }
@@ -4649,6 +4664,7 @@ async function atualizarDataPagamento(id,novaData,dateStrOriginal){
 // ══════════════════════════ REEMBOLSOS ══════════════════════════
 let reembAno=new Date().getFullYear(), reembMes=new Date().getMonth();
 let reembFiltroTipo='', reembFiltroStatus='';
+let reembResolvidosOpen=false;
 let todosReembolsos=[];
 let vendasParaReemb=[];
 const REEMB_TIPO_LABEL={cancelamento:'Cancelamento',desistencia:'Desistência'};
@@ -4731,12 +4747,26 @@ function renderReembolsos(){
 
   let lista=doMes.slice();
   if(reembFiltroTipo) lista=lista.filter(r=>r.tipo===reembFiltroTipo);
-  if(reembFiltroStatus) lista=lista.filter(r=>r.status===reembFiltroStatus);
-  lista.sort((a,b)=>{
-    const ra=a.status==='resolvido'?1:0, rb=b.status==='resolvido'?1:0;
-    if(ra!==rb) return ra-rb;
-    return reembDataRef(b).localeCompare(reembDataRef(a));
-  });
+  const ordena=(a,b)=>reembDataRef(b).localeCompare(reembDataRef(a));
+  let listaHTML;
+  if(reembFiltroStatus){
+    // filtro de status explícito → lista plana
+    const flat=lista.filter(r=>r.status===reembFiltroStatus).sort(ordena);
+    listaHTML=`<div id="reembLista">${flat.length?flat.map(renderReembCard).join(''):'<p class="empty-state">Nenhum caso neste mês com esse filtro.</p>'}</div>`;
+  } else {
+    const ativos=lista.filter(r=>r.status!=='resolvido').sort(ordena);
+    const resolvidos=lista.filter(r=>r.status==='resolvido').sort(ordena);
+    const ativosHTML=ativos.length?ativos.map(renderReembCard).join(''):'<p class="empty-state">Nenhum caso em aberto neste mês.</p>';
+    const resolvHTML=resolvidos.length?`
+      <div class="reemb-resolv">
+        <button class="reemb-resolv-head" onclick="toggleReembResolvidos()">
+          <span>Resolvidos <span class="reemb-resolv-count">${resolvidos.length}</span></span>
+          <span id="reembResolvCaret">${reembResolvidosOpen?'▴':'▾'}</span>
+        </button>
+        <div id="reembResolvLista" style="display:${reembResolvidosOpen?'block':'none'};margin-top:10px;">${resolvidos.map(renderReembCard).join('')}</div>
+      </div>`:'';
+    listaHTML=`<div id="reembLista">${ativosHTML}</div>${resolvHTML}`;
+  }
 
   container.innerHTML=`
     <div class="cal-summary">
@@ -4746,6 +4776,20 @@ function renderReembolsos(){
       <div class="cob-card"><div class="cob-card-label">Desistências</div><div class="cob-card-value" style="color:#C07A00;">${desist}</div></div>
       <div class="cob-card"><div class="cob-card-label">A reembolsar</div><div class="cob-card-value">${fmtBRL(aReembolsar)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${fmtBRL(pago)} pago</div></div>
       <div class="cob-card"><div class="cob-card-label">Pendente</div><div class="cob-card-value coral">${fmtBRL(aReembolsar-pago)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">a pagar</div></div>
+    </div>
+    <div class="reemb-viz">
+      <div class="reemb-viz-card">
+        <p class="reemb-viz-title">Casos por dia — últimos 14 dias</p>
+        <div style="height:180px;position:relative;"><canvas id="reembChartCanvas"></canvas></div>
+        <div class="reemb-legend">
+          <span><span class="reemb-leg-dot" style="background:var(--coral);"></span>Cancelamento</span>
+          <span><span class="reemb-leg-dot" style="background:#C07A00;"></span>Desistência</span>
+        </div>
+      </div>
+      <div class="reemb-viz-card">
+        <p class="reemb-viz-title">Principais motivos — ${MESES_NOMES[reembMes]}</p>
+        ${buildMotivosHTML(doMes)}
+      </div>
     </div>
     <div class="reemb-analise">
       <span>💸 Reembolsados: <b>${reembFeitos}</b></span>
@@ -4764,7 +4808,60 @@ function renderReembolsos(){
         <option value="resolvido" ${reembFiltroStatus==='resolvido'?'selected':''}>Resolvido</option>
       </select>
     </div>
-    <div id="reembLista">${lista.length?lista.map(renderReembCard).join(''):'<p class="empty-state">Nenhum caso neste mês com esse filtro.</p>'}</div>`;
+    ${listaHTML}`;
+  renderReembChart();
+}
+
+function renderReembChart(){
+  const canvas=document.getElementById('reembChartCanvas');
+  if(!canvas||typeof Chart==='undefined') return;
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const dias=[];
+  for(let i=13;i>=0;i--){const d=new Date(hoje);d.setDate(hoje.getDate()-i);dias.push(d.toISOString().split('T')[0]);}
+  const cancel={}, desist={};
+  dias.forEach(d=>{cancel[d]=0;desist[d]=0;});
+  todosReembolsos.forEach(r=>{
+    const d=reembDataRef(r);
+    if(d in cancel){ if(r.tipo==='cancelamento')cancel[d]++; else if(r.tipo==='desistencia')desist[d]++; }
+  });
+  if(window._reembChart) window._reembChart.destroy();
+  window._reembChart=new Chart(canvas,{
+    type:'bar',
+    data:{labels:dias.map(d=>{const p=d.split('-');return p[2]+'/'+p[1];}),datasets:[
+      {label:'Cancelamento',data:dias.map(d=>cancel[d]),backgroundColor:'rgba(212,87,42,0.85)',borderRadius:3,stack:'s'},
+      {label:'Desistência',data:dias.map(d=>desist[d]),backgroundColor:'rgba(192,122,0,0.85)',borderRadius:3,stack:'s'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>items[0].label}}},
+      scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:9},color:'#aaa',maxTicksLimit:14}},
+        y:{stacked:true,beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:10},color:'#aaa',precision:0,stepSize:1}}}}
+  });
+}
+
+function buildMotivosHTML(cases){
+  const counts={};
+  cases.forEach(r=>{
+    const m=(r.motivo||'').trim();
+    if(!m) return;
+    const key=m.toLowerCase();
+    if(!counts[key]) counts[key]={label:m,n:0};
+    counts[key].n++;
+  });
+  const arr=Object.keys(counts).map(k=>counts[k]).sort((a,b)=>b.n-a.n).slice(0,6);
+  if(!arr.length) return '<p style="font-size:13px;color:var(--muted);padding:24px 0;text-align:center;">Nenhum motivo registrado ainda</p>';
+  const max=arr[0].n;
+  return '<div class="reemb-motivos">'+arr.map(m=>`
+    <div class="reemb-motivo">
+      <div class="reemb-motivo-top"><span>${escHtml(m.label)}</span><b>${m.n}</b></div>
+      <div class="reemb-motivo-bar"><div class="reemb-motivo-fill" style="width:${Math.round(m.n/max*100)}%;"></div></div>
+    </div>`).join('')+'</div>';
+}
+
+function toggleReembResolvidos(){
+  reembResolvidosOpen=!reembResolvidosOpen;
+  const el=document.getElementById('reembResolvLista');
+  const c=document.getElementById('reembResolvCaret');
+  if(el) el.style.display=reembResolvidosOpen?'block':'none';
+  if(c) c.textContent=reembResolvidosOpen?'▴':'▾';
 }
 
 function renderReembCard(r){
