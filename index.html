@@ -2050,11 +2050,21 @@ function toggleParcelas(){
 
 // ── VENDAS ──
 let todasVendas=[];
+let reembParcialVendas=new Set(); // venda_ids com reembolso (parcial) — só p/ marcação visual
 async function carregarVendas(){
   const tbody=document.getElementById('vendasTbody');
   tbody.innerHTML='<tr><td colspan="11" class="empty-state">Carregando...</td></tr>';
   try{
-    todasVendas=await supaFetch('vendas?order=data_venda.desc,created_at.desc&select=*');
+    const [vendas,reembs]=await Promise.all([
+      supaFetch('vendas?order=data_venda.desc,created_at.desc&select=*'),
+      supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status_reembolso,reembolsos_pagamentos(valor,status)').catch(()=>[])
+    ]);
+    todasVendas=vendas;
+    reembParcialVendas=new Set();
+    (reembs||[]).forEach(r=>{
+      const pago=(r.reembolsos_pagamentos||[]).filter(p=>p.status==='pago').reduce((a,p)=>a+Number(p.valor||0),0);
+      if(r.status_reembolso==='reembolsado'||pago>0) reembParcialVendas.add(r.venda_id);
+    });
     filtrarVendas();
   }catch(e){tbody.innerHTML='<tr><td colspan="11" class="empty-state">Erro ao carregar vendas.</td></tr>';}
 }
@@ -2096,7 +2106,7 @@ function filtrarVendas(){
       <td style="font-weight:500">${fmtBRL(v.valor_bruto)}</td>
       <td>${fmtBRL(v.valor_liquido)}</td>
       <td>${Number(v.valor_restante||0)>0?fmtBRL(v.valor_restante):'—'}</td>
-      <td><span class="status-badge s-${v.status||'confirmada'}">${cap(v.status||'confirmada')}</span></td>
+      <td style="white-space:nowrap"><span class="status-badge s-${v.status||'confirmada'}">${cap(v.status||'confirmada')}</span>${(v.status!=='reembolso'&&reembParcialVendas.has(v.id))?' <span class="status-badge reemb-badge" title="Esta venda teve reembolso parcial">↩ parcial</span>':''}</td>
       <td style="white-space:nowrap">
         ${(()=>{const lp=v.links_pagamento?(Array.isArray(v.links_pagamento)?v.links_pagamento:JSON.parse(v.links_pagamento||'[]')):[];return lp.length>0?`<span title="${lp.length} comprovante(s)" style="color:var(--green);font-size:13px;margin-right:4px;">📎</span>`:''})()}
         <button class="btn-edit" onclick='abrirDetalheVenda(${JSON.stringify(v).replace(/'/g,"\'")})'  title="Ver detalhes">&#9998;</button>
