@@ -507,6 +507,8 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .reemb-acomp-field label { font-size:11px; font-weight:500; color:var(--muted); display:flex; align-items:center; }
 .reemb-acomp-field select { width:100%; }
 .reemb-badge-neutro { background:#EFEFEC; color:#6B6B6B; }
+.rf-parc-pago { display:flex; align-items:center; gap:4px; font-size:12px; color:var(--muted); white-space:nowrap; cursor:pointer; flex-shrink:0; }
+.rf-parc-pago input { width:14px; height:14px; accent-color:var(--green); margin:0; cursor:pointer; }
 .reemb-viz { display:grid; grid-template-columns:1.4fr 1fr; gap:12px; margin-bottom:16px; }
 .reemb-viz-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:16px 18px; }
 .reemb-viz-title { font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
@@ -1340,6 +1342,13 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <div class="vf-section">
       <p class="vf-section-title">Financeiro</p>
       <div class="vf-grid-2">
+        <div class="vf-field"><label>Modalidade do reembolso</label>
+          <select id="rfModalidade" onchange="aoMudarModalidade()">
+            <option value="">Selecione</option>
+            <option value="integral">Integral (devolve a venda toda)</option>
+            <option value="parcial">Parcial (devolve só uma parte)</option>
+          </select>
+        </div>
         <div class="vf-field"><label>Valor total a reembolsar (R$)</label><input type="number" id="rfValor" min="0" step="0.01" value="0" oninput="recalcParcelasInfo();recalcRetido()"></div>
         <div class="vf-field"><label>Valor retido — multa/taxa (R$)</label><input type="number" id="rfValorRetido" min="0" step="0.01" value="0" oninput="recalcRetido()"></div>
         <div class="vf-field"><label>Forma do reembolso</label>
@@ -1890,12 +1899,13 @@ async function carregarHomeSnapshot(){
       supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=not.in.(cancelada,reembolso)&select=*'),
       supaFetch('vendas?data_venda=eq.'+hojStr+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,closer'),
       supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+primeiroDia+'&data_prevista=lte.'+ultimoDia+'&select=valor_bruto'),
-      supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,vendas!inner(data_venda),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
+      supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,modalidade,vendas!inner(data_venda,valor_bruto),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
     ]);
 
     const totalReembMes=(reembMes||[]).reduce((s,r)=>{
       const pago=(r.reembolsos_pagamentos||[]).filter(p=>p.status==='pago').reduce((a,p)=>a+Number(p.valor||0),0);
-      return s+(r.status_reembolso==='reembolsado'?Number(r.valor_total||0):pago);
+      const integral=r.modalidade?r.modalidade==='integral':(Number((r.vendas&&r.vendas.valor_bruto)||0)>0&&Number(r.valor_total||0)>=Number(r.vendas.valor_bruto||0)-0.01);
+      return s+((integral&&r.status_reembolso==='reembolsado')?Number(r.valor_total||0):pago);
     },0);
     const recebidoMes=Math.max(0,pgRecebidosMes.reduce((s,p)=>s+Number(p.valor_bruto||0),0)-totalReembMes);
     const fatHoje=vendaHoje.reduce((s,v)=>s+Number(v.valor_bruto||0),0);
@@ -1940,7 +1950,7 @@ async function carregarDashboard(){
     const [todas, pgRecebidos, reembImpacto]=await Promise.all([
       supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&select=*'),
       supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+primeiroDia+'&data_prevista=lte.'+ultimoDia+'&select=valor_bruto,valor_liquido'),
-      supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,vendas!inner(data_venda),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
+      supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,modalidade,vendas!inner(data_venda,valor_bruto),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
     ]);
     const vendas=todas.filter(v=>v.status!=='cancelada'&&v.status!=='reembolso');
     // Valor reembolsado atribuído às vendas deste mês:
@@ -1948,7 +1958,8 @@ async function carregarDashboard(){
     //  - parcial/em andamento → só o que já foi pago (parcelas pagas)
     const totalReemb=(reembImpacto||[]).reduce((s,r)=>{
       const pago=(r.reembolsos_pagamentos||[]).filter(p=>p.status==='pago').reduce((a,p)=>a+Number(p.valor||0),0);
-      return s+(r.status_reembolso==='reembolsado'?Number(r.valor_total||0):pago);
+      const integral=r.modalidade?r.modalidade==='integral':(Number((r.vendas&&r.vendas.valor_bruto)||0)>0&&Number(r.valor_total||0)>=Number(r.vendas.valor_bruto||0)-0.01);
+      return s+((integral&&r.status_reembolso==='reembolsado')?Number(r.valor_total||0):pago);
     },0);
     const reembCount=(reembImpacto||[]).length;
     const fatBruto=Math.max(0,pgRecebidos.reduce((s,p)=>s+Number(p.valor_bruto||0),0)-totalReemb);
@@ -5375,8 +5386,9 @@ async function sincronizarVendaDoReembolso(r){
     const v=await supaFetch('vendas?id=eq.'+r.venda_id+'&select=status,valor_bruto');
     if(!v[0]) return;
     const valVenda=Number(v[0].valor_bruto||0);
-    // integral = reembolsado e o valor do reembolso cobre a venda toda
-    const integral = r.status_reembolso==='reembolsado' && valVenda>0 && Number(r.valor_total||0)>=valVenda-0.01;
+    // integral pela modalidade escolhida (fallback: valor cobre a venda toda)
+    const ehIntegral = r.modalidade ? r.modalidade==='integral' : (valVenda>0 && Number(r.valor_total||0)>=valVenda-0.01);
+    const integral = ehIntegral && r.status_reembolso==='reembolsado';
     if(integral){
       if(v[0].status!=='reembolso') await supaFetch('vendas?id=eq.'+r.venda_id,{method:'PATCH',body:JSON.stringify({status:'reembolso'})});
     } else {
@@ -5456,6 +5468,14 @@ function recalcRetido(){
     partes.push('⚠️ venda ≠ reembolso+retido');
   ref.textContent=partes.join('  ·  ');
 }
+function aoMudarModalidade(){
+  // Integral: o reembolso devolve a venda toda — preenche o valor automático se houver venda vinculada
+  if(document.getElementById('rfModalidade').value==='integral' && _rfVendaValor>0){
+    document.getElementById('rfValor').value=_rfVendaValor;
+    document.getElementById('rfValorRetido').value=0;
+    recalcParcelasInfo(); recalcRetido();
+  }
+}
 function recalcJanelaArrep(){
   const el=document.getElementById('rfJanelaArrep'); if(!el) return;
   const compra=document.getElementById('rfDataCompra').value;
@@ -5467,16 +5487,16 @@ function recalcJanelaArrep(){
   const dentro=dias<=7;
   el.innerHTML=`<span class="status-badge ${dentro?'s-cancelada':'s-confirmada'}">${dentro?'Dentro dos 7 dias':'Fora dos 7 dias'}</span> <span style="font-size:12px;color:var(--muted);">${dias} dia(s) entre compra e pedido${dentro?' — reembolso obrigatório (arrependimento)':' — negociável'}</span>`;
 }
-function addParcelaRow(valor,data,pid,status){
+function addParcelaRow(valor,data,pid,status,dataPag){
   const wrap=document.getElementById('rfParcelasWrap');
   const div=document.createElement('div');
   div.style.cssText='display:flex;gap:6px;align-items:center;';
   div.dataset.pid=pid||'';
+  div.dataset.datapag=(dataPag||'').split('T')[0]||'';
   const inStyle='font-family:Inter,sans-serif;font-size:13px;border:0.5px solid var(--border);border-radius:8px;background:var(--cream);padding:9px 12px;outline:none;flex:1;';
-  const pago=status==='pago'?'<span class="status-badge s-confirmada" style="flex-shrink:0;">pago</span>':'';
   div.innerHTML=`<input type="number" class="rf-parc-valor" placeholder="Valor R$" step="0.01" min="0" value="${valor||''}" style="${inStyle}" oninput="recalcParcelasInfo()">
-    <input type="date" class="rf-parc-data" value="${data||''}" style="${inStyle}">
-    ${pago}
+    <input type="date" class="rf-parc-data" value="${(data||'').split('T')[0]||''}" style="${inStyle}">
+    <label class="rf-parc-pago" title="Dar baixa: marcar como paga"><input type="checkbox" class="rf-parc-check" ${status==='pago'?'checked':''}> paga</label>
     <button type="button" onclick="this.parentNode.remove();recalcParcelasInfo();" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;padding:0 4px;line-height:1;">✕</button>`;
   wrap.appendChild(div);
 }
@@ -5511,6 +5531,7 @@ async function abrirFormReemb(id){
     g('rfValor').value=r.valor_total||0;
     g('rfValorRetido').value=r.valor_retido||0;
     g('rfForma').value=r.forma_reembolso||'';
+    g('rfModalidade').value=r.modalidade||'';
     g('rfDataCompra').value=(r.data_compra||'').split('T')[0];
     const vv=vendasParaReemb.find(x=>x.id===r.venda_id);
     _rfVendaValor=vv?Number(vv.valor_bruto||vv.valor_liquido||0):0;
@@ -5524,7 +5545,7 @@ async function abrirFormReemb(id){
     if(parcNota) parcNota.style.display='none';
     g('rfParcelasWrap').innerHTML='';
     const ps=(r.reembolsos_pagamentos||[]).slice().sort((a,b)=>((a.data_prevista||'')+'').localeCompare((b.data_prevista||'')+''));
-    if(ps.length) ps.forEach(p=>addParcelaRow(p.valor,(p.data_prevista||'').split('T')[0],p.id,p.status));
+    if(ps.length) ps.forEach(p=>addParcelaRow(p.valor,(p.data_prevista||'').split('T')[0],p.id,p.status,p.data_pagamento));
     else addParcelaRow();
   } else {
     g('reembFormTitle').textContent='Novo caso de reembolso';
@@ -5534,7 +5555,7 @@ async function abrirFormReemb(id){
     g('rfDataSolic').value=new Date().toISOString().split('T')[0];
     g('rfContrato').value=''; g('rfCloser').value=''; g('rfEstrategista').value='';
     g('rfResponsavel').value=''; g('rfValor').value=0; g('rfMotivo').value=''; g('rfObs').value='';
-    g('rfValorRetido').value=0; g('rfForma').value=''; g('rfDataCompra').value='';
+    g('rfValorRetido').value=0; g('rfForma').value=''; g('rfModalidade').value=''; g('rfDataCompra').value='';
     _rfVendaValor=0;
     g('rfStatusReemb').value='pendente'; g('rfStatusBaixa').value='pendente';
     g('rfStatusDistrato').value='pendente'; g('rfStatusNf').value='nao_aplicavel';
@@ -5561,6 +5582,7 @@ async function salvarReemb(){
     valor_total:parseFloat(document.getElementById('rfValor').value)||0,
     valor_retido:parseFloat(document.getElementById('rfValorRetido').value)||0,
     forma_reembolso:document.getElementById('rfForma').value||null,
+    modalidade:document.getElementById('rfModalidade').value||null,
     data_compra:document.getElementById('rfDataCompra').value||null,
     motivo:document.getElementById('rfMotivo').value.trim()||null,
     observacoes:document.getElementById('rfObs').value.trim()||null,
@@ -5579,12 +5601,17 @@ async function salvarReemb(){
       body.aberto_por=currentUser?currentUser.nome:null;
       const novo=await supaFetch('reembolsos',{method:'POST',body:JSON.stringify(body)});
       const novoId=novo[0].id;
-      const parcelas=[...document.querySelectorAll('#rfParcelasWrap > div')].map(row=>({
-        reembolso_id:novoId,
-        valor:parseFloat(row.querySelector('.rf-parc-valor').value)||0,
-        data_prevista:row.querySelector('.rf-parc-data').value||null,
-        status:'pendente'
-      })).filter(p=>p.valor>0);
+      const hojeISO=new Date().toISOString().split('T')[0];
+      const parcelas=[...document.querySelectorAll('#rfParcelasWrap > div')].map(row=>{
+        const pago=row.querySelector('.rf-parc-check').checked;
+        return {
+          reembolso_id:novoId,
+          valor:parseFloat(row.querySelector('.rf-parc-valor').value)||0,
+          data_prevista:row.querySelector('.rf-parc-data').value||null,
+          status:pago?'pago':'pendente',
+          data_pagamento:pago?(row.dataset.datapag||hojeISO):null
+        };
+      }).filter(p=>p.valor>0);
       if(parcelas.length) await supaFetch('reembolsos_pagamentos',{method:'POST',body:JSON.stringify(parcelas)});
     }
     await sincronizarVendaDoReembolso({venda_id:body.venda_id,status_reembolso:body.status_reembolso,valor_total:body.valor_total});
@@ -5597,16 +5624,20 @@ async function sincronizarParcelas(id){
   const existentes=((r&&r.reembolsos_pagamentos)||[]).map(p=>p.id);
   const rows=[...document.querySelectorAll('#rfParcelasWrap > div')];
   const mantidos=[];
+  const hojeISO=new Date().toISOString().split('T')[0];
   for(const row of rows){
     const valor=parseFloat(row.querySelector('.rf-parc-valor').value)||0;
     const data=row.querySelector('.rf-parc-data').value||null;
     const pid=row.dataset.pid;
     if(valor<=0) continue; // linha vazia/zerada é ignorada (e removida abaixo se tinha id)
+    const pago=row.querySelector('.rf-parc-check').checked;
+    const status=pago?'pago':'pendente';
+    const dataPag=pago?(row.dataset.datapag||hojeISO):null;
     if(pid){
       mantidos.push(pid);
-      await supaFetch('reembolsos_pagamentos?id=eq.'+pid,{method:'PATCH',body:JSON.stringify({valor,data_prevista:data})});
+      await supaFetch('reembolsos_pagamentos?id=eq.'+pid,{method:'PATCH',body:JSON.stringify({valor,data_prevista:data,status,data_pagamento:dataPag})});
     } else {
-      await supaFetch('reembolsos_pagamentos',{method:'POST',body:JSON.stringify({reembolso_id:id,valor,data_prevista:data,status:'pendente'})});
+      await supaFetch('reembolsos_pagamentos',{method:'POST',body:JSON.stringify({reembolso_id:id,valor,data_prevista:data,status,data_pagamento:dataPag})});
     }
   }
   for(const eid of existentes){
