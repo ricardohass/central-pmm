@@ -472,7 +472,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .cal-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:24px; }
 .cob-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:16px 18px; }
 .cob-card-label { font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
-.cob-card-value { font-family:'Playfair Display',serif; font-size:24px; font-weight:400; color:var(--green); line-height:1.2; }
+.cob-card-value { font-family:'Playfair Display',serif; font-size:24px; font-weight:400; color:var(--green); line-height:1.2; white-space:nowrap; }
 .cob-card-value.coral { color:var(--coral); }
 .cob-card-value.amber { color:#C07A00; }
 /* Reembolsos */
@@ -1623,7 +1623,7 @@ async function supaFetch(path,opts={}){
   const t=await res.text(); return t?JSON.parse(t):[];
 }
 
-const fmtBRL=v=>v==null?'—':'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtBRL=v=>v==null?'—':'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtDataBR=iso=>{if(!iso)return'—';const[y,m,d]=iso.split('T')[0].split('-');return d+'/'+m+'/'+y;};
 const MESES_NOMES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
