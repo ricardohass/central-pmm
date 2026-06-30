@@ -522,8 +522,15 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .reemb-resolv-head { width:100%; display:flex; justify-content:space-between; align-items:center; background:none; border:none; border-top:0.5px solid var(--border); padding:14px 2px 4px; cursor:pointer; font-family:'Inter',sans-serif; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
 .reemb-resolv-count { background:var(--cream2); color:var(--text); border-radius:20px; padding:1px 9px; margin-left:6px; font-size:11px; }
 @media (max-width:760px){ .reemb-viz { grid-template-columns:1fr; } }
-.reemb-filtros { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:-6px 0 18px; }
-.reemb-filtros-lbl { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-right:2px; }
+.reemb-filtros { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:12px 16px; margin:-6px 0 18px; display:flex; flex-direction:column; gap:9px; }
+.reemb-filtros-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.reemb-filtros-lbl { font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+.reemb-filtro-linha { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.reemb-filtro-nome { font-size:12px; color:var(--text); min-width:80px; font-weight:500; }
+.reemb-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.reemb-chip { font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); background:var(--cream); border:0.5px solid var(--border); border-radius:20px; padding:4px 12px; cursor:pointer; transition:background .12s,color .12s,border-color .12s; }
+.reemb-chip:hover { border-color:var(--coral); color:var(--text); }
+.reemb-chip.on { background:var(--coral); color:#fff; border-color:var(--coral); }
 .cal-wrap { background:#fff; border:0.5px solid var(--border); border-radius:12px; overflow:hidden; }
 .cal-grid-header { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:0.5px solid var(--border); }
 .cal-day-name { padding:10px 0; text-align:center; font-size:11px; font-weight:600; color:var(--muted); }
@@ -4681,7 +4688,7 @@ async function atualizarDataPagamento(id,novaData,dateStrOriginal){
 // ══════════════════════════ REEMBOLSOS ══════════════════════════
 let reembAno=new Date().getFullYear(), reembMes=new Date().getMonth();
 let reembFiltroTipo='', reembFiltroStatus='';
-let reembFiltroStatusReemb='', reembFiltroBaixa='', reembFiltroDistrato='', reembFiltroNf='';
+let reembFiltroStatusReemb=[], reembFiltroBaixa=[], reembFiltroDistrato=[], reembFiltroNf=[];
 let reembResolvidosOpen=false;
 let todosReembolsos=[];
 let vendasParaReemb=[];
@@ -4746,20 +4753,26 @@ function mudarReembMes(d){
 }
 function setReembTipo(t){reembFiltroTipo=t;renderReembolsos();}
 function setReembStatus(s){reembFiltroStatus=s;renderReembolsos();}
-function filtroOpSelect(qual,label,mapa,valorAtual){
-  const opts='<option value="">'+label+': todos</option>'+Object.keys(mapa).map(k=>`<option value="${k}" ${valorAtual===k?'selected':''}>${label}: ${mapa[k]}</option>`).join('');
-  return `<select class="filtro-input" style="width:auto;" onchange="setReembFiltroOp('${qual}',this.value)">${opts}</select>`;
+function _reembArrFiltro(qual){
+  if(qual==='reembolso')return reembFiltroStatusReemb;
+  if(qual==='baixa')return reembFiltroBaixa;
+  if(qual==='distrato')return reembFiltroDistrato;
+  if(qual==='nf')return reembFiltroNf;
+  return [];
 }
-function setReembFiltroOp(qual,val){
-  if(qual==='reembolso')reembFiltroStatusReemb=val;
-  else if(qual==='baixa')reembFiltroBaixa=val;
-  else if(qual==='distrato')reembFiltroDistrato=val;
-  else if(qual==='nf')reembFiltroNf=val;
+function filtroChips(qual,label,mapa,arrSel){
+  const chips=Object.keys(mapa).map(k=>`<button class="reemb-chip${arrSel.includes(k)?' on':''}" onclick="toggleReembFiltroOp('${qual}','${k}')">${mapa[k]}</button>`).join('');
+  return `<div class="reemb-filtro-linha"><span class="reemb-filtro-nome">${label}</span><div class="reemb-chips">${chips}</div></div>`;
+}
+function toggleReembFiltroOp(qual,val){
+  const arr=_reembArrFiltro(qual);
+  const i=arr.indexOf(val);
+  if(i>=0)arr.splice(i,1); else arr.push(val);
   renderReembolsos();
 }
 function limparFiltrosReemb(){
   reembFiltroTipo='';reembFiltroStatus='';
-  reembFiltroStatusReemb='';reembFiltroBaixa='';reembFiltroDistrato='';reembFiltroNf='';
+  reembFiltroStatusReemb=[];reembFiltroBaixa=[];reembFiltroDistrato=[];reembFiltroNf=[];
   renderReembolsos();
 }
 
@@ -4781,12 +4794,12 @@ function renderReembolsos(){
 
   let base=doMes.slice();
   if(reembFiltroTipo) base=base.filter(r=>r.tipo===reembFiltroTipo);
-  if(reembFiltroStatusReemb) base=base.filter(r=>(r.status_reembolso||'pendente')===reembFiltroStatusReemb);
-  if(reembFiltroBaixa) base=base.filter(r=>(r.status_baixa||'pendente')===reembFiltroBaixa);
-  if(reembFiltroDistrato) base=base.filter(r=>(r.status_distrato||'pendente')===reembFiltroDistrato);
-  if(reembFiltroNf) base=base.filter(r=>(r.status_nf||'nao_aplicavel')===reembFiltroNf);
+  if(reembFiltroStatusReemb.length) base=base.filter(r=>reembFiltroStatusReemb.includes(r.status_reembolso||'pendente'));
+  if(reembFiltroBaixa.length) base=base.filter(r=>reembFiltroBaixa.includes(r.status_baixa||'pendente'));
+  if(reembFiltroDistrato.length) base=base.filter(r=>reembFiltroDistrato.includes(r.status_distrato||'pendente'));
+  if(reembFiltroNf.length) base=base.filter(r=>reembFiltroNf.includes(r.status_nf||'nao_aplicavel'));
   const ordena=(a,b)=>reembDataRef(b).localeCompare(reembDataRef(a));
-  const temFiltroPlano=reembFiltroStatus||reembFiltroStatusReemb||reembFiltroBaixa||reembFiltroDistrato||reembFiltroNf;
+  const temFiltroPlano=reembFiltroStatus||reembFiltroStatusReemb.length||reembFiltroBaixa.length||reembFiltroDistrato.length||reembFiltroNf.length;
   let listaHTML;
   if(temFiltroPlano){
     // qualquer filtro de status/operacional → lista plana (sem separar resolvidos)
@@ -4850,12 +4863,14 @@ function renderReembolsos(){
       </select>
     </div>
     <div class="reemb-filtros">
-      <span class="reemb-filtros-lbl">Acompanhamento:</span>
-      ${filtroOpSelect('reembolso','Reembolso',STATUS_REEMB,reembFiltroStatusReemb)}
-      ${filtroOpSelect('baixa','Baixa',STATUS_BAIXA,reembFiltroBaixa)}
-      ${filtroOpSelect('distrato','Distrato',STATUS_DISTRATO,reembFiltroDistrato)}
-      ${filtroOpSelect('nf','NF',STATUS_NF,reembFiltroNf)}
-      ${(reembFiltroStatus||reembFiltroStatusReemb||reembFiltroBaixa||reembFiltroDistrato||reembFiltroNf||reembFiltroTipo)?'<button class="btn-limpar" onclick="limparFiltrosReemb()">Limpar filtros</button>':''}
+      <div class="reemb-filtros-head">
+        <span class="reemb-filtros-lbl">Acompanhamento — marque um ou mais</span>
+        ${(reembFiltroStatusReemb.length||reembFiltroBaixa.length||reembFiltroDistrato.length||reembFiltroNf.length||reembFiltroStatus||reembFiltroTipo)?'<button class="btn-limpar" onclick="limparFiltrosReemb()">Limpar filtros</button>':''}
+      </div>
+      ${filtroChips('reembolso','Reembolso',STATUS_REEMB,reembFiltroStatusReemb)}
+      ${filtroChips('baixa','Baixa',STATUS_BAIXA,reembFiltroBaixa)}
+      ${filtroChips('distrato','Distrato',STATUS_DISTRATO,reembFiltroDistrato)}
+      ${filtroChips('nf','Nota fiscal',STATUS_NF,reembFiltroNf)}
     </div>
     ${listaHTML}`;
   renderReembChart();
