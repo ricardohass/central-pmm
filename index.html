@@ -564,6 +564,10 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .cal-dot.atrasado { background:#FEE2E2; color:#991B1B; }
 .cal-dot.pendente  { background:#FEF3E2; color:#92600A; }
 .cal-dot.recebido  { background:#ECFDF5; color:#065F46; }
+.cal-dot.reemb     { background:#EDE9FE; color:#5B21B6; }
+.cal-dot.reemb-atrasado { background:#DDD6FE; color:#5B21B6; border:0.5px solid #7C3AED; }
+.cal-dot.reemb-pago { background:#F3F0FF; color:#8B7DB8; }
+.status-badge.reemb-badge { background:#EDE9FE; color:#6D28D9; }
 .cal-detail { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:20px; margin-top:16px; }
 .cal-detail-title { font-size:13px; font-weight:500; color:var(--text); margin-bottom:12px; padding-bottom:10px; border-bottom:0.5px solid var(--border); }
 .cob-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:0.5px solid var(--border); flex-wrap:wrap; }
@@ -4508,6 +4512,7 @@ async function carregarPgtosNoForm(v){
 let calMes=new Date().getMonth();
 let calAno=new Date().getFullYear();
 let todosPagamentos=[];
+let todosReembPagamentos=[];
 
 async function carregarCobrancas(){
   const container=document.getElementById('cobrancasContent');
@@ -4516,11 +4521,21 @@ async function carregarCobrancas(){
   try{
     const hoje=new Date();
     const anoMes=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
-    const [pendentes,recebidosMes]=await Promise.all([
+    const [pendentes,recebidosMes,reembPags]=await Promise.all([
       supaFetch('pagamentos_venda?status=eq.pendente&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
       supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+anoMes+'-01&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
+      supaFetch('reembolsos_pagamentos?select=*,reembolsos(nome_cliente,id,closer,responsavel,tipo)&order=data_prevista.asc').catch(()=>[]),
     ]);
     todosPagamentos=[...pendentes,...recebidosMes];
+    todosReembPagamentos=(reembPags||[]).filter(rp=>rp.data_prevista).map(rp=>({
+      id:rp.id, categoria:'reembolso',
+      data_prevista:rp.data_prevista, valor:Number(rp.valor||0),
+      status:rp.status, data_pagamento:rp.data_pagamento,
+      nome_cliente:(rp.reembolsos&&rp.reembolsos.nome_cliente)||'Cliente',
+      closer:(rp.reembolsos&&rp.reembolsos.closer)||'',
+      responsavel:(rp.reembolsos&&rp.reembolsos.responsavel)||'',
+      reembolso_id:rp.reembolsos&&rp.reembolsos.id
+    }));
     renderCobrancas();
   }catch(e){
     container.innerHTML='<div style="text-align:center;padding:48px;color:var(--coral);font-size:13px;">Erro ao carregar cobranças.<br><span style="color:var(--muted);font-size:12px;">Verifique se a tabela <code>pagamentos_venda</code> foi criada no Supabase.</span></div>';
@@ -4539,13 +4554,16 @@ function renderCobrancas(){
   const prox7=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista>hojStr&&p.data_prevista<=em7Str);
   const recMes=todosPagamentos.filter(p=>p.status==='recebido');
   const sumBRL=arr=>fmtBRL(arr.reduce((s,p)=>s+Number(p.valor_bruto||0),0));
+  const reembPend=todosReembPagamentos.filter(p=>p.status==='pendente');
+  const reembSum=fmtBRL(reembPend.reduce((s,p)=>s+Number(p.valor||0),0));
 
   container.innerHTML=`
     <div class="cal-summary">
-      <div class="cob-card"><div class="cob-card-label">Atrasado</div><div class="cob-card-value coral">${sumBRL(atrasados)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${atrasados.length} pagamento(s)</div></div>
-      <div class="cob-card"><div class="cob-card-label">Vence hoje</div><div class="cob-card-value amber">${sumBRL(hojeArr)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${hojeArr.length} pagamento(s)</div></div>
-      <div class="cob-card"><div class="cob-card-label">Próx. 7 dias</div><div class="cob-card-value">${sumBRL(prox7)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${prox7.length} pagamento(s)</div></div>
+      <div class="cob-card"><div class="cob-card-label">Atrasado</div><div class="cob-card-value coral">${sumBRL(atrasados)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${atrasados.length} a receber</div></div>
+      <div class="cob-card"><div class="cob-card-label">Vence hoje</div><div class="cob-card-value amber">${sumBRL(hojeArr)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${hojeArr.length} a receber</div></div>
+      <div class="cob-card"><div class="cob-card-label">Próx. 7 dias</div><div class="cob-card-value">${sumBRL(prox7)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${prox7.length} a receber</div></div>
       <div class="cob-card"><div class="cob-card-label">Recebido (mês)</div><div class="cob-card-value" style="color:#2E7D52;">${sumBRL(recMes)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${recMes.length} pagamento(s)</div></div>
+      <div class="cob-card" style="border-color:#C4B5FD;"><div class="cob-card-label" style="color:#6D28D9;">Reembolsos a pagar</div><div class="cob-card-value" style="color:#6D28D9;">${reembSum}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${reembPend.length} parcela(s) · saída</div></div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
       <div class="date-nav">
@@ -4557,6 +4575,7 @@ function renderCobrancas(){
         <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#FEE2E2;"></span>Atrasado</span>
         <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#FEF3E2;"></span>Pendente</span>
         <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#ECFDF5;"></span>Recebido</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#EDE9FE;"></span>↩ Reembolso (saída)</span>
       </div>
     </div>
     <div class="cal-wrap">
@@ -4593,9 +4612,9 @@ function renderCalendario(){
   const hoje=new Date(); hoje.setHours(0,0,0,0);
   const hojStr=hoje.toISOString().split('T')[0];
 
-  // Agrupa pagamentos por data
+  // Agrupa pagamentos (cobranças + reembolsos) por data
   const byDate={};
-  todosPagamentos.forEach(p=>{
+  [...todosPagamentos,...todosReembPagamentos].forEach(p=>{
     if(!p.data_prevista) return;
     const key=p.data_prevista.split('T')[0];
     if(!byDate[key]) byDate[key]=[];
@@ -4619,6 +4638,12 @@ function renderCalendario(){
     const pagsDia=byDate[dateStr]||[];
     const isHoje=dateStr===hojStr;
     const dots=pagsDia.slice(0,3).map(p=>{
+      if(p.categoria==='reembolso'){
+        const atr=p.status==='pendente'&&p.data_prevista.split('T')[0]<hojStr;
+        const c=p.status==='pago'?'reemb-pago':atr?'reemb-atrasado':'reemb';
+        const nm=(p.nome_cliente||'Cliente').split(' ')[0];
+        return`<div class="cal-dot ${c}">↩ ${nm} ${fmtBRL(p.valor)}</div>`;
+      }
       const atrasado=p.status==='pendente'&&p.data_prevista<hojStr;
       const cls=p.status==='recebido'?'recebido':atrasado?'atrasado':'pendente';
       const nome=(p.vendas?.nome_cliente||'Cliente').split(' ')[0];
@@ -4647,13 +4672,34 @@ function mostrarDetalheCalDia(dateStr){
   if(!detail) return;
   const hoje=new Date(); hoje.setHours(0,0,0,0);
   const hojStr=hoje.toISOString().split('T')[0];
-  const pagsDia=todosPagamentos.filter(p=>p.data_prevista&&p.data_prevista.split('T')[0]===dateStr);
+  const pagsDia=[...todosPagamentos,...todosReembPagamentos].filter(p=>p.data_prevista&&p.data_prevista.split('T')[0]===dateStr);
   const [ano,mes,dia]=dateStr.split('-');
-  titulo.textContent=`${dia}/${mes}/${ano} — ${pagsDia.length} pagamento(s)`;
+  titulo.textContent=`${dia}/${mes}/${ano} — ${pagsDia.length} lançamento(s)`;
   if(pagsDia.length===0){
     lista.innerHTML='<p style="font-size:13px;color:var(--muted);padding:12px 0;">Nenhum pagamento neste dia.</p>';
   } else {
     lista.innerHTML=pagsDia.map(p=>{
+      if(p.categoria==='reembolso'){
+        const atr=p.status==='pendente'&&p.data_prevista.split('T')[0]<hojStr;
+        const sC=p.status==='pago'?'s-confirmada':atr?'s-cancelada':'reemb-badge';
+        const sL=p.status==='pago'?'Pago':atr?'Atrasado':'A pagar';
+        const dAtual=(p.data_prevista||dateStr).split('T')[0];
+        const pago=p.status==='pago';
+        return`<div class="cob-item" style="border-left:3px solid #7C3AED;">
+          <div class="cob-item-info">
+            <div class="cob-item-cliente">↩ ${escHtml(p.nome_cliente)} <span style="font-size:10px;color:#6D28D9;font-weight:600;">REEMBOLSO</span></div>
+            <div class="cob-item-meta">Saída${p.responsavel?' · resp: '+escHtml(p.responsavel):''}${p.closer?' · '+escHtml(p.closer):''}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:center;flex-shrink:0;">
+            <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Vencimento</span>
+            ${pago?`<span style="font-size:12px;color:var(--muted);">${fmtDataBR(dAtual)}</span>`
+                 :`<input type="date" class="cob-date-input" value="${dAtual}" onchange="atualizarDataReembParcela('${p.id}',this.value,'${dateStr}')">`}
+          </div>
+          <div class="cob-item-valor" style="color:#6D28D9;">${fmtBRL(p.valor)}</div>
+          <span class="status-badge ${sC}">${sL}</span>
+          ${!pago?`<button class="btn-receber" onclick="marcarReembPago('${p.id}','${dateStr}')">✓ Pago</button>`:''}
+        </div>`;
+      }
       const atrasado=p.status==='pendente'&&p.data_prevista<hojStr;
       const sClass=p.status==='recebido'?'s-confirmada':atrasado?'s-cancelada':'s-pendente';
       const sLabel=p.status==='recebido'?'Recebido':atrasado?'Atrasado':'Pendente';
@@ -4713,6 +4759,28 @@ async function atualizarDataPagamento(id,novaData,dateStrOriginal){
     }
     renderCobrancas();
     // Abre o detalhe no novo dia
+    mostrarDetalheCalDia(novaData);
+  }catch(e){pmmAlert('Erro ao atualizar data: '+e.message,'❌','Erro');}
+}
+
+// Parcelas de reembolso no calendário (saída)
+async function marcarReembPago(id,dateStr){
+  const hoje=new Date().toISOString().split('T')[0];
+  try{
+    await supaFetch('reembolsos_pagamentos?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:'pago',data_pagamento:hoje})});
+    const p=todosReembPagamentos.find(x=>x.id===id);
+    if(p){p.status='pago';p.data_pagamento=hoje;}
+    renderCobrancas();
+    mostrarDetalheCalDia(dateStr);
+  }catch(e){pmmAlert('Erro ao marcar como pago: '+e.message,'❌','Erro');}
+}
+async function atualizarDataReembParcela(id,novaData,dateStrOriginal){
+  if(!novaData) return;
+  try{
+    await supaFetch('reembolsos_pagamentos?id=eq.'+id,{method:'PATCH',body:JSON.stringify({data_prevista:novaData})});
+    const p=todosReembPagamentos.find(x=>x.id===id);
+    if(p) p.data_prevista=novaData;
+    renderCobrancas();
     mostrarDetalheCalDia(novaData);
   }catch(e){pmmAlert('Erro ao atualizar data: '+e.message,'❌','Erro');}
 }
