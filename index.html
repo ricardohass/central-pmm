@@ -4561,7 +4561,9 @@ async function carregarPgtosNoForm(v){
   try{
     const rows=await supaFetch('pagamentos_venda?venda_id=eq.'+v.id+'&order=data_prevista.asc&select=*');
     if(rows.length>0){
-      rows.forEach(p=>adicionarPgtoRow(p.data_prevista||'',p.metodo||'PIX',p.gateway||'',p.valor_bruto||'',p.valor_liquido||'',p.status||'pendente',p.parcelas||1));
+      // As parcelas (nº de vezes no cartão) ficam na venda, não em cada pagamento.
+      // Com 1 linha de pagamento, usa v.parcelas; com várias, cada linha é 1x.
+      rows.forEach(p=>adicionarPgtoRow(p.data_prevista||'',p.metodo||'PIX',p.gateway||'',p.valor_bruto||'',p.valor_liquido||'',p.status||'pendente', p.parcelas || (rows.length===1 ? (v.parcelas||1) : 1)));
     } else {
       // Legado: cria uma linha com os dados existentes da venda
       const d=v.data_venda?v.data_venda.split('T')[0]:new Date().toISOString().split('T')[0];
