@@ -1930,6 +1930,17 @@ function switchTab(tab,btn){
 }
 
 // ── DASHBOARD DINÂMICO ──
+// Wonder (agência/recorrência) é contabilizado só pelo valor PAGO (bruto − a receber);
+// o restante fica como "a receber". Ajusta os valores em memória antes das agregações.
+function ajustarWonderPago(arr){
+  (arr||[]).forEach(v=>{
+    if(!((v.produto||'').includes('Wonder'))) return;
+    const b=Number(v.valor_bruto||0), l=Number(v.valor_liquido||0);
+    const pago=Math.max(0,b-Number(v.valor_restante||0));
+    v.valor_bruto=pago;
+    v.valor_liquido=b>0?l*(pago/b):0;
+  });
+}
 async function carregarHomeSnapshot(){
   try{
     const hoje=new Date();
@@ -1940,11 +1951,12 @@ async function carregarHomeSnapshot(){
 
     const [todasMes, vendaHoje, pgRecebidosMes, reembMes] = await Promise.all([
       supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=not.in.(cancelada,reembolso)&select=*'),
-      supaFetch('vendas?data_venda=eq.'+hojStr+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,closer'),
+      supaFetch('vendas?data_venda=eq.'+hojStr+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,valor_restante,produto,closer'),
       supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+primeiroDia+'&data_prevista=lte.'+ultimoDia+'&select=valor_bruto'),
       supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,modalidade,vendas!inner(data_venda,valor_bruto),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
     ]);
 
+    ajustarWonderPago(todasMes); ajustarWonderPago(vendaHoje); // Wonder conta só o pago
     const totalReembMes=(reembMes||[]).reduce((s,r)=>{
       const pago=(r.reembolsos_pagamentos||[]).filter(p=>p.status==='pago').reduce((a,p)=>a+Number(p.valor||0),0);
       const integral=r.modalidade?r.modalidade==='integral':(Number((r.vendas&&r.vendas.valor_bruto)||0)>0&&Number(r.valor_total||0)>=Number(r.vendas.valor_bruto||0)-0.01);
@@ -1995,6 +2007,7 @@ async function carregarDashboard(){
       supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+primeiroDia+'&data_prevista=lte.'+ultimoDia+'&select=valor_bruto,valor_liquido'),
       supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,modalidade,vendas!inner(data_venda,valor_bruto),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
     ]);
+    ajustarWonderPago(todas); // Wonder conta só o valor pago (ranking, origem, gateway, gráfico)
     const vendas=todas.filter(v=>v.status!=='cancelada'&&v.status!=='reembolso');
     // Valor reembolsado atribuído às vendas deste mês:
     //  - integral marcado 'reembolsado' → valor total do caso
@@ -3013,8 +3026,9 @@ async function getFunilDados(de,ate){
   const [funil,perf,vendas]=await Promise.all([
     supaFetch('funil_prevendas?data=gte.'+de+'&data=lte.'+ate+'&select=*'),
     supaFetch('registros_performance?data=gte.'+de+'&data=lte.'+ate+'&select=agendamentos,reunioes,vendas'),
-    supaFetch('vendas?data_venda=gte.'+de+'&data_venda=lte.'+ate+'&select=valor_liquido,status')
+    supaFetch('vendas?data_venda=gte.'+de+'&data_venda=lte.'+ate+'&select=valor_bruto,valor_liquido,valor_restante,produto,status')
   ]);
+  ajustarWonderPago(vendas); // Wonder conta só o pago no faturamento realizado
   const soma=(arr,k)=>arr.reduce((s,r)=>s+(+r[k]||0),0);
   const origem={}; FUNIL_CANAIS.forEach(c=>origem[c]=0);
   funil.forEach(r=>{
