@@ -182,9 +182,22 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .btn-limpar { font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); background:transparent; border:none; cursor:pointer; padding:0 4px; }
 .btn-limpar:hover { color:var(--coral); }
 .vendas-table-wrap { background:#fff; border:0.5px solid var(--border); border-radius:12px; overflow:hidden; overflow-x:auto; }
-.vendas-table { width:100%; border-collapse:collapse; font-size:13px; min-width:900px; }
-.vendas-table th { text-align:left; font-size:11px; font-weight:500; color:var(--muted); padding:12px 14px; border-bottom:0.5px solid var(--border); background:var(--cream); white-space:nowrap; }
-.vendas-table td { padding:11px 14px; border-bottom:0.5px solid var(--border); color:var(--text); }
+.vendas-table { width:100%; border-collapse:collapse; font-size:12px; }
+.vendas-table th { text-align:left; font-size:10px; font-weight:500; color:var(--muted); padding:9px 8px; border-bottom:0.5px solid var(--border); background:var(--cream); white-space:nowrap; }
+.vendas-table td { padding:9px 8px; border-bottom:0.5px solid var(--border); color:var(--text); word-break:break-word; }
+/* tabela principal de vendas: larguras fixas (soma 100%) — sem rolagem horizontal */
+.vt-full { table-layout:fixed; }
+.vt-full th:nth-child(1),.vt-full td:nth-child(1){width:8%;}   /* Data */
+.vt-full th:nth-child(2),.vt-full td:nth-child(2){width:13%;}  /* Cliente */
+.vt-full th:nth-child(3),.vt-full td:nth-child(3){width:9%;}   /* Origem */
+.vt-full th:nth-child(4),.vt-full td:nth-child(4){width:10%;}  /* Closer */
+.vt-full th:nth-child(5),.vt-full td:nth-child(5){width:8%;}   /* Gateway */
+.vt-full th:nth-child(6),.vt-full td:nth-child(6){width:8%;}   /* Pagamento */
+.vt-full th:nth-child(7),.vt-full td:nth-child(7){width:11%;}  /* Valor bruto */
+.vt-full th:nth-child(8),.vt-full td:nth-child(8){width:11%;}  /* Valor líquido */
+.vt-full th:nth-child(9),.vt-full td:nth-child(9){width:8%;}   /* A receber */
+.vt-full th:nth-child(10),.vt-full td:nth-child(10){width:8%;} /* Status */
+.vt-full th:nth-child(11),.vt-full td:nth-child(11){width:6%;} /* ações */
 .vendas-table tr:last-child td { border-bottom:none; }
 .vendas-table tr:hover td { background:var(--cream); }
 .status-badge { font-size:11px; font-weight:500; padding:2px 8px; border-radius:20px; }
@@ -880,7 +893,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         </div>
       </div>
       <div class="vendas-table-wrap">
-        <table class="vendas-table">
+        <table class="vendas-table vt-full">
           <thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Closer</th><th>Gateway</th><th>Pagamento</th><th>Valor bruto</th><th>Valor líquido</th><th>A receber</th><th>Status</th><th></th></tr></thead>
           <tbody id="vendasTbody"></tbody>
         </table>
