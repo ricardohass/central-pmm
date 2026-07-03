@@ -2147,16 +2147,21 @@ function filtrarVendas(){
   if(filtradas.length===0){tbody.innerHTML='<tr><td colspan="11" class="empty-state">Nenhuma venda encontrada.</td></tr>';return;}
 
   tbody.innerHTML=filtradas.map(v=>{
-    const pagLabel=v.forma_pagamento==='parcelado'&&v.parcelas?`${v.parcelas}x`:'À vista';
+    const ehWonder=(v.produto||'').includes('Wonder')&&Number(v.parcelas||0)>1;
+    const meses=Number(v.parcelas||0);
+    const mesTag='<span style="color:var(--muted);font-size:11px;">/mês</span>';
+    const pagLabel=ehWonder?`${meses} meses`:(v.forma_pagamento==='parcelado'&&v.parcelas?`${v.parcelas}x`:'À vista');
+    const brutoCell=ehWonder?fmtBRL(v.valor_bruto/meses)+mesTag:fmtBRL(v.valor_bruto);
+    const liqCell=ehWonder?fmtBRL(v.valor_liquido/meses)+mesTag:fmtBRL(v.valor_liquido);
     return`<tr>
       <td style="white-space:nowrap">${fmtDataBR(v.data_venda)}</td>
       <td>${v.nome_cliente||'—'}</td>
       <td>${v.origem||'—'}</td>
       <td>${v.closer||'—'}</td>
       <td>${v.gateway||'—'}</td>
-      <td>${pagLabel}</td>
-      <td style="font-weight:500">${fmtBRL(v.valor_bruto)}</td>
-      <td>${fmtBRL(v.valor_liquido)}</td>
+      <td style="white-space:nowrap">${pagLabel}</td>
+      <td style="font-weight:500;white-space:nowrap">${brutoCell}</td>
+      <td style="white-space:nowrap">${liqCell}</td>
       <td>${Number(v.valor_restante||0)>0?fmtBRL(v.valor_restante):'—'}</td>
       <td style="white-space:nowrap"><span class="status-badge s-${v.status||'confirmada'}">${cap(v.status||'confirmada')}</span>${(v.status!=='reembolso'&&reembParcialVendas.has(v.id))?' <span class="status-badge reemb-badge" title="Esta venda teve reembolso parcial">↩ parcial</span>':''}</td>
       <td style="white-space:nowrap">
@@ -2243,7 +2248,7 @@ async function salvarVenda(){
     valor_bruto:parseFloat(r.querySelector('.pgto-bruto').value)||0,
     valor_liquido:parseFloat(r.querySelector('.pgto-liquido').value)||0,
     status:r.querySelector('.pgto-status').value,
-  }));
+  })).filter(p=>p.valor_bruto>0||p.valor_liquido>0); // descarta linhas vazias (ex.: linha padrão sem valor)
 
   const totalBruto=pagamentos.reduce((s,p)=>s+p.valor_bruto,0);
   const totalLiquido=pagamentos.reduce((s,p)=>s+p.valor_liquido,0);
