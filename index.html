@@ -467,6 +467,14 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .pgto-total-val { font-weight:600; color:var(--green); }
 .btn-add-pgto { font-family:'Inter',sans-serif; font-size:12px; color:var(--coral); background:none; border:0.5px solid var(--coral); border-radius:7px; padding:5px 12px; cursor:pointer; margin-top:10px; }
 .btn-add-pgto:hover { background:rgba(212,87,42,0.06); }
+.pgto-recorrencia { margin-top:14px; background:var(--cream); border:0.5px solid var(--border); border-radius:10px; padding:12px 14px; }
+.pgto-rec-title { font-size:12px; font-weight:600; color:var(--green); }
+.pgto-rec-grid { display:flex; flex-wrap:wrap; gap:10px; align-items:end; margin-top:10px; }
+.pgto-rec-grid > div { display:flex; flex-direction:column; gap:4px; }
+.pgto-rec-grid label { font-size:10px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+.pgto-rec-grid input, .pgto-rec-grid select { font-family:'Inter',sans-serif; font-size:13px; color:var(--text); border:0.5px solid var(--border); border-radius:8px; background:#fff; padding:8px 10px; outline:none; width:110px; }
+.pgto-rec-grid .btn-add-pgto { margin-top:0; }
+.pgto-rec-hint { font-size:11px; color:var(--muted); margin:10px 0 0; }
 
 /* COBRANÇAS / CALENDÁRIO */
 .cal-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:24px; }
@@ -840,6 +848,11 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <option value="PIX BTG">PIX BTG</option>
             <option value="Asaas">Asaas</option>
           </select>
+          <select class="filtro-input" id="f-produto" onchange="filtrarVendas()">
+            <option value="">Produto: todos</option>
+            <option value="PMM">PMM</option>
+            <option value="Wonder">Wonder Prø</option>
+          </select>
           <select class="filtro-input" id="f-closer" onchange="filtrarVendas()">
             <option value="">Closer: todos</option>
             <option value="Lígia Oliveira">Lígia Oliveira</option>
@@ -1193,6 +1206,22 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       </div>
       <div id="pgtoWrap" style="overflow-x:auto;"></div>
       <button type="button" class="btn-add-pgto" onclick="adicionarPgtoRow()">+ Adicionar pagamento</button>
+      <div class="pgto-recorrencia">
+        <span class="pgto-rec-title">⟳ Gerar recorrência / parcelas</span>
+        <div class="pgto-rec-grid">
+          <div><label>Qtd</label><input type="number" id="recQtd" min="1" max="60" value="6"></div>
+          <div><label>Valor (R$)</label><input type="number" id="recValor" min="0" step="0.01" placeholder="10000"></div>
+          <div><label>1º vencimento</label><input type="date" id="recData"></div>
+          <div><label>Método</label>
+            <select id="recMetodo"><option value="PIX">PIX</option><option value="Cartão">Cartão</option><option value="Boleto">Boleto</option><option value="Outro">Outro</option></select>
+          </div>
+          <div><label>Gateway</label>
+            <select id="recGateway"><option value="">—</option><option>Hotmart</option><option>Hubla</option><option>Cispay</option><option>PIX Itaú</option><option>PIX BTG</option><option>Asaas</option></select>
+          </div>
+          <button type="button" class="btn-add-pgto" style="align-self:end;" onclick="gerarRecorrenciaPgto()">Gerar</button>
+        </div>
+        <p class="pgto-rec-hint">Cria uma parcela por mês, no mesmo dia do 1º vencimento. Ex.: 6 parcelas de 10.000, dia 05 → 05/07, 05/08... Elas já caem no calendário de Cobranças.</p>
+      </div>
       <div class="pgto-totals">
         <div class="pgto-total-item"><span class="pgto-total-label">Total bruto:</span><span class="pgto-total-val" id="pgtoTotalBruto">R$ 0,00</span></div>
         <div class="pgto-total-item"><span class="pgto-total-label">Total líquido:</span><span class="pgto-total-val" id="pgtoTotalLiquido">R$ 0,00</span></div>
@@ -1208,8 +1237,9 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       <div class="vf-grid-2">
         <div class="vf-field"><label>Produto *</label>
           <select id="vfProduto">
-            <option value="">>Selecione o produto</option>
+            <option value="">Selecione o produto</option>
             <option value="[PMM] Programa Multiplique e Monetize">[PMM] Programa Multiplique e Monetize</option>
+            <option value="[Wonder] Wonder Prø">[Wonder] Wonder Prø</option>
           </select>
         </div>
         <div class="vf-field"><label>Data da venda *</label><input type="date" id="vfData"></div>
@@ -2095,6 +2125,7 @@ function filtrarVendas(){
   const gateway=document.getElementById('f-gateway').value;
   const closer=document.getElementById('f-closer').value;
   const origem=document.getElementById('f-origem').value;
+  const produto=document.getElementById('f-produto').value;
   const de=document.getElementById('f-de').value;
   const ate=document.getElementById('f-ate').value;
 
@@ -2104,6 +2135,7 @@ function filtrarVendas(){
     if(gateway&&v.gateway!==gateway) return false;
     if(closer&&v.closer!==closer) return false;
     if(origem&&v.origem!==origem) return false;
+    if(produto&&!((v.produto||'').toLowerCase().includes(produto.toLowerCase()))) return false;
     const d=v.data_venda?v.data_venda.split('T')[0]:'';
     if(de&&d<de) return false;
     if(ate&&d>ate) return false;
@@ -2139,7 +2171,7 @@ function filtrarVendas(){
 function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
 
 function limparFiltros(){
-  ['f-cliente','f-status','f-gateway','f-closer','f-origem','f-de','f-ate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['f-cliente','f-status','f-gateway','f-closer','f-origem','f-produto','f-de','f-ate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   filtrarVendas();
 }
 
@@ -2158,6 +2190,7 @@ function abrirFormVenda(){
   document.getElementById('vfCloser').value='';
   document.getElementById('vfSdr').value='';
   document.getElementById('vfSocialSeller').value='';
+  ['recQtd','recValor','recData','recGateway'].forEach(id=>{const el=document.getElementById(id);if(el&&id!=='recQtd')el.value='';}); const rq=document.getElementById('recQtd'); if(rq)rq.value='6';
   // Resetar links de pagamento
   document.getElementById('vfLinksWrap').innerHTML=`<div style="display:flex;gap:6px;align-items:center;">
     <input type="text" class="vf-link-input vf-field" placeholder="https://drive.google.com/... ou link do print" style="flex:1;margin:0;">
@@ -4555,6 +4588,33 @@ function atualizarTotaisPgto(){
   document.getElementById('pgtoTotalBruto').textContent=fmtBRL(bruto);
   document.getElementById('pgtoTotalLiquido').textContent=fmtBRL(liquido);
   document.getElementById('pgtoTotalRestante').textContent=fmtBRL(restante);
+}
+
+function gerarRecorrenciaPgto(){
+  const qtd=parseInt(document.getElementById('recQtd').value)||0;
+  const valor=parseFloat(document.getElementById('recValor').value)||0;
+  const dataStr=document.getElementById('recData').value;
+  const metodo=document.getElementById('recMetodo').value;
+  const gateway=document.getElementById('recGateway').value;
+  if(qtd<1){pmmAlert('Informe a quantidade de parcelas.','⚠️','Recorrência');return;}
+  if(valor<=0){pmmAlert('Informe o valor de cada parcela.','⚠️','Recorrência');return;}
+  if(!dataStr){pmmAlert('Informe a data do primeiro vencimento.','⚠️','Recorrência');return;}
+  // remove linhas vazias (ex.: a linha em branco padrão) pra não gerar parcela zerada
+  document.querySelectorAll('#pgtoWrap .pgto-row').forEach(r=>{
+    if(!(parseFloat(r.querySelector('.pgto-bruto').value)||0)) r.remove();
+  });
+  const [y,m,d]=dataStr.split('-').map(Number);
+  for(let i=0;i<qtd;i++){
+    let off=m-1+i;                       // mês 0-based + offset
+    const yy=y+Math.floor(off/12);
+    const mm=((off%12)+12)%12;
+    const ultimoDia=new Date(yy,mm+1,0).getDate();
+    const dia=Math.min(d,ultimoDia);     // clampa se o mês não tem esse dia
+    const iso=yy+'-'+String(mm+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
+    adicionarPgtoRow(iso,metodo,gateway,valor,valor,'pendente',1);
+  }
+  document.getElementById('recValor').value=''; // evita gerar de novo sem querer
+  atualizarTotaisPgto();
 }
 
 async function carregarPgtosNoForm(v){
