@@ -4811,7 +4811,12 @@ function renderCalendario(){
       const nome=(p.vendas?.nome_cliente||'Cliente').split(' ')[0];
       return`<div class="cal-dot ${cls}">${nome} ${fmtBRL(p.valor_bruto)}</div>`;
     }).join('');
-    const extra=pagsDia.length>3?`<div class="cal-dot pendente">+${pagsDia.length-3} mais</div>`:'';
+    const hidden=pagsDia.slice(3);
+    const pDone=p=>p.categoria==='reembolso'?p.status==='pago':p.status==='recebido';
+    const pAtras=p=>p.status==='pendente'&&(p.data_prevista||'').split('T')[0]<hojStr;
+    let extraCls='pendente';
+    if(hidden.length){ if(hidden.every(pDone)) extraCls='recebido'; else if(hidden.some(pAtras)) extraCls='atrasado'; }
+    const extra=hidden.length?`<div class="cal-dot ${extraCls}">+${hidden.length} mais</div>`:'';
     cells+=`<div class="cal-cell${isHoje?' today':''}" onclick="mostrarDetalheCalDia('${dateStr}')">
       <div class="cal-date">${d}</div>
       <div class="cal-dots">${dots}${extra}</div>
