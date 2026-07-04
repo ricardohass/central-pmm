@@ -865,6 +865,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <option value="Caroline Neiva">Caroline Neiva</option>
             <option value="Gabriel Mor">Gabriel Mor</option>
             <option value="Janaina Xavier">Janaina Xavier</option>
+            <option value="Amanda">Amanda</option>
           </select>
           <select class="filtro-input" id="f-origem" onchange="filtrarVendas()">
             <option value="">Origem: todas</option>
@@ -908,6 +909,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <option value="Caroline Neiva">Caroline Neiva</option>
             <option value="Gabriel Mor">Gabriel Mor</option>
             <option value="Janaina Xavier">Janaina Xavier</option>
+            <option value="Amanda">Amanda</option>
           </select>
           <button class="btn-novo" onclick="toggleForm()">+ Novo registro</button>
           <button class="btn-novo" id="btnRelatorioSemanal" onclick="abrirRelatorioSemanal()" style="background:var(--green);">📋 Relatório semanal</button>
@@ -1149,6 +1151,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           <option value="Caroline Neiva">Caroline Neiva</option>
           <option value="Gabriel Mor">Gabriel Mor</option>
           <option value="Janaina Xavier">Janaina Xavier</option>
+          <option value="Amanda">Amanda</option>
         </select>
         <button class="btn-limpar" onclick="limparFiltrosDep()">Limpar filtros</button>
       </div>
@@ -1182,6 +1185,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <option value="Caroline Neiva">Caroline Neiva</option>
             <option value="Gabriel Mor">Gabriel Mor</option>
             <option value="Janaina Xavier">Janaina Xavier</option>
+            <option value="Amanda">Amanda</option>
           </select>
           <button class="btn-novo" id="btnEditarMetas" onclick="abrirEditarMetas()" style="display:none;">&#9998; Editar metas</button>
         </div>
@@ -1295,6 +1299,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <option value="Caroline Neiva">Caroline Neiva</option>
             <option value="Gabriel Mor">Gabriel Mor</option>
             <option value="Janaina Xavier">Janaina Xavier</option>
+            <option value="Amanda">Amanda</option>
           </select>
         </div>
         <div class="vf-field"><label>SDR (opcional)</label>
@@ -1367,6 +1372,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <option value="Caroline Neiva">Caroline Neiva</option>
             <option value="Gabriel Mor">Gabriel Mor</option>
             <option value="Janaina Xavier">Janaina Xavier</option>
+            <option value="Amanda">Amanda</option>
           </select>
         </div>
         <div class="vf-field"><label>Estrategista</label>
@@ -1519,6 +1525,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           <option value="Caroline Neiva">Caroline Neiva</option>
           <option value="Gabriel Mor">Gabriel Mor</option>
           <option value="Janaina Xavier">Janaina Xavier</option>
+          <option value="Amanda">Amanda</option>
         </select>
       </div>
       <div class="vf-field dep-form-full">
@@ -2422,8 +2429,8 @@ function mudarPerfMes(delta){
   renderPerf();
 }
 
-const CLOSERS_LIST=['Lígia Oliveira','Gabriel Rocha','Caroline Neiva','Gabriel Mor','Janaina Xavier'];
-const AV_COLORS={'Lígia Oliveira':'#4E7260','Gabriel Rocha':'#D4572A','Caroline Neiva':'#854F0B','Gabriel Mor':'#3D5C4A','Janaina Xavier':'#7C5CBF'};
+const CLOSERS_LIST=['Lígia Oliveira','Gabriel Rocha','Caroline Neiva','Gabriel Mor','Janaina Xavier','Amanda'];
+const AV_COLORS={'Lígia Oliveira':'#4E7260','Gabriel Rocha':'#D4572A','Caroline Neiva':'#854F0B','Gabriel Mor':'#3D5C4A','Janaina Xavier':'#7C5CBF','Amanda':'#1565C0'};
 const INITIALS=n=>n.split(' ').map(w=>w[0]).slice(0,2).join('');
 
 function getFaixa(conv){
