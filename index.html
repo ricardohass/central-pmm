@@ -2633,7 +2633,7 @@ async function getDadosCloser(closer,ano,mes){
 
 // ── USUÁRIOS ──
 const CLOSERS_INICIAIS=[
-  {email:'estrategista001@grupoprooficial.com', nome:'Lígia Oliveira',    senha:'h~D6oDQE558F=D6@',  funcao:'closer', status:'ativo'},
+  {email:'estrategista001@grupoprooficial.com', nome:'Amanda Duarte',    senha:'h~D6oDQE558F=D6@',  funcao:'closer', status:'ativo'},
   {email:'estrategista002@grupoprooficial.com', nome:'Gabriel Rocha',     senha:'i0=sM]PUhZMBC41U',  funcao:'closer', status:'ativo'},
   {email:'estrategista003@grupoprooficial.com', nome:'Caroline Neiva',    senha:'Caroline10.',        funcao:'closer', status:'ativo'},
   {email:'estrategista004@grupoprooficial.com', nome:'Janaina Xavier',    senha:'PRO#2026',           funcao:'closer', status:'ativo'},
@@ -3333,7 +3333,7 @@ async function salvarMetasFunil(){
 // ── ACESSOS ──
 const DADOS_INICIAIS_ACESSOS = [
   {nome:'E-mail Comercial (conta principal)', link:'https://google.com', login:'comercial@grupoprooficial.com.br', senha:'CloserPro25*', observacao:'', ordem:1},
-  {nome:'E-mail Estrategista 001', link:'https://google.com', login:'estrategista001@grupoprooficial.com', senha:'h~D6oDQE558F=D6@', observacao:'Lígia', ordem:2},
+  {nome:'E-mail Estrategista 001', link:'https://google.com', login:'estrategista001@grupoprooficial.com', senha:'h~D6oDQE558F=D6@', observacao:'Amanda Duarte', ordem:2},
   {nome:'E-mail Estrategista 002', link:'https://google.com', login:'estrategista002@grupoprooficial.com', senha:'i0=sM]PUhZMBC41U', observacao:'Gabriel Rocha', ordem:3},
   {nome:'E-mail Estrategista 003', link:'https://google.com', login:'estrategista003@grupoprooficial.com', senha:'Caroline10.', observacao:'Carol', ordem:4},
   {nome:'E-mail Estrategista 004', link:'https://google.com', login:'estrategista004@grupoprooficial.com', senha:'PRO#2026', observacao:'', ordem:5},
@@ -3360,14 +3360,15 @@ async function carregarAcessos(){
   const isAdminAcessos=currentUser.funcao==='admin';
   // Closers só veem seus próprios acessos + recursos gerais
   const ACESSOS_CLOSER_NOMES=[
-    'E-mail Estrategista 001','E-mail Estrategista 002','E-mail Estrategista 003','E-mail Estrategista 004',
+    'E-mail Estrategista 001','E-mail Estrategista 002','E-mail Estrategista 003','E-mail Estrategista 004','E-mail Estrategista 005',
     'Análise de instagram','Formulário - cadastro de novo cliente','Template de apresentação de vendas','Manual do Closer','Processo de vendas'
   ];
   const CLOSER_EMAIL_MAP={
-    'Lígia Oliveira':'E-mail Estrategista 001',
+    'Amanda Duarte':'E-mail Estrategista 001',
     'Gabriel Rocha':'E-mail Estrategista 002',
     'Caroline Neiva':'E-mail Estrategista 003',
     'Janaina Xavier':'E-mail Estrategista 004',
+    'Lígia Oliveira':'E-mail Estrategista 005',
   };
   const tbody=document.getElementById('acessosTbody');
   tbody.innerHTML='<tr><td colspan="7" class="empty-state">Carregando...</td></tr>';
