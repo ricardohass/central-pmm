@@ -2922,7 +2922,7 @@ async function renderMetasCloser(closer,ano,mes){
 }
 
 async function renderMetasTime(){
-  const closers=['Lígia Oliveira','Gabriel Rocha','Caroline Neiva','Gabriel Mor'];
+  const closers=CLOSERS_LIST;
   const rows=await Promise.all(closers.map(async c=>{
     const [meta,dados]=await Promise.all([getMeta(c,metaAno,metaMes+1),getDadosCloser(c,metaAno,metaMes+1)]);
     return{closer:c,meta,dados};
@@ -4318,7 +4318,7 @@ async function excluirLink(id){
 }
 
 // ── MURAL DE RECADOS ──
-const TODOS_USUARIOS=['Gabriel Mor','Anderson Felipe Vieira','Pedro Sallun','Ricardo Hass','Anne Queiroz','Caroline Neiva','Gabriel Rocha','Lígia Oliveira','Luciana','Luigi Cesar','Rafaela Barbosa'];
+const TODOS_USUARIOS=['Gabriel Mor','Anderson Felipe Vieira','Pedro Sallun','Ricardo Hass','Anne Queiroz','Caroline Neiva','Gabriel Rocha','Lígia Oliveira','Janaina Xavier','Amanda Duarte','Luciana','Luigi Cesar','Rafaela Barbosa'];
 
 function toggleRecadoForm(){
   const wrap=document.getElementById('recadoFormWrap');
