@@ -132,6 +132,12 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .ptotal-val { font-size:24px; font-weight:600; color:var(--green); line-height:1.2; }
 .ptotal-val.coral { color:var(--coral); }
 .ptotal-label { font-size:11px; color:var(--muted); margin-top:4px; }
+.perf-funil { display:flex; align-items:stretch; gap:8px; }
+.perf-funil .ptotal { flex:1 1 0; min-width:0; }
+.perf-conn { flex:0 0 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 4px; }
+.perf-conn-arrow { color:var(--muted); font-size:15px; line-height:1; opacity:.55; }
+.perf-conn-pct { font-size:13px; font-weight:700; color:var(--green); margin-top:3px; white-space:nowrap; }
+.perf-conn-label { font-size:9px; color:var(--muted); margin-top:1px; white-space:nowrap; }
 .novo-form { background:#F0EDE8; border:0.5px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; }
 .novo-form-title { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--green); margin-bottom:14px; }
 .novo-form-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px; margin-bottom:14px; }
@@ -916,9 +922,11 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           <button class="btn-novo" id="btnRelatorioSemanal" onclick="abrirRelatorioSemanal()" style="background:var(--green);">📋 Relatório semanal</button>
         </div>
       </div>
-      <div class="perf-totals">
+      <div class="perf-totals perf-funil">
         <div class="ptotal"><div class="ptotal-val" id="tot-agend">0</div><div class="ptotal-label">Agendamentos</div></div>
+        <div class="perf-conn"><span class="perf-conn-arrow">&#10142;</span><span class="perf-conn-pct" id="conn-agend-reun">—</span><span class="perf-conn-label">comparecimento</span></div>
         <div class="ptotal"><div class="ptotal-val" id="tot-reun">0</div><div class="ptotal-label">Reuniões</div></div>
+        <div class="perf-conn"><span class="perf-conn-arrow">&#10142;</span><span class="perf-conn-pct" id="conn-reun-vendas">—</span><span class="perf-conn-label">conversão</span></div>
         <div class="ptotal"><div class="ptotal-val coral" id="tot-vendas">0</div><div class="ptotal-label">Vendas</div></div>
         <div class="ptotal"><div class="ptotal-val" id="tot-conv">—</div><div class="ptotal-label">Taxa de conversão</div></div>
       </div>
@@ -2573,6 +2581,12 @@ async function renderPerf(){
   document.getElementById('tot-vendas').textContent=totV;
   const cp=totR>0?(totV/totR*100):null;
   document.getElementById('tot-conv').textContent=cp!==null?cp.toFixed(1)+'%':'—';
+  // Taxas entre etapas do funil
+  const compAR=totA>0?(totR/totA*100):null;
+  const connAR=document.getElementById('conn-agend-reun');
+  const connRV=document.getElementById('conn-reun-vendas');
+  if(connAR) connAR.textContent=compAR!==null?compAR.toFixed(1)+'%':'—';
+  if(connRV) connRV.textContent=cp!==null?cp.toFixed(1)+'%':'—';
   document.getElementById('perfTbody').innerHTML=arr.length===0
     ?`<tr><td colspan="6" class="empty-state">${isTodos?'Nenhum registro lançado neste mês.':'Nenhum registro. Clique em "+ Novo registro" para começar.'}</td></tr>`
     :arr.map(r=>`<tr>
