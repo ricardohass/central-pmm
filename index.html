@@ -87,6 +87,36 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .date-btn { background:#fff; border:0.5px solid var(--border); border-radius:7px; width:30px; height:30px; cursor:pointer; font-size:16px; color:var(--green); display:flex; align-items:center; justify-content:center; transition:background .15s; user-select:none; }
 .date-btn:hover { background:var(--cream2); }
 .date-label { font-size:13px; font-weight:500; color:var(--text); min-width:130px; text-align:center; }
+/* filtro de período (dashboard) */
+.dash-controls { display:flex; align-items:center; gap:12px; position:relative; }
+.periodo-btn { display:flex; align-items:center; gap:6px; background:#fff; border:0.5px solid var(--border); border-radius:8px; padding:0 14px; height:30px; font-size:13px; font-weight:500; color:var(--green); cursor:pointer; font-family:'Inter',sans-serif; transition:background .15s; }
+.periodo-btn:hover { background:var(--cream2); }
+.periodo-btn.active { background:var(--green); color:#fff; border-color:var(--green); }
+.periodo-pop { position:absolute; top:40px; right:0; z-index:60; background:#fff; border:0.5px solid var(--border); border-radius:14px; box-shadow:0 14px 44px rgba(42,61,48,0.18); padding:16px; width:560px; max-width:92vw; }
+.pp-body { position:relative; display:flex; gap:24px; }
+.pp-nav { position:absolute; top:-2px; background:#fff; border:0.5px solid var(--border); border-radius:6px; width:26px; height:26px; cursor:pointer; color:var(--green); font-size:15px; display:flex; align-items:center; justify-content:center; z-index:2; }
+.pp-nav-l { left:0; } .pp-nav-r { right:0; }
+.pp-nav:hover { background:var(--cream2); }
+.pp-cal { flex:1; min-width:0; }
+.pp-cal-title { text-align:center; font-size:13px; font-weight:600; color:var(--text); margin-bottom:10px; }
+.pp-week { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:4px; }
+.pp-week span { text-align:center; font-size:10px; color:var(--muted); font-weight:500; }
+.pp-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.pp-day { text-align:center; font-size:12px; color:var(--text); padding:6px 0; border-radius:7px; cursor:pointer; user-select:none; }
+.pp-day:hover:not(.pp-empty):not(.pp-sel) { background:var(--cream2); }
+.pp-empty { cursor:default; }
+.pp-inrange { background:var(--cream3); border-radius:0; }
+.pp-sel { background:var(--green)!important; color:#fff!important; border-radius:7px; font-weight:600; }
+.pp-presets { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; }
+.pp-preset { background:var(--cream); border:0.5px solid var(--border); border-radius:20px; padding:5px 12px; font-size:11px; color:var(--text); cursor:pointer; font-family:'Inter',sans-serif; }
+.pp-preset:hover { background:var(--cream2); }
+.pp-footer { display:flex; align-items:center; gap:12px; margin-top:14px; padding-top:12px; border-top:0.5px solid var(--border); }
+.pp-range { flex:1; font-size:12px; color:var(--muted); }
+.pp-clear, .pp-cancel { background:none; border:none; font-size:13px; color:var(--muted); cursor:pointer; font-family:'Inter',sans-serif; }
+.pp-clear:hover, .pp-cancel:hover { color:var(--coral); }
+.pp-apply { background:var(--coral); color:#fff; border:none; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:500; cursor:pointer; font-family:'Inter',sans-serif; }
+.rankings-row { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; }
+.rankings-row .ranking-card { flex:1 1 340px; }
 .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px; }
 .mcard { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:16px 16px 14px; }
 .mcard-label { font-size:11px; color:var(--muted); margin-bottom:8px; }
@@ -802,10 +832,33 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <div id="page-dashboards" class="page">
       <div class="dash-header">
         <div><p class="page-eyebrow">Visão geral</p><p class="page-title">Dashboard</p></div>
-        <div class="date-nav">
-          <button class="date-btn" onclick="mudarMes(-1)">&#8249;</button>
-          <span class="date-label" id="dashMesLabel"></span>
-          <button class="date-btn" onclick="mudarMes(1)">&#8250;</button>
+        <div class="dash-controls">
+          <div class="date-nav">
+            <button class="date-btn" onclick="mudarMes(-1)">&#8249;</button>
+            <span class="date-label" id="dashMesLabel"></span>
+            <button class="date-btn" onclick="mudarMes(1)">&#8250;</button>
+          </div>
+          <button class="periodo-btn" id="periodoBtn" onclick="toggleDashPicker(event)">&#128197; Período</button>
+          <div class="periodo-pop" id="periodoPop" style="display:none;">
+            <div class="pp-body">
+              <button class="pp-nav pp-nav-l" onclick="pickerNav(-1)">&#8249;</button>
+              <button class="pp-nav pp-nav-r" onclick="pickerNav(1)">&#8250;</button>
+              <div class="pp-cal" id="ppCal1"></div>
+              <div class="pp-cal" id="ppCal2"></div>
+            </div>
+            <div class="pp-presets">
+              <button class="pp-preset" onclick="presetPeriodo('7')">Últimos 7 dias</button>
+              <button class="pp-preset" onclick="presetPeriodo('30')">Últimos 30 dias</button>
+              <button class="pp-preset" onclick="presetPeriodo('mes')">Este mês</button>
+              <button class="pp-preset" onclick="presetPeriodo('mesant')">Mês passado</button>
+            </div>
+            <div class="pp-footer">
+              <span class="pp-range" id="ppRangeLabel"></span>
+              <button class="pp-clear" onclick="limparDashPeriodo()">Limpar</button>
+              <button class="pp-cancel" onclick="toggleDashPicker()">Cancelar</button>
+              <button class="pp-apply" onclick="aplicarDashPeriodo()">Aplicar</button>
+            </div>
+          </div>
         </div>
       </div>
       <div id="dash-admin-view">
@@ -829,7 +882,10 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <div class="pie-legend" id="pieLegendGateway"></div>
           </div>
         </div>
-        <div class="ranking-card"><p class="chart-title">Ranking de closers</p><div id="rankingList"></div></div>
+        <div class="rankings-row">
+          <div class="ranking-card"><p class="chart-title">Ranking de closers</p><div id="rankingList"></div></div>
+          <div class="ranking-card"><p class="chart-title">Ranking de SDRs</p><div id="rankingSdrList"></div></div>
+        </div>
       </div>
       <div id="dash-closer-view" style="display:none;">
         <div class="metrics" id="dash-closer-metrics"></div>
@@ -1773,18 +1829,122 @@ const MESES_NOMES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho'
 // ── DASHBOARD MÊS ──
 let dashAno=new Date().getFullYear();
 let dashMes=new Date().getMonth(); // 0-indexed
+// Filtro de período personalizado (sobrepõe o mês quando ambos definidos)
+let dashRangeStart=null, dashRangeEnd=null;
 
 function atualizarLabelMes(){
-  document.getElementById('dashMesLabel').textContent=MESES_NOMES[dashMes]+' de '+dashAno;
+  const lbl=document.getElementById('dashMesLabel');
+  const btn=document.getElementById('periodoBtn');
+  if(dashRangeStart&&dashRangeEnd){
+    lbl.textContent=(dashRangeStart===dashRangeEnd)?fmtDataBR(dashRangeStart):fmtDataBR(dashRangeStart)+' – '+fmtDataBR(dashRangeEnd);
+    if(btn) btn.classList.add('active');
+  }else{
+    lbl.textContent=MESES_NOMES[dashMes]+' de '+dashAno;
+    if(btn) btn.classList.remove('active');
+  }
 }
 
 function mudarMes(delta){
+  dashRangeStart=null; dashRangeEnd=null; // navegar por mês limpa o período custom
   dashMes+=delta;
   if(dashMes>11){dashMes=0;dashAno++;}
   if(dashMes<0){dashMes=11;dashAno--;}
   atualizarLabelMes();
   carregarDashboard();
 }
+
+// ── FILTRO DE PERÍODO (range picker) ──
+let pickerYear, pickerMonth; // mês exibido à esquerda no calendário
+let tmpStart=null, tmpEnd=null; // seleção em andamento (antes de Aplicar)
+const _isoOf=dt=>dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+const _WEEK_PT=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+function _buildCal(year,month){
+  const startDow=new Date(year,month,1).getDay();
+  const diasNoMes=new Date(year,month+1,0).getDate();
+  let h='<div class="pp-cal-title">'+MESES_NOMES[month]+' '+year+'</div>';
+  h+='<div class="pp-week">'+_WEEK_PT.map(d=>'<span>'+d+'</span>').join('')+'</div><div class="pp-grid">';
+  for(let i=0;i<startDow;i++) h+='<span class="pp-day pp-empty"></span>';
+  for(let d=1;d<=diasNoMes;d++){
+    const iso=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    let c='';
+    if(tmpStart&&iso===tmpStart) c+=' pp-sel';
+    if(tmpEnd&&iso===tmpEnd) c+=' pp-sel';
+    if(tmpStart&&tmpEnd&&iso>tmpStart&&iso<tmpEnd) c+=' pp-inrange';
+    h+='<span class="pp-day'+c+'" onclick="pickDashDay(\''+iso+'\')">'+d+'</span>';
+  }
+  return h+'</div>';
+}
+
+function renderDashPicker(){
+  const nm=pickerMonth===11?0:pickerMonth+1, ny=pickerMonth===11?pickerYear+1:pickerYear;
+  document.getElementById('ppCal1').innerHTML=_buildCal(pickerYear,pickerMonth);
+  document.getElementById('ppCal2').innerHTML=_buildCal(ny,nm);
+  const lbl=document.getElementById('ppRangeLabel');
+  if(lbl) lbl.textContent=tmpStart?(fmtDataBR(tmpStart)+(tmpEnd?' – '+fmtDataBR(tmpEnd):' – …')):'Selecione um período';
+}
+
+function pickDashDay(iso){
+  if(!tmpStart||(tmpStart&&tmpEnd)){ tmpStart=iso; tmpEnd=null; }
+  else if(iso<tmpStart){ tmpEnd=tmpStart; tmpStart=iso; }
+  else tmpEnd=iso;
+  renderDashPicker();
+}
+
+function pickerNav(delta){
+  pickerMonth+=delta;
+  if(pickerMonth>11){pickerMonth=0;pickerYear++;}
+  if(pickerMonth<0){pickerMonth=11;pickerYear--;}
+  renderDashPicker();
+}
+
+function presetPeriodo(tipo){
+  const hoje=new Date(); let s,e;
+  if(tipo==='7'){ e=new Date(hoje); s=new Date(hoje); s.setDate(s.getDate()-6); }
+  else if(tipo==='30'){ e=new Date(hoje); s=new Date(hoje); s.setDate(s.getDate()-29); }
+  else if(tipo==='mes'){ s=new Date(hoje.getFullYear(),hoje.getMonth(),1); e=new Date(hoje); }
+  else { s=new Date(hoje.getFullYear(),hoje.getMonth()-1,1); e=new Date(hoje.getFullYear(),hoje.getMonth(),0); }
+  tmpStart=_isoOf(s); tmpEnd=_isoOf(e);
+  pickerYear=s.getFullYear(); pickerMonth=s.getMonth();
+  renderDashPicker();
+}
+
+function toggleDashPicker(ev){
+  if(ev) ev.stopPropagation();
+  const pop=document.getElementById('periodoPop');
+  if(pop.style.display==='none'){
+    tmpStart=dashRangeStart; tmpEnd=dashRangeEnd;
+    if(dashRangeStart){ const p=dashRangeStart.split('-'); pickerYear=+p[0]; pickerMonth=+p[1]-1; }
+    else { pickerYear=dashAno; pickerMonth=dashMes; }
+    renderDashPicker();
+    pop.style.display='block';
+  } else pop.style.display='none';
+}
+
+function aplicarDashPeriodo(){
+  if(tmpStart&&!tmpEnd) tmpEnd=tmpStart; // único dia
+  if(tmpStart&&tmpEnd){ dashRangeStart=tmpStart; dashRangeEnd=tmpEnd; }
+  document.getElementById('periodoPop').style.display='none';
+  atualizarLabelMes();
+  carregarDashboard();
+}
+
+function limparDashPeriodo(){
+  dashRangeStart=null; dashRangeEnd=null; tmpStart=null; tmpEnd=null;
+  document.getElementById('periodoPop').style.display='none';
+  atualizarLabelMes();
+  carregarDashboard();
+}
+
+// fecha o popover ao clicar fora
+document.addEventListener('click',e=>{
+  const pop=document.getElementById('periodoPop');
+  if(!pop||pop.style.display==='none') return;
+  if(pop.contains(e.target)) return;
+  const btn=document.getElementById('periodoBtn');
+  if(btn&&btn.contains(e.target)) return;
+  pop.style.display='none';
+});
 
 // ── TELAS ──
 const TODAS_TELAS=[
@@ -2037,10 +2197,15 @@ async function carregarHomeSnapshot(){
 
 async function carregarDashboard(){
   atualizarLabelMes();
-  // Montar filtro de mês
-  const anoMes=dashAno+'-'+String(dashMes+1).padStart(2,'0');
-  const primeiroDia=anoMes+'-01';
-  const ultimoDia=anoMes+'-'+new Date(dashAno,dashMes+1,0).getDate();
+  // Período: intervalo personalizado (se definido) ou mês selecionado
+  let primeiroDia, ultimoDia;
+  if(dashRangeStart&&dashRangeEnd){
+    primeiroDia=dashRangeStart; ultimoDia=dashRangeEnd;
+  }else{
+    const anoMes=dashAno+'-'+String(dashMes+1).padStart(2,'0');
+    primeiroDia=anoMes+'-01';
+    ultimoDia=anoMes+'-'+new Date(dashAno,dashMes+1,0).getDate();
+  }
 
   try{
     const [todas, pgRecebidos, reembImpacto]=await Promise.all([
@@ -2089,8 +2254,23 @@ async function carregarDashboard(){
     });
     const sorted=Object.entries(ranking).sort((a,b)=>b[1].bruto-a[1].bruto);
     document.getElementById('rankingList').innerHTML=sorted.length===0
-      ?'<p style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma venda neste mês.</p>'
+      ?'<p style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma venda no período.</p>'
       :sorted.map((e,i)=>`<div class="ranking-row"><span class="rank-num">${i+1}</span><div class="rank-info"><p class="rank-name">${e[0]}</p><p class="rank-sub">${e[1].n} venda(s)</p></div><div class="rank-values"><p class="rank-bruto">${fmtBRL(e[1].bruto)}</p><p class="rank-liq">Liq. ${fmtBRL(e[1].liq)}</p></div></div>`).join('');
+
+    // Ranking de SDRs (vendas com SDR atribuído)
+    const rankingSdr={};
+    vendas.forEach(v=>{
+      if(!v.sdr)return;
+      if(!rankingSdr[v.sdr]) rankingSdr[v.sdr]={bruto:0,liq:0,n:0};
+      rankingSdr[v.sdr].bruto+=Number(v.valor_bruto||0);
+      rankingSdr[v.sdr].liq+=Number(v.valor_liquido||0);
+      rankingSdr[v.sdr].n++;
+    });
+    const sortedSdr=Object.entries(rankingSdr).sort((a,b)=>b[1].bruto-a[1].bruto);
+    const sdrEl=document.getElementById('rankingSdrList');
+    if(sdrEl) sdrEl.innerHTML=sortedSdr.length===0
+      ?'<p style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma venda com SDR no período.</p>'
+      :sortedSdr.map((e,i)=>`<div class="ranking-row"><span class="rank-num">${i+1}</span><div class="rank-info"><p class="rank-name">${e[0]}</p><p class="rank-sub">${e[1].n} venda(s)</p></div><div class="rank-values"><p class="rank-bruto">${fmtBRL(e[1].bruto)}</p><p class="rank-liq">Liq. ${fmtBRL(e[1].liq)}</p></div></div>`).join('');
 
     const CORES=['#3D5C4A','#D4572A','#4E9E75','#B4B2A9','#7C3D8C','#1565C0','#C07A00','#0277BD'];
 
