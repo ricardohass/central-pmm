@@ -101,12 +101,15 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .pp-cal-title { text-align:center; font-size:13px; font-weight:600; color:var(--text); margin-bottom:10px; }
 .pp-week { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:4px; }
 .pp-week span { text-align:center; font-size:10px; color:var(--muted); font-weight:500; }
-.pp-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
-.pp-day { text-align:center; font-size:12px; color:var(--text); padding:6px 0; border-radius:7px; cursor:pointer; user-select:none; }
-.pp-day:hover:not(.pp-empty):not(.pp-sel) { background:var(--cream2); }
+.pp-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px 0; }
+.pp-day { text-align:center; font-size:12px; color:var(--text); padding:7px 0; border-radius:7px; cursor:pointer; user-select:none; }
+.pp-day:hover:not(.pp-empty):not(.pp-sel):not(.pp-inrange) { background:var(--cream2); }
 .pp-empty { cursor:default; }
-.pp-inrange { background:var(--cream3); border-radius:0; }
-.pp-sel { background:var(--green)!important; color:#fff!important; border-radius:7px; font-weight:600; }
+.pp-inrange { background:rgba(61,92,74,0.14); color:var(--text); border-radius:0; }
+.pp-sel { background:var(--green)!important; color:#fff!important; font-weight:700; border-radius:7px; }
+.pp-sel-start { border-radius:7px 0 0 7px; }
+.pp-sel-end { border-radius:0 7px 7px 0; }
+.pp-sel-start.pp-sel-end { border-radius:7px; }
 .pp-presets { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; }
 .pp-preset { background:var(--cream); border:0.5px solid var(--border); border-radius:20px; padding:5px 12px; font-size:11px; color:var(--text); cursor:pointer; font-family:'Inter',sans-serif; }
 .pp-preset:hover { background:var(--cream2); }
@@ -839,7 +842,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <button class="date-btn" onclick="mudarMes(1)">&#8250;</button>
           </div>
           <button class="periodo-btn" id="periodoBtn" onclick="toggleDashPicker(event)">&#128197; Período</button>
-          <div class="periodo-pop" id="periodoPop" style="display:none;">
+          <div class="periodo-pop" id="periodoPop" style="display:none;" onclick="event.stopPropagation()">
             <div class="pp-body">
               <button class="pp-nav pp-nav-l" onclick="pickerNav(-1)">&#8249;</button>
               <button class="pp-nav pp-nav-r" onclick="pickerNav(1)">&#8250;</button>
@@ -1855,25 +1858,38 @@ function mudarMes(delta){
 
 // ── FILTRO DE PERÍODO (range picker) ──
 let pickerYear, pickerMonth; // mês exibido à esquerda no calendário
-let tmpStart=null, tmpEnd=null; // seleção em andamento (antes de Aplicar)
+let tmpStart=null, tmpEnd=null, tmpHover=null; // seleção em andamento (antes de Aplicar)
 const _isoOf=dt=>dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
 const _WEEK_PT=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+// Extremos do intervalo, considerando o preview de hover (após escolher o início)
+function _rangeBounds(){
+  let s=tmpStart, e=tmpEnd;
+  if(s&&!e&&tmpHover) e=tmpHover;
+  if(s&&e&&e<s){ const t=s; s=e; e=t; }
+  return [s,e];
+}
 
 function _buildCal(year,month){
   const startDow=new Date(year,month,1).getDay();
   const diasNoMes=new Date(year,month+1,0).getDate();
+  const [lo,hi]=_rangeBounds();
   let h='<div class="pp-cal-title">'+MESES_NOMES[month]+' '+year+'</div>';
   h+='<div class="pp-week">'+_WEEK_PT.map(d=>'<span>'+d+'</span>').join('')+'</div><div class="pp-grid">';
   for(let i=0;i<startDow;i++) h+='<span class="pp-day pp-empty"></span>';
   for(let d=1;d<=diasNoMes;d++){
     const iso=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     let c='';
-    if(tmpStart&&iso===tmpStart) c+=' pp-sel';
-    if(tmpEnd&&iso===tmpEnd) c+=' pp-sel';
-    if(tmpStart&&tmpEnd&&iso>tmpStart&&iso<tmpEnd) c+=' pp-inrange';
-    h+='<span class="pp-day'+c+'" onclick="pickDashDay(\''+iso+'\')">'+d+'</span>';
+    if(lo&&iso===lo) c+=' pp-sel pp-sel-start';
+    if(hi&&iso===hi) c+=' pp-sel pp-sel-end';
+    if(lo&&hi&&iso>lo&&iso<hi) c+=' pp-inrange';
+    h+='<span class="pp-day'+c+'" onclick="pickDashDay(\''+iso+'\')" onmouseenter="hoverDashDay(\''+iso+'\')">'+d+'</span>';
   }
   return h+'</div>';
+}
+
+function hoverDashDay(iso){
+  if(tmpStart&&!tmpEnd){ tmpHover=iso; renderDashPicker(); }
 }
 
 function renderDashPicker(){
@@ -1885,9 +1901,9 @@ function renderDashPicker(){
 }
 
 function pickDashDay(iso){
-  if(!tmpStart||(tmpStart&&tmpEnd)){ tmpStart=iso; tmpEnd=null; }
-  else if(iso<tmpStart){ tmpEnd=tmpStart; tmpStart=iso; }
-  else tmpEnd=iso;
+  if(!tmpStart||(tmpStart&&tmpEnd)){ tmpStart=iso; tmpEnd=null; tmpHover=iso; } // 1º clique = início
+  else if(iso<tmpStart){ tmpEnd=tmpStart; tmpStart=iso; tmpHover=null; }        // clicou antes do início → inverte
+  else { tmpEnd=iso; tmpHover=null; }                                            // 2º clique = fim
   renderDashPicker();
 }
 
@@ -1913,7 +1929,7 @@ function toggleDashPicker(ev){
   if(ev) ev.stopPropagation();
   const pop=document.getElementById('periodoPop');
   if(pop.style.display==='none'){
-    tmpStart=dashRangeStart; tmpEnd=dashRangeEnd;
+    tmpStart=dashRangeStart; tmpEnd=dashRangeEnd; tmpHover=null;
     if(dashRangeStart){ const p=dashRangeStart.split('-'); pickerYear=+p[0]; pickerMonth=+p[1]-1; }
     else { pickerYear=dashAno; pickerMonth=dashMes; }
     renderDashPicker();
@@ -1930,7 +1946,7 @@ function aplicarDashPeriodo(){
 }
 
 function limparDashPeriodo(){
-  dashRangeStart=null; dashRangeEnd=null; tmpStart=null; tmpEnd=null;
+  dashRangeStart=null; dashRangeEnd=null; tmpStart=null; tmpEnd=null; tmpHover=null;
   document.getElementById('periodoPop').style.display='none';
   atualizarLabelMes();
   carregarDashboard();
