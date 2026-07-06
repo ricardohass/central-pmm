@@ -863,8 +863,8 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       </div>
       <div id="dash-admin-view">
         <div class="metrics">
-          <div class="mcard"><p class="mcard-label">Recebido no mês (bruto)</p><p class="mcard-value" id="dash-fat-bruto">—</p><p class="mcard-meta" id="dash-fat-bruto-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-bruto" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-bruto">0%</span></div></div>
-          <div class="mcard"><p class="mcard-label">Recebido no mês (líquido)</p><p class="mcard-value" id="dash-fat-liq">—</p><p class="mcard-meta">Meta: R$ 1.000.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-liq" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-liq">0%</span></div></div>
+          <div class="mcard"><p class="mcard-label" id="lbl-fat-bruto">Recebido no mês (bruto)</p><p class="mcard-value" id="dash-fat-bruto">—</p><p class="mcard-meta" id="dash-fat-bruto-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-bruto" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-bruto">0%</span></div></div>
+          <div class="mcard"><p class="mcard-label" id="lbl-fat-liq">Recebido no mês (líquido)</p><p class="mcard-value" id="dash-fat-liq">—</p><p class="mcard-meta">Meta: R$ 1.000.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-liq" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-liq">0%</span></div></div>
           <div class="mcard"><p class="mcard-label">Total de vendas</p><p class="mcard-value big" id="dash-total-vendas">—</p><p class="mcard-meta">exceto canceladas e reembolsadas</p></div>
           <div class="mcard"><p class="mcard-label">Reembolsos (abatido)</p><p class="mcard-value coral" id="dash-reembolsos">—</p><p class="mcard-meta">no mês</p></div>
           <div class="mcard"><p class="mcard-label">A receber</p><p class="mcard-value coral" id="dash-a-receber">—</p><p class="mcard-meta">valor restante pendente</p></div>
@@ -2206,6 +2206,11 @@ async function carregarDashboard(){
     primeiroDia=anoMes+'-01';
     ultimoDia=anoMes+'-'+new Date(dashAno,dashMes+1,0).getDate();
   }
+  // Ajusta rótulos "no mês" → "no período" quando há intervalo personalizado
+  const _periodoSuf=(dashRangeStart&&dashRangeEnd)?'no período':'no mês';
+  const _lblB=document.getElementById('lbl-fat-bruto'), _lblL=document.getElementById('lbl-fat-liq');
+  if(_lblB) _lblB.textContent='Recebido '+_periodoSuf+' (bruto)';
+  if(_lblL) _lblL.textContent='Recebido '+_periodoSuf+' (líquido)';
 
   try{
     const [todas, pgRecebidos, reembImpacto]=await Promise.all([
