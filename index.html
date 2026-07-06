@@ -138,6 +138,15 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .perf-conn-arrow { color:var(--muted); font-size:15px; line-height:1; opacity:.55; }
 .perf-conn-pct { font-size:13px; font-weight:700; color:var(--green); margin-top:3px; white-space:nowrap; }
 .perf-conn-label { font-size:9px; color:var(--muted); margin-top:1px; white-space:nowrap; }
+.calc-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:20px; }
+.calc-input-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:14px; color:var(--text); margin-bottom:18px; }
+.calc-input-row input { width:88px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:16px; font-weight:600; text-align:center; color:var(--text); outline:none; }
+.calc-input-row input:focus { border-color:var(--coral); }
+.calc-results { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+.calc-res { background:var(--cream2); border-radius:10px; padding:14px; text-align:center; }
+.calc-res-val { font-size:26px; font-weight:700; color:var(--green); line-height:1.2; }
+.calc-res-label { font-size:11px; color:var(--muted); margin-top:4px; }
+.calc-base { font-size:11px; color:var(--muted); margin-top:14px; text-align:center; line-height:1.5; }
 .novo-form { background:#F0EDE8; border:0.5px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; }
 .novo-form-title { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--green); margin-bottom:14px; }
 .novo-form-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px; margin-bottom:14px; }
@@ -948,6 +957,21 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           <thead><tr><th>Data</th><th>Agendamentos</th><th>Reuniões</th><th>Vendas</th><th>Conversão</th><th></th></tr></thead>
           <tbody id="perfTbody"></tbody>
         </table>
+      </div>
+      <div id="calcMetas" style="margin-top:32px;">
+        <p class="chart-title" style="margin-bottom:14px;">Calculadora de metas</p>
+        <div class="calc-card">
+          <div class="calc-input-row">
+            <span>Quero vender para</span>
+            <input type="number" id="calcVendas" min="0" step="1" value="30" oninput="calcularMetas()">
+            <span>pessoas</span>
+          </div>
+          <div class="calc-results">
+            <div class="calc-res"><div class="calc-res-val" id="calcReun">—</div><div class="calc-res-label">Reuniões a realizar</div></div>
+            <div class="calc-res"><div class="calc-res-val" id="calcAgend">—</div><div class="calc-res-label">Agendamentos a fazer</div></div>
+          </div>
+          <p class="calc-base" id="calcBase">Ajuste a meta para calcular.</p>
+        </div>
       </div>
       <div id="resumoTime" style="margin-top:32px;">
         <p class="chart-title" style="margin-bottom:14px;">Resumo do time — mês atual</p>
@@ -2563,6 +2587,33 @@ async function deletarRegistro(id,closer){
   }catch(e){pmmAlert('Erro ao excluir.','❌','Erro');}
 }
 
+// Taxas do período/filtro atual, usadas pela calculadora de metas
+let _metaRates={compAR:null,cp:null};
+function calcularMetas(){
+  const inp=document.getElementById('calcVendas');
+  const elReun=document.getElementById('calcReun');
+  const elAgend=document.getElementById('calcAgend');
+  const elBase=document.getElementById('calcBase');
+  if(!inp||!elReun||!elAgend||!elBase) return;
+  const meta=parseInt(inp.value)||0;
+  const {compAR,cp}=_metaRates;
+  if(cp===null||compAR===null){
+    elReun.textContent='—'; elAgend.textContent='—';
+    elBase.textContent='Sem métricas suficientes no período selecionado para calcular. Selecione um filtro com reuniões e vendas registradas.';
+    return;
+  }
+  if(meta<=0){
+    elReun.textContent='—'; elAgend.textContent='—';
+    elBase.textContent=`Base do período: ${compAR.toFixed(1)}% de comparecimento · ${cp.toFixed(1)}% de conversão.`;
+    return;
+  }
+  const reunNec=Math.ceil(meta/(cp/100));
+  const agendNec=Math.ceil(reunNec/(compAR/100));
+  elReun.textContent=reunNec.toLocaleString('pt-BR');
+  elAgend.textContent=agendNec.toLocaleString('pt-BR');
+  elBase.textContent=`Para vender para ${meta} pessoa(s), com base no período: ${compAR.toFixed(1)}% de comparecimento (agend.→reun.) e ${cp.toFixed(1)}% de conversão (reun.→venda).`;
+}
+
 async function renderPerf(){
   const closer=document.getElementById('closerSelect').value;
   const isTodos=closer==='__todos__';
@@ -2589,6 +2640,9 @@ async function renderPerf(){
   const connRV=document.getElementById('conn-reun-vendas');
   if(connAR) connAR.textContent=compAR!==null?compAR.toFixed(1)+'%':'—';
   if(connRV) connRV.textContent=cp!==null?cp.toFixed(1)+'%':'—';
+  // Alimenta a calculadora de metas com as taxas do período/filtro atual
+  _metaRates={compAR,cp};
+  calcularMetas();
   document.getElementById('perfTbody').innerHTML=arr.length===0
     ?`<tr><td colspan="6" class="empty-state">${isTodos?'Nenhum registro lançado neste mês.':'Nenhum registro. Clique em "+ Novo registro" para começar.'}</td></tr>`
     :arr.map(r=>`<tr>
