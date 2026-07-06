@@ -2307,7 +2307,7 @@ async function carregarDashboard(){
     // Pizza origens
     const origens={};
     vendas.forEach(v=>{const o=v.origem||'Outros';if(!origens[o])origens[o]={n:0,liq:0};origens[o].n++;origens[o].liq+=Number(v.valor_liquido||0);});
-    const origKeys=Object.keys(origens);
+    const origKeys=Object.keys(origens).sort((a,b)=>origens[b].n-origens[a].n);
     const origVals=origKeys.map(k=>origens[k].n);
     if(window._pieChart) window._pieChart.destroy();
     window._pieChart=new Chart(document.getElementById('pieChart'),{
@@ -2323,7 +2323,7 @@ async function carregarDashboard(){
     // Pizza gateways
     const gateways={};
     vendas.forEach(v=>{const g=v.gateway||'Outros';if(!gateways[g])gateways[g]={n:0,liq:0};gateways[g].n++;gateways[g].liq+=Number(v.valor_liquido||0);});
-    const gwKeys=Object.keys(gateways);
+    const gwKeys=Object.keys(gateways).sort((a,b)=>gateways[b].n-gateways[a].n);
     const gwVals=gwKeys.map(k=>gateways[k].n);
     if(window._pieGateway) window._pieGateway.destroy();
     window._pieGateway=new Chart(document.getElementById('pieGateway'),{
