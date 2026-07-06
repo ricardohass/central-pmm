@@ -904,6 +904,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <button class="date-btn" onclick="mudarPerfMes(1)">&#8250;</button>
           </div>
           <select class="perf-select" id="closerSelect" onchange="renderPerf()">
+            <option value="__todos__" selected>📊 Todos os closers</option>
             <option value="Lígia Oliveira">Lígia Oliveira</option>
             <option value="Gabriel Rocha">Gabriel Rocha</option>
             <option value="Caroline Neiva">Caroline Neiva</option>
@@ -2464,6 +2465,21 @@ async function getCloserData(closer,anoMes){
 }
 function _clearPerfCache(closer){Object.keys(_perfCache).forEach(k=>{if(k.startsWith(closer+'|'))delete _perfCache[k];});}
 
+// Agrega os registros de TODOS os closers por data (visão geral do mês)
+async function getTodosDataByDate(anoMes){
+  const porData={};
+  await Promise.all(CLOSERS_LIST.map(async c=>{
+    const regs=await getCloserData(c,anoMes);
+    regs.forEach(r=>{
+      if(!porData[r.data]) porData[r.data]={data:r.data,agend:0,reun:0,vendas:0};
+      porData[r.data].agend+=r.agend;
+      porData[r.data].reun+=r.reun;
+      porData[r.data].vendas+=r.vendas;
+    });
+  }));
+  return Object.values(porData).sort((a,b)=>b.data.localeCompare(a.data));
+}
+
 let formOpen=false;
 let editandoId=null;
 
@@ -2541,10 +2557,14 @@ async function deletarRegistro(id,closer){
 
 async function renderPerf(){
   const closer=document.getElementById('closerSelect').value;
+  const isTodos=closer==='__todos__';
   atualizarLabelPerfMes();
   const anoMes=perfAno+'-'+String(perfMes+1).padStart(2,'0');
+  // "+ Novo registro" não faz sentido na visão geral (não há closer definido)
+  const btnNovo=document.querySelector('.perf-controls .btn-novo');
+  if(btnNovo) btnNovo.style.display=(isTodos && currentUser.funcao==='admin')?'none':'';
   document.getElementById('perfTbody').innerHTML='<tr><td colspan="6" class="empty-state">Carregando...</td></tr>';
-  const arr=await getCloserData(closer,anoMes);
+  const arr=isTodos?await getTodosDataByDate(anoMes):await getCloserData(closer,anoMes);
   const totA=arr.reduce((s,r)=>s+r.agend,0);
   const totR=arr.reduce((s,r)=>s+r.reun,0);
   const totV=arr.reduce((s,r)=>s+r.vendas,0);
@@ -2554,13 +2574,13 @@ async function renderPerf(){
   const cp=totR>0?(totV/totR*100):null;
   document.getElementById('tot-conv').textContent=cp!==null?cp.toFixed(1)+'%':'—';
   document.getElementById('perfTbody').innerHTML=arr.length===0
-    ?'<tr><td colspan="6" class="empty-state">Nenhum registro. Clique em "+ Novo registro" para começar.</td></tr>'
+    ?`<tr><td colspan="6" class="empty-state">${isTodos?'Nenhum registro lançado neste mês.':'Nenhum registro. Clique em "+ Novo registro" para começar.'}</td></tr>`
     :arr.map(r=>`<tr>
         <td>${fmtDataBR(r.data)}</td>
         <td>${r.agend}</td><td>${r.reun}</td><td>${r.vendas}</td>
         <td class="${convCls(r.reun,r.vendas)}">${fmtConv(r.reun,r.vendas)}</td>
         <td style="white-space:nowrap">
-          ${currentUser.funcao==='admin'?`
+          ${(currentUser.funcao==='admin'&&!isTodos)?`
             <button class="btn-edit" onclick="editarRegistro('${r.id}','${closer}')" title="Editar">&#9998;</button>
             <button class="btn-del" onclick="deletarRegistro('${r.id}','${closer}')" title="Excluir">&#10005;</button>
           `:''}
