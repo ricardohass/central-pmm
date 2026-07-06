@@ -928,7 +928,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         <div class="ptotal"><div class="ptotal-val" id="tot-reun">0</div><div class="ptotal-label">Reuniões</div></div>
         <div class="perf-conn"><span class="perf-conn-arrow">&#10142;</span><span class="perf-conn-pct" id="conn-reun-vendas">—</span><span class="perf-conn-label">conversão</span></div>
         <div class="ptotal"><div class="ptotal-val coral" id="tot-vendas">0</div><div class="ptotal-label">Vendas</div></div>
-        <div class="ptotal"><div class="ptotal-val" id="tot-conv">—</div><div class="ptotal-label">Taxa de conversão</div></div>
+        <div class="ptotal"><div class="ptotal-val" id="tot-conv">—</div><div class="ptotal-label">Conversão geral</div></div>
       </div>
       <div class="novo-form" id="novoForm" style="display:none;">
         <div class="novo-form-title" id="formTitle">Novo registro</div>
@@ -2580,7 +2580,9 @@ async function renderPerf(){
   document.getElementById('tot-reun').textContent=totR;
   document.getElementById('tot-vendas').textContent=totV;
   const cp=totR>0?(totV/totR*100):null;
-  document.getElementById('tot-conv').textContent=cp!==null?cp.toFixed(1)+'%':'—';
+  // Card final: conversão geral do funil (vendas ÷ total de agendamentos)
+  const convGeral=totA>0?(totV/totA*100):null;
+  document.getElementById('tot-conv').textContent=convGeral!==null?convGeral.toFixed(1)+'%':'—';
   // Taxas entre etapas do funil
   const compAR=totA>0?(totR/totA*100):null;
   const connAR=document.getElementById('conn-agend-reun');
