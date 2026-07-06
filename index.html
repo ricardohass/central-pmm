@@ -133,6 +133,12 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .mbar-pct { font-size:11px; color:var(--muted); flex-shrink:0; }
 .charts-row { display:grid; grid-template-columns:1fr 240px 240px; gap:12px; margin-bottom:16px; }
 .chart-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:20px; }
+.fat-card { display:flex; flex-direction:column; }
+.fat-resumo { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:18px; padding-top:18px; border-top:0.5px solid var(--border); flex:1; align-content:center; }
+.fr-tile { background:var(--cream); border-radius:10px; padding:14px 16px; }
+.fr-label { font-size:11px; color:var(--muted); margin-bottom:6px; }
+.fr-value { font-size:19px; font-weight:600; color:var(--green); line-height:1.15; }
+.fr-sub { font-size:11px; color:var(--muted); margin-top:3px; }
 .chart-title { font-size:13px; font-weight:500; color:var(--text); margin-bottom:14px; }
 .chart-legend { display:flex; gap:16px; margin-top:12px; flex-wrap:wrap; }
 .cli { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
@@ -873,7 +879,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           <div class="mcard"><p class="mcard-label">A receber</p><p class="mcard-value coral" id="dash-a-receber">—</p><p class="mcard-meta">valor restante pendente</p></div>
         </div>
         <div class="charts-row">
-          <div class="chart-card"><p class="chart-title">Faturamento por dia</p><div style="position:relative;height:200px;"><canvas id="fatChart"></canvas></div><div class="chart-legend"><div class="cli"><div class="cli-line" style="background:rgba(61,92,74,0.2);height:8px;border-radius:2px;"></div>Fat. bruto</div><div class="cli"><div class="cli-line" style="background:#3D5C4A;"></div>Fat. líquido</div></div></div>
+          <div class="chart-card fat-card"><p class="chart-title">Faturamento por dia</p><div style="position:relative;height:200px;"><canvas id="fatChart"></canvas></div><div class="chart-legend"><div class="cli"><div class="cli-line" style="background:rgba(61,92,74,0.2);height:8px;border-radius:2px;"></div>Fat. bruto</div><div class="cli"><div class="cli-line" style="background:#3D5C4A;"></div>Fat. líquido</div></div><div class="fat-resumo" id="fatResumo"></div></div>
           <div class="chart-card pie-wrap">
             <p class="chart-title" style="align-self:flex-start;">Vendas por origem</p>
             <canvas id="pieChart" width="160" height="160" style="max-width:160px;"></canvas>
@@ -2357,6 +2363,25 @@ async function carregarDashboard(){
         scales:{x:{grid:{display:false},ticks:{font:{size:10},color:'#aaa',maxTicksLimit:12}},
           y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:10},color:'#aaa',callback:v=>v>=1000?'R$'+(v/1000)+'k':'R$'+v}}}}
     });
+
+    // Resumo do período (KPIs abaixo do gráfico) — baseado no faturamento líquido por dia
+    const fr=document.getElementById('fatResumo');
+    if(fr){
+      const nDias=dias.length;
+      const totalLiqDia=dias.reduce((s,d)=>s+porDia[d].liq,0);
+      const mediaDia=nDias?totalLiqDia/nDias:0;
+      let melhorDia=null,melhorVal=-1;
+      dias.forEach(d=>{ if(porDia[d].liq>melhorVal){melhorVal=porDia[d].liq;melhorDia=d;} });
+      const totalLiqVendas=vendas.reduce((s,v)=>s+Number(v.valor_liquido||0),0);
+      const ticket=vendas.length?totalLiqVendas/vendas.length:0;
+      const melhorLabel=melhorDia?(()=>{const[y,m,dd]=melhorDia.split('-');return dd+'/'+m;})():'—';
+      fr.innerHTML=nDias===0
+        ?'<p style="grid-column:1/-1;font-size:13px;color:var(--muted);text-align:center;padding:8px 0;">Sem faturamento no período.</p>'
+        :`<div class="fr-tile"><p class="fr-label">Melhor dia</p><p class="fr-value">${fmtBRL(melhorVal)}</p><p class="fr-sub">${melhorLabel}</p></div>
+          <div class="fr-tile"><p class="fr-label">Média por dia</p><p class="fr-value">${fmtBRL(mediaDia)}</p><p class="fr-sub">líquido · ${nDias} dia(s) com venda</p></div>
+          <div class="fr-tile"><p class="fr-label">Ticket médio</p><p class="fr-value">${fmtBRL(ticket)}</p><p class="fr-sub">líquido por venda</p></div>
+          <div class="fr-tile"><p class="fr-label">Total no período</p><p class="fr-value">${fmtBRL(totalLiqVendas)}</p><p class="fr-sub">líquido · ${vendas.length} venda(s)</p></div>`;
+    }
   }catch(e){console.error(e);}
 }
 
