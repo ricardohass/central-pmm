@@ -1873,38 +1873,47 @@ function _rangeBounds(){
 function _buildCal(year,month){
   const startDow=new Date(year,month,1).getDay();
   const diasNoMes=new Date(year,month+1,0).getDate();
-  const [lo,hi]=_rangeBounds();
   let h='<div class="pp-cal-title">'+MESES_NOMES[month]+' '+year+'</div>';
   h+='<div class="pp-week">'+_WEEK_PT.map(d=>'<span>'+d+'</span>').join('')+'</div><div class="pp-grid">';
   for(let i=0;i<startDow;i++) h+='<span class="pp-day pp-empty"></span>';
   for(let d=1;d<=diasNoMes;d++){
     const iso=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    let c='';
-    if(lo&&iso===lo) c+=' pp-sel pp-sel-start';
-    if(hi&&iso===hi) c+=' pp-sel pp-sel-end';
-    if(lo&&hi&&iso>lo&&iso<hi) c+=' pp-inrange';
-    h+='<span class="pp-day'+c+'" onclick="pickDashDay(\''+iso+'\')" onmouseenter="hoverDashDay(\''+iso+'\')">'+d+'</span>';
+    h+='<span class="pp-day" data-iso="'+iso+'" onclick="pickDashDay(\''+iso+'\')" onmouseenter="hoverDashDay(\''+iso+'\')">'+d+'</span>';
   }
   return h+'</div>';
 }
 
-function hoverDashDay(iso){
-  if(tmpStart&&!tmpEnd){ tmpHover=iso; renderDashPicker(); }
+// Pinta a seleção trocando SÓ as classes (sem recriar os elementos — cliques não quebram)
+function _applyDayClasses(){
+  const [lo,hi]=_rangeBounds();
+  document.querySelectorAll('#periodoPop .pp-day[data-iso]').forEach(el=>{
+    const iso=el.getAttribute('data-iso');
+    el.classList.remove('pp-sel','pp-sel-start','pp-sel-end','pp-inrange');
+    if(lo&&iso===lo) el.classList.add('pp-sel','pp-sel-start');
+    if(hi&&iso===hi) el.classList.add('pp-sel','pp-sel-end');
+    if(lo&&hi&&iso>lo&&iso<hi) el.classList.add('pp-inrange');
+  });
+  const lbl=document.getElementById('ppRangeLabel');
+  if(lbl) lbl.textContent=tmpStart?(fmtDataBR(tmpStart)+(tmpEnd?' – '+fmtDataBR(tmpEnd):' – …')):'Selecione um período';
 }
 
+function hoverDashDay(iso){
+  if(tmpStart&&!tmpEnd){ tmpHover=iso; _applyDayClasses(); }
+}
+
+// Reconstrói os dois meses (só ao abrir / navegar / preset — nunca durante um clique de dia)
 function renderDashPicker(){
   const nm=pickerMonth===11?0:pickerMonth+1, ny=pickerMonth===11?pickerYear+1:pickerYear;
   document.getElementById('ppCal1').innerHTML=_buildCal(pickerYear,pickerMonth);
   document.getElementById('ppCal2').innerHTML=_buildCal(ny,nm);
-  const lbl=document.getElementById('ppRangeLabel');
-  if(lbl) lbl.textContent=tmpStart?(fmtDataBR(tmpStart)+(tmpEnd?' – '+fmtDataBR(tmpEnd):' – …')):'Selecione um período';
+  _applyDayClasses();
 }
 
 function pickDashDay(iso){
   if(!tmpStart||(tmpStart&&tmpEnd)){ tmpStart=iso; tmpEnd=null; tmpHover=iso; } // 1º clique = início
   else if(iso<tmpStart){ tmpEnd=tmpStart; tmpStart=iso; tmpHover=null; }        // clicou antes do início → inverte
   else { tmpEnd=iso; tmpHover=null; }                                            // 2º clique = fim
-  renderDashPicker();
+  _applyDayClasses(); // só repinta — não recria o dia clicado
 }
 
 function pickerNav(delta){
