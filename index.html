@@ -393,6 +393,28 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .dep-arrow { font-size:16px; color:var(--coral); align-self:center; }
 .dep-empty { text-align:center; padding:48px; color:var(--muted); font-size:13px; grid-column:1/-1; }
 
+/* FAQ */
+.faq-intro { font-size:13px; color:var(--muted); margin:-8px 0 20px; max-width:640px; line-height:1.6; }
+.faq-filtros { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+.faq-chip { font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--muted); border:0.5px solid var(--border); border-radius:20px; background:#fff; padding:7px 14px; cursor:pointer; transition:background .15s,color .15s,border-color .15s; }
+.faq-chip:hover { border-color:var(--coral); }
+.faq-chip.active { background:var(--green); color:#fff; border-color:var(--green); }
+.faq-list { display:flex; flex-direction:column; gap:10px; }
+.faq-item { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:16px 18px; cursor:pointer; transition:border-color .15s; }
+.faq-item:hover { border-color:var(--coral); }
+.faq-item.open { border-color:var(--green); }
+.faq-q { display:flex; align-items:center; gap:12px; }
+.faq-q-text { font-size:14px; font-weight:500; color:var(--text); flex:1; line-height:1.4; }
+.faq-badge { font-size:10px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; padding:3px 9px; border-radius:20px; white-space:nowrap; flex-shrink:0; }
+.faq-badge.metodologia { background:#ECFDF5; color:#065F46; }
+.faq-badge.entrega { background:#EEF2FF; color:#3730A3; }
+.faq-badge.objecoes { background:#FFF0E6; color:#923D00; }
+.faq-chevron { font-size:18px; color:var(--muted); transition:transform .2s; flex-shrink:0; line-height:1; }
+.faq-item.open .faq-chevron { transform:rotate(180deg); }
+.faq-a { font-size:13px; color:var(--muted); line-height:1.7; max-height:0; overflow:hidden; transition:max-height .28s ease, margin-top .28s ease, padding-top .28s ease; }
+.faq-item.open .faq-a { max-height:2000px; margin-top:14px; padding-top:14px; border-top:0.5px solid var(--border); }
+.faq-empty { text-align:center; padding:48px; color:var(--muted); font-size:13px; }
+
 /* Form depoimento */
 .dep-form-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:flex-start; justify-content:center; overflow-y:auto; padding:32px 16px; }
 .dep-form-overlay.open { display:flex; }
@@ -683,6 +705,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <button class="nav-tab" id="tab-links"       onclick="sp('links',this)">Links de venda</button>
     <button class="nav-tab" id="tab-cobrancas"  onclick="sp('cobrancas',this)">Cobranças</button>
     <button class="nav-tab" id="tab-reembolsos" onclick="sp('reembolsos',this)">Reembolsos</button>
+    <button class="nav-tab" id="tab-faq"        onclick="sp('faq',this)">FAQ</button>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbarUser"></span>
     <button class="logout-btn" onclick="fazerLogout()">Sair</button>
@@ -1294,6 +1317,24 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       <div id="metas-closer-view" style="display:none;">
         <div id="metas-closer-content"></div>
       </div>
+    </div>
+
+    <!-- FAQ -->
+    <div id="page-faq" class="page">
+      <div class="dep-header">
+        <div>
+          <p class="page-eyebrow">Perguntas frequentes</p>
+          <p class="page-title">FAQ do PMM</p>
+        </div>
+      </div>
+      <p class="faq-intro">Respostas oficiais para as dúvidas mais comuns sobre o produto e o método — para consultar no dia a dia e durante as calls. Clique numa pergunta para ver a resposta.</p>
+      <div class="faq-filtros">
+        <button class="faq-chip active" data-cat="todas"       onclick="setFaqCat('todas')">Todas</button>
+        <button class="faq-chip"        data-cat="metodologia" onclick="setFaqCat('metodologia')">Metodologia</button>
+        <button class="faq-chip"        data-cat="entrega"     onclick="setFaqCat('entrega')">Entrega</button>
+        <button class="faq-chip"        data-cat="objecoes"    onclick="setFaqCat('objecoes')">Objeções na venda</button>
+      </div>
+      <div class="faq-list" id="faqList"></div>
     </div>
 
   </div>
@@ -1992,12 +2033,13 @@ const TODAS_TELAS=[
   {id:'links',nome:'Links de venda'},
   {id:'cobrancas',nome:'Cobranças'},
   {id:'reembolsos',nome:'Reembolsos'},
+  {id:'faq',nome:'FAQ'},
 ];
 const PERM_DEFAULT={
-  admin:['dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos'],
-  closer:['performance','analises','metas'],
-  sdr:['cobrancas'],
-  social_seller:[],
+  admin:['dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos','faq'],
+  closer:['performance','analises','metas','faq'],
+  sdr:['cobrancas','faq'],
+  social_seller:['faq'],
 };
 function getPerms(){
   const s=localStorage.getItem('pmm_perms');
@@ -2053,6 +2095,7 @@ const HOME_CARDS={
   links:{icon:'&#128279;',label:'Links de venda',sub:'Checkouts e pagamentos'},
   cobrancas:{icon:'&#128197;',label:'Cobranças',sub:'Calendário de cobranças'},
   reembolsos:{icon:'&#128184;',label:'Reembolsos',sub:'Cancelamentos e desistências'},
+  faq:{icon:'&#10067;',label:'FAQ',sub:'Perguntas frequentes do PMM'},
 };
 
 function iniciarApp(){
@@ -2078,7 +2121,7 @@ function aplicarPermissoes(){
   const perms=getPerms();
   const funcao=currentUser.funcao;
   const telasPermitidas=['home',...(perms[funcao]||[])];
-  ['home','dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos'].forEach(p=>{
+  ['home','dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos','faq'].forEach(p=>{
     const tab=document.getElementById('tab-'+p);
     if(tab) tab.style.display=telasPermitidas.includes(p)?'':'none';
   });
@@ -2153,6 +2196,7 @@ function sp(name,btn){
   if(name==='links') carregarLinks();
   if(name==='cobrancas') carregarCobrancas();
   if(name==='reembolsos') carregarReembolsos();
+  if(name==='faq') renderFaq();
 }
 function switchTab(tab,btn){
   document.querySelectorAll('.section-tab').forEach(t=>t.classList.remove('active'));
@@ -4282,6 +4326,72 @@ async function excluirDep(id){
     await supaFetch('depoimentos?id=eq.'+id, {method:'DELETE', headers:{'Prefer':''}});
     await carregarDepoimentos();
   }catch(e){ pmmAlert('Erro ao excluir.','❌','Erro'); }
+}
+
+// ── FAQ ──
+const FAQ_CATS = {
+  metodologia:{label:'Metodologia', cls:'metodologia'},
+  entrega:    {label:'Entrega',     cls:'entrega'},
+  objecoes:   {label:'Objeções',    cls:'objecoes'},
+};
+
+// Perguntas e respostas — base inicial extraída do Treinamento de Produto com a Júlia (07/07/2026).
+const FAQ_DATA = [
+  {
+    cat:'metodologia',
+    q:`O método serve também para quem já é avançado — já tem audiência grande e fatura alto (100k+)?`,
+    a:`Serve, e todos começam pela etapa 1. A construção de audiência não é só para iniciante: é para qualquer pessoa que queira crescer, porque sempre dá para conquistar mais audiência qualificada. A própria Júlia, com 1,3 milhão de seguidores, está na etapa 1 por estar mudando de nicho — e os pais dela, com 6 e 4 milhões de seguidores, também. Uma bandeira da PMM: você não precisa só de tráfego pago para faturar muito. Quem fatura apenas por tráfego pago está deixando dinheiro na mesa (o custo por lead só sobe); o ideal é 60%+ da receita vir do orgânico. E o cliente avançado pode continuar monetizando enquanto seguimos o método.`,
+  },
+  {
+    cat:'metodologia',
+    q:`A estratégia de aquecimento / geração de desejo é diferente da estratégia de conteúdo?`,
+    a:`Não é separada — ela entra dentro da estratégia de conteúdo. Existe a estratégia de conteúdo do feed e a dos stories; na 3ª etapa a gente modifica essa estratégia e adiciona a geração de desejo. Ou seja, os conteúdos passam a ser pensados 100% para gerar desejo e aquecer a audiência para a compra, ainda sem fazer oferta direta.`,
+  },
+  {
+    cat:'entrega',
+    q:`A PMM cria os roteiros dos vídeos do feed ou o cliente faz sozinho?`,
+    a:`A PMM entrega 100% dos roteiros. Junto com o calendário vão o roteiro a ser gravado, o modelo de gravação e de edição, as legendas e até instruções de gravação — o cliente tem o mínimo de trabalho: basicamente gravar, editar e postar. Se ele não gostar de um roteiro ou não achar relevante, a gente ajusta até ficar na linguagem dele.`,
+  },
+  {
+    cat:'entrega',
+    q:`Vocês ajudam na criação dos stories todos os dias? E se surgir um evento específico no dia?`,
+    a:`Sim, de forma escalável. Como seria inviável um estrategista montar o story manualmente para todos os clientes todos os dias, a PMM criou uma ferramenta de IA dentro da plataforma: o cliente grava um áudio (ou escreve) contando a rotina do dia — "hoje vou a tal evento, treinar, etc." — e a ferramenta, que já conhece o nicho e o produto dele, monta toda a narrativa dos stories, do primeiro ao último: o que postar, como postar e o que não postar. O cliente pode ajustar a linguagem como preferir. Resolve de vez o "não sei o que postar".`,
+  },
+  {
+    cat:'entrega',
+    q:`O cliente vai aprender a construir a narrativa e o conteúdo por conta própria?`,
+    a:`A entrega é conteúdo pronto (roteiro e narrativa), para o cliente ter o mínimo de trabalho — o foco não é ele criar do zero. Mas nas calls de implementação, principalmente na call da 2ª etapa (uma call de cerca de 2h só sobre stories), a gente ensina o método: como pensar, como construir a narrativa, tom de voz e cinco estratégias de storytelling. O objetivo é que ele consiga postar um story efetivo mesmo sem a ferramenta — muitos clientes acabam nem usando a ferramenta de tanto que dominam o método. No primeiro mês o foco é o feed, mas o cliente já recebe a ferramenta de stories para não deixar os stories parados desde o dia 1.`,
+  },
+  {
+    cat:'objecoes',
+    q:`O lead quer comprovação de aumento de faturamento e ainda não temos esse case. Como contornar?`,
+    a:`A PMM não promete faturamento — boa parte do mercado promete, a gente não. O que garantimos e comprovamos é geração de demanda qualificada: fazer as pessoas quererem comprar o que o cliente vende. Não temos acesso aos números privados de faturamento dos clientes, mas mostramos prints de cases reais — a Gabriela (médica, com o consultório lotado depois do PMM), a Lara Jucá (vende bois de mais de R$ 1 milhão, com várias pessoas interessadas no direct em cerca de um mês) e a Juliana (6 interessadas na mentoria já na 1ª semana). A conversão final é responsabilidade do cliente; a nossa entrega é gerar a demanda. E ser sincero sobre isso aumenta a confiança no produto — nunca diga ao lead que "ainda não entramos na última etapa".`,
+  },
+];
+
+let faqFiltroCat = 'todas';
+
+function setFaqCat(cat){ faqFiltroCat = cat; renderFaq(); }
+
+function toggleFaq(el){ el.classList.toggle('open'); }
+
+function renderFaq(){
+  const list = document.getElementById('faqList');
+  if(!list) return;
+  document.querySelectorAll('.faq-chip').forEach(ch => ch.classList.toggle('active', ch.dataset.cat === faqFiltroCat));
+  const itens = faqFiltroCat === 'todas' ? FAQ_DATA : FAQ_DATA.filter(f => f.cat === faqFiltroCat);
+  if(!itens.length){ list.innerHTML = '<p class="faq-empty">Nenhuma pergunta nesta categoria.</p>'; return; }
+  list.innerHTML = itens.map(f => {
+    const c = FAQ_CATS[f.cat];
+    return `<div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">
+        <span class="faq-q-text">${f.q}</span>
+        <span class="faq-badge ${c.cls}">${c.label}</span>
+        <span class="faq-chevron">&#8964;</span>
+      </div>
+      <div class="faq-a">${f.a}</div>
+    </div>`;
+  }).join('');
 }
 
 // ── MODAL CUSTOMIZADO ──
