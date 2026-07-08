@@ -203,19 +203,19 @@ function fmtData(iso){
 function montarResumo(){
   const baixa=document.querySelector('input[name=baixa]:checked').value;
   const linhas=['🚨 *NOVO CASO DE REEMBOLSO*',''];
-  const add=(emoji,label,valor)=>{ if(valor) linhas.push(`${emoji} *${label}:* ${valor}`); };
-  add('👤','Cliente',val('f-nome'));
-  add('📱','WhatsApp',val('f-whatsapp'));
-  add('🗓️','Data da compra',fmtData(val('f-compra')));
-  add('📩','Data da solicitação',fmtData(val('f-solic')));
-  add('💳','Plataforma',val('f-plataforma'));
-  add('💰','Formato de pagamento',val('f-formato'));
-  add('🎯','Closer',val('f-closer'));
-  add('🧠','Estrategista',val('f-estrategista'));
-  add('❓','Motivo',val('f-motivo'));
-  add('📦','Baixa no sistema', baixa==='sim'?'Efetivada':'Pendente');
-  add('📄','Contrato',val('f-contrato'));
-  add('📝','Observações',val('f-obs'));
+  const add=(label,valor)=>{ if(valor) linhas.push(`*${label}:* ${valor}`); };
+  add('Cliente',val('f-nome'));
+  add('WhatsApp',val('f-whatsapp'));
+  add('Data da compra',fmtData(val('f-compra')));
+  add('Data da solicitação',fmtData(val('f-solic')));
+  add('Plataforma',val('f-plataforma'));
+  add('Formato de pagamento',val('f-formato'));
+  add('Closer',val('f-closer'));
+  add('Estrategista',val('f-estrategista'));
+  add('Motivo',val('f-motivo'));
+  add('Baixa no sistema', baixa==='sim'?'Efetivada':'Pendente');
+  add('Contrato',val('f-contrato'));
+  add('Observações',val('f-obs'));
   return linhas.join('\n');
 }
 
