@@ -69,7 +69,7 @@
 
       <div class="field">
         <label>WhatsApp do cliente <span class="req">*</span></label>
-        <input type="tel" id="f-whatsapp" placeholder="(11) 99999-9999" required>
+        <input type="tel" id="f-whatsapp" placeholder="(11) 9.8867-6767" inputmode="numeric" required>
       </div>
 
       <div class="grid2">
@@ -192,6 +192,23 @@ document.querySelectorAll('input[name="baixa"]').forEach(r=>r.addEventListener('
 }));
 
 function val(id){return (document.getElementById(id).value||'').trim();}
+
+// máscara de telefone: (11) 9.8867-6767
+function maskTel(value){
+  let v=(value||'').replace(/\D/g,'').slice(0,11);
+  if(!v) return '';
+  if(v.length<=2) return '('+v;
+  let out='('+v.slice(0,2)+') ';
+  const rest=v.slice(2);
+  out+=rest.slice(0,1);
+  if(rest.length>1) out+='.'+rest.slice(1,5);
+  if(rest.length>5) out+='-'+rest.slice(5,9);
+  return out;
+}
+(function(){
+  const wa=document.getElementById('f-whatsapp');
+  wa.addEventListener('input',()=>{ wa.value=maskTel(wa.value); });
+})();
 
 function fmtData(iso){
   if(!iso) return '';
