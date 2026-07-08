@@ -44,6 +44,9 @@
   .ok-state .ico{width:60px;height:60px;border-radius:50%;background:#ECFDF5;color:#065F46;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 16px;}
   .ok-state h2{font-family:'Playfair Display',serif;font-weight:400;color:var(--green);margin:0 0 6px;}
   .ok-state p{font-size:13px;color:var(--muted);margin:0 0 18px;}
+  .wa-preview{text-align:left;background:var(--cream);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px;font-size:13px;line-height:1.7;color:var(--text);white-space:pre-wrap;word-break:break-word;margin:0 0 14px;max-height:340px;overflow-y:auto;}
+  .copy-btn{width:100%;background:var(--green);color:#fff;border:none;border-radius:10px;padding:13px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:10px;transition:background .15s;}
+  .copy-btn:hover{background:var(--green-light);}
   .link-btn{background:none;border:0.5px solid var(--coral);color:var(--coral);border-radius:9px;padding:10px 18px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;}
   .foot{text-align:center;font-size:11px;color:var(--muted);margin-top:18px;}
 </style>
@@ -169,7 +172,9 @@
     <div class="ok-state" id="okView">
       <div class="ico">✓</div>
       <h2>Caso registrado!</h2>
-      <p>O pedido de reembolso foi enviado para a central. A equipe vai acompanhar a partir de agora.</p>
+      <p>Copie o resumo abaixo e cole nos grupos que fizerem sentido.</p>
+      <div class="wa-preview" id="waPreview"></div>
+      <button class="copy-btn" id="copyBtn" onclick="copiarResumo()">📋 Copiar resumo</button>
       <button class="link-btn" onclick="novoCaso()">Registrar outro caso</button>
     </div>
   </div>
@@ -188,6 +193,47 @@ document.querySelectorAll('input[name="baixa"]').forEach(r=>r.addEventListener('
 }));
 
 function val(id){return (document.getElementById(id).value||'').trim();}
+
+function fmtData(iso){
+  if(!iso) return '';
+  const [y,m,d]=iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function montarResumo(){
+  const baixa=document.querySelector('input[name=baixa]:checked').value;
+  const linhas=['🚨 *NOVO CASO DE REEMBOLSO*',''];
+  const add=(emoji,label,valor)=>{ if(valor) linhas.push(`${emoji} *${label}:* ${valor}`); };
+  add('👤','Cliente',val('f-nome'));
+  add('📱','WhatsApp',val('f-whatsapp'));
+  add('🗓️','Data da compra',fmtData(val('f-compra')));
+  add('📩','Data da solicitação',fmtData(val('f-solic')));
+  add('💳','Plataforma',val('f-plataforma'));
+  add('💰','Formato de pagamento',val('f-formato'));
+  add('🎯','Closer',val('f-closer'));
+  add('🧠','Estrategista',val('f-estrategista'));
+  add('❓','Motivo',val('f-motivo'));
+  add('📦','Baixa no sistema', baixa==='sim'?'Efetivada':'Pendente');
+  add('📄','Contrato',val('f-contrato'));
+  add('📝','Observações',val('f-obs'));
+  return linhas.join('\n');
+}
+
+async function copiarResumo(){
+  const texto=document.getElementById('waPreview').textContent;
+  const btn=document.getElementById('copyBtn');
+  try{
+    await navigator.clipboard.writeText(texto);
+  }catch(e){
+    const ta=document.createElement('textarea'); ta.value=texto;
+    ta.style.position='fixed'; ta.style.left='-9999px';
+    document.body.appendChild(ta); ta.select();
+    try{document.execCommand('copy');}catch(_){}
+    ta.remove();
+  }
+  btn.textContent='✓ Copiado!';
+  setTimeout(()=>{ btn.textContent='📋 Copiar resumo'; },2000);
+}
 
 async function enviar(){
   const err=document.getElementById('msgErr');
@@ -225,6 +271,7 @@ async function enviar(){
       body:JSON.stringify(body)
     });
     if(!res.ok) throw new Error(await res.text());
+    document.getElementById('waPreview').textContent=montarResumo();
     document.getElementById('formView').style.display='none';
     document.getElementById('okView').style.display='block';
   }catch(e){
