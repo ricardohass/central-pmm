@@ -65,6 +65,37 @@
         <input type="text" id="f-nome" placeholder="Nome completo do cliente">
       </div>
 
+      <div class="field">
+        <label>WhatsApp do cliente</label>
+        <input type="tel" id="f-whatsapp" placeholder="(11) 99999-9999">
+      </div>
+
+      <div class="grid2">
+        <div class="field"><label>Plataforma de pagamento</label>
+          <select id="f-plataforma">
+            <option value="">Selecione</option>
+            <option>Hotmart</option>
+            <option>Kiwify</option>
+            <option>Eduzz</option>
+            <option>Monetizze</option>
+            <option>Guru</option>
+            <option>Ticto</option>
+            <option>PerfectPay</option>
+            <option>Cartão direto/Outra</option>
+          </select>
+        </div>
+        <div class="field"><label>Formato de pagamento</label>
+          <select id="f-formato">
+            <option value="">Selecione</option>
+            <option>Cartão de crédito</option>
+            <option>PIX</option>
+            <option>Boleto</option>
+            <option>Cartão + Boleto</option>
+            <option>Outro</option>
+          </select>
+        </div>
+      </div>
+
       <div class="grid2">
         <div class="field"><label>Data da compra</label><input type="date" id="f-compra"></div>
         <div class="field"><label>Data da solicitação</label><input type="date" id="f-solic"></div>
@@ -171,6 +202,9 @@ async function enviar(){
   const baixa=document.querySelector('input[name=baixa]:checked').value;
   const body={
     nome_cliente:nome,
+    whatsapp_cliente:val('f-whatsapp')||null,
+    plataforma_pagamento:val('f-plataforma')||null,
+    formato_pagamento:val('f-formato')||null,
     tipo:'cancelamento',                 // classificado internamente depois
     status:'em_aberto',
     aberto_por:'Formulário externo',
@@ -204,7 +238,7 @@ async function enviar(){
 }
 
 function novoCaso(){
-  ['f-nome','f-compra','f-solic','f-contrato','f-closer','f-estrategista','f-motivo','f-obs','f-website'].forEach(id=>document.getElementById(id).value='');
+  ['f-nome','f-whatsapp','f-plataforma','f-formato','f-compra','f-solic','f-contrato','f-closer','f-estrategista','f-motivo','f-obs','f-website'].forEach(id=>document.getElementById(id).value='');
   document.querySelector('input[name=baixa][value=nao]').checked=true;
   document.getElementById('opt-nao').classList.add('sel');
   document.getElementById('opt-sim').classList.remove('sel');
