@@ -38,8 +38,6 @@
   .btn{width:100%;margin-top:6px;background:var(--coral);color:#fff;border:none;border-radius:10px;padding:14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:background .15s;}
   .btn:hover{background:#bd4a22;}
   .btn:disabled{opacity:.6;cursor:default;}
-  .msg{margin-top:14px;font-size:13px;padding:12px 14px;border-radius:9px;display:none;}
-  .msg.err{display:block;background:#FEE2E2;color:#991B1B;}
   .ok-state{display:none;text-align:center;padding:20px 0;}
   .ok-state .ico{width:60px;height:60px;border-radius:50%;background:#ECFDF5;color:#065F46;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 16px;}
   .ok-state h2{font-family:'Playfair Display',serif;font-weight:400;color:var(--green);margin:0 0 6px;}
@@ -63,19 +61,20 @@
       <h1>Registrar caso de reembolso</h1>
       <p class="lead">Preencha os dados do pedido de reembolso. A equipe vai acompanhar internamente a partir daqui.</p>
 
+      <form id="reembForm" onsubmit="enviar(event)">
       <div class="field">
         <label>Nome do cliente que pediu o reembolso <span class="req">*</span></label>
-        <input type="text" id="f-nome" placeholder="Nome completo do cliente">
+        <input type="text" id="f-nome" placeholder="Nome completo do cliente" required>
       </div>
 
       <div class="field">
-        <label>WhatsApp do cliente</label>
-        <input type="tel" id="f-whatsapp" placeholder="(11) 99999-9999">
+        <label>WhatsApp do cliente <span class="req">*</span></label>
+        <input type="tel" id="f-whatsapp" placeholder="(11) 99999-9999" required>
       </div>
 
       <div class="grid2">
-        <div class="field"><label>Plataforma de pagamento</label>
-          <select id="f-plataforma">
+        <div class="field"><label>Plataforma de pagamento <span class="req">*</span></label>
+          <select id="f-plataforma" required>
             <option value="">Selecione</option>
             <option>Hotmart</option>
             <option>Hubla</option>
@@ -85,8 +84,8 @@
             <option>Asaas</option>
           </select>
         </div>
-        <div class="field"><label>Formato de pagamento</label>
-          <select id="f-formato">
+        <div class="field"><label>Formato de pagamento <span class="req">*</span></label>
+          <select id="f-formato" required>
             <option value="">Selecione</option>
             <option>Cartão de crédito</option>
             <option>PIX</option>
@@ -98,18 +97,18 @@
       </div>
 
       <div class="grid2">
-        <div class="field"><label>Data da compra</label><input type="date" id="f-compra"></div>
-        <div class="field"><label>Data da solicitação</label><input type="date" id="f-solic"></div>
+        <div class="field"><label>Data da compra <span class="req">*</span></label><input type="date" id="f-compra" required></div>
+        <div class="field"><label>Data da solicitação <span class="req">*</span></label><input type="date" id="f-solic" required></div>
       </div>
 
       <div class="field">
-        <label>Link do contrato</label>
-        <input type="text" id="f-contrato" placeholder="https://drive.google.com/...">
+        <label>Link do contrato <span class="req">*</span></label>
+        <input type="text" id="f-contrato" placeholder="https://drive.google.com/..." required>
       </div>
 
       <div class="grid2">
-        <div class="field"><label>Closer responsável</label>
-          <select id="f-closer">
+        <div class="field"><label>Closer responsável <span class="req">*</span></label>
+          <select id="f-closer" required>
             <option value="">Selecione</option>
             <option>Lígia Oliveira</option>
             <option>Gabriel Rocha</option>
@@ -119,8 +118,8 @@
             <option>Amanda Duarte</option>
           </select>
         </div>
-        <div class="field"><label>Estrategista responsável</label>
-          <select id="f-estrategista">
+        <div class="field"><label>Estrategista responsável <span class="req">*</span></label>
+          <select id="f-estrategista" required>
             <option value="">Selecione</option>
             <option>Amanda</option>
             <option>Carol</option>
@@ -132,8 +131,8 @@
       </div>
 
       <div class="field">
-        <label>Motivo do pedido de reembolso</label>
-        <select id="f-motivo">
+        <label>Motivo do pedido de reembolso <span class="req">*</span></label>
+        <select id="f-motivo" required>
           <option value="">Selecione o motivo</option>
           <option>Arrependimento (até 7 dias)</option>
           <option>Dificuldade financeira</option>
@@ -150,7 +149,7 @@
       </div>
 
       <div class="field">
-        <label>Já deu baixa no sistema interno de entrega?</label>
+        <label>Já deu baixa no sistema interno de entrega? <span class="req">*</span></label>
         <div class="radio-row">
           <label class="radio-opt sel" id="opt-nao"><input type="radio" name="baixa" value="nao" checked> Não</label>
           <label class="radio-opt" id="opt-sim"><input type="radio" name="baixa" value="sim"> Sim</label>
@@ -165,8 +164,8 @@
       <!-- honeypot anti-spam -->
       <input type="text" class="hp" id="f-website" tabindex="-1" autocomplete="off" aria-hidden="true">
 
-      <button class="btn" id="btnEnviar" onclick="enviar()">Registrar caso</button>
-      <div class="msg err" id="msgErr"></div>
+      <button class="btn" id="btnEnviar" type="submit">Registrar caso</button>
+      </form>
     </div>
 
     <div class="ok-state" id="okView">
@@ -231,11 +230,9 @@ async function copiarResumo(){
   setTimeout(()=>{ btn.textContent='📋 Copiar resumo'; },2000);
 }
 
-async function enviar(){
-  const err=document.getElementById('msgErr');
-  err.style.display='none';
+async function enviar(ev){
+  if(ev) ev.preventDefault();
   const nome=val('f-nome');
-  if(!nome){ err.textContent='Por favor, informe o nome do cliente.'; err.style.display='block'; return; }
   // honeypot: se preenchido, é bot — finge sucesso e não grava
   if(val('f-website')){ document.getElementById('formView').style.display='none'; document.getElementById('okView').style.display='block'; return; }
 
@@ -271,10 +268,10 @@ async function enviar(){
     document.getElementById('formView').style.display='none';
     document.getElementById('okView').style.display='block';
   }catch(e){
-    err.textContent='Não consegui registrar agora. Tente novamente em instantes.';
-    err.style.display='block';
+    btn.disabled=false; btn.textContent='Erro — tente novamente';
+    return;
   }finally{
-    btn.disabled=false; btn.textContent='Registrar caso';
+    btn.disabled=false; if(btn.textContent==='Enviando...') btn.textContent='Registrar caso';
   }
 }
 
