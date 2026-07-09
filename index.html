@@ -671,6 +671,11 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .btn-receber:hover { background:var(--green-light); }
 .cob-date-input { font-family:'Inter',sans-serif; font-size:12px; color:var(--text); border:0.5px solid var(--border); border-radius:6px; background:var(--cream); padding:4px 8px; outline:none; cursor:pointer; transition:border-color .15s; }
 .cob-date-input:hover,.cob-date-input:focus { border-color:var(--coral); background:#fff; }
+.cob-followups { display:flex; align-items:center; gap:12px; width:100%; margin-top:2px; padding-top:8px; border-top:0.5px dashed var(--border); flex-wrap:wrap; }
+.cob-fu-label { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+.cob-fu { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--text); cursor:pointer; user-select:none; }
+.cob-fu input { cursor:pointer; accent-color:var(--coral); width:15px; height:15px; margin:0; }
+.cob-fu-count { font-size:11px; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -5324,6 +5329,13 @@ function mostrarDetalheCalDia(dateStr){
         <div class="cob-item-valor">${fmtBRL(p.valor_bruto)}</div>
         <span class="status-badge ${sClass}">${sLabel}</span>
         ${!recebido?`<button class="btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Recebido</button>`:''}
+        ${!recebido?`<div class="cob-followups" title="Controle de cobranças feitas nesta parcela">
+          <span class="cob-fu-label">Cobranças:</span>
+          <label class="cob-fu"><input type="checkbox" ${p.cobranca_1?'checked':''} onchange="toggleCobranca('${p.id}',1,this.checked,'${dateStr}')">1ª</label>
+          <label class="cob-fu"><input type="checkbox" ${p.cobranca_2?'checked':''} onchange="toggleCobranca('${p.id}',2,this.checked,'${dateStr}')">2ª</label>
+          <label class="cob-fu"><input type="checkbox" ${p.cobranca_3?'checked':''} onchange="toggleCobranca('${p.id}',3,this.checked,'${dateStr}')">3ª</label>
+          <span class="cob-fu-count">${[p.cobranca_1,p.cobranca_2,p.cobranca_3].filter(Boolean).length}/3 cobrança(s)</span>
+        </div>`:''}
       </div>`;
     }).join('');
   }
@@ -5363,6 +5375,24 @@ async function atualizarDataPagamento(id,novaData,dateStrOriginal){
     // Abre o detalhe no novo dia
     mostrarDetalheCalDia(novaData);
   }catch(e){pmmAlert('Erro ao atualizar data: '+e.message,'❌','Erro');}
+}
+
+// Controle de follow-ups / cobranças por parcela (individual, zera a cada nova parcela)
+async function toggleCobranca(id,num,checked,dateStr){
+  const col='cobranca_'+num;
+  const p=todosPagamentos.find(x=>x.id===id);
+  if(p) p[col]=checked; // otimista: atualiza estado local
+  // Atualiza só o contador sem re-renderizar tudo (mantém foco/scroll)
+  const item=document.querySelector(`.cob-followups input[onchange*="'${id}',${num},"]`)?.closest('.cob-followups');
+  const cnt=item?.querySelector('.cob-fu-count');
+  if(cnt&&p) cnt.textContent=[p.cobranca_1,p.cobranca_2,p.cobranca_3].filter(Boolean).length+'/3 cobrança(s)';
+  try{
+    await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify({[col]:checked})});
+  }catch(e){
+    if(p) p[col]=!checked; // reverte
+    pmmAlert('Erro ao salvar cobrança: '+e.message,'❌','Erro');
+    mostrarDetalheCalDia(dateStr);
+  }
 }
 
 // Parcelas de reembolso no calendário (saída)
