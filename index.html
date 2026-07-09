@@ -4646,6 +4646,50 @@ function tabela35kHTML(){
     </div>`;
 }
 
+// Oferta 30K — dados hard-coded
+const OFERTA_30K_PARCELAS = [
+  {parcelas:'2x', base:30000, parcela:15800, total:31600, plataforma:'Asaas', url:'https://www.asaas.com/c/vqque04r7q65fb1i'},
+  {parcelas:'3x', base:30000, parcela:10850, total:32550, plataforma:'Asaas', url:'https://www.asaas.com/c/ymysfkwm9co6y9u2'},
+  {parcelas:'4x', base:30000, parcela:8350,  total:33400, plataforma:'Asaas', url:'https://www.asaas.com/c/h9kl0dd2yt5rqpsq'},
+  {parcelas:'5x', base:30000, parcela:6850,  total:34250, plataforma:'Asaas', url:'https://www.asaas.com/c/coyc8zpkzgzat31z'},
+  {parcelas:'6x', base:30000, parcela:5800,  total:34800, plataforma:'Asaas', url:'https://www.asaas.com/c/zmcmrlzpfqbwuot8'},
+];
+
+function tabela30kHTML(){
+  const parcelasRows = OFERTA_30K_PARCELAS.map((item,i)=>{
+    const btnId='cbtn_30r'+i;
+    const copyBtn=`<button class="link-copy-btn" id="${btnId}" onclick="copiarLink('${item.url}','30r${i}')" style="font-size:12px;padding:5px 12px;white-space:nowrap;">📋 Copiar</button>`;
+    const bg=i%2===0?'':'background:var(--cream);';
+    return`<tr style="${bg}">
+      <td style="padding:12px 16px;font-weight:600;color:var(--green);font-size:13px;border-bottom:0.5px solid var(--border);">${item.parcelas}</td>
+      <td style="padding:12px 16px;font-size:13px;border-bottom:0.5px solid var(--border);">${fmtBRL(item.base)}</td>
+      <td style="padding:12px 16px;font-size:13px;border-bottom:0.5px solid var(--border);">${fmtBRL(item.parcela)}</td>
+      <td style="padding:12px 16px;font-size:13px;font-weight:600;border-bottom:0.5px solid var(--border);">${fmtBRL(item.total)}</td>
+      <td style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:0.5px solid var(--border);">${item.plataforma}</td>
+      <td style="padding:12px 16px;border-bottom:0.5px solid var(--border);text-align:right;">${copyBtn}</td>
+    </tr>`;
+  }).join('');
+
+  return`
+    <div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;">
+      <div style="background:var(--green);padding:11px 18px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,0.7);">Valor base</span>
+        <span style="font-family:'Playfair Display',serif;font-size:18px;color:#fff;">— R$ 30.000</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:580px;">
+        <thead><tr style="background:var(--cream);">
+          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--green);border-bottom:0.5px solid var(--border);">Parcelas</th>
+          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor Base</th>
+          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor Parcela</th>
+          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor Final</th>
+          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Plataforma</th>
+          <th style="border-bottom:0.5px solid var(--border);"></th>
+        </tr></thead>
+        <tbody>${parcelasRows}</tbody>
+      </table>
+    </div>`;
+}
+
 function linkCardHTML(l){
   const isAdmin=currentUser&&currentUser.funcao==='admin';
   return`<div class="link-card ${l.ativo?'':'inativo'}">
@@ -4700,6 +4744,10 @@ async function carregarLinks(){
       : '<p style="font-size:13px;color:var(--muted);padding:12px 0 0;">Nenhuma oferta anterior cadastrada.</p>';
 
     el.innerHTML=`
+      <div style="margin-bottom:40px;">
+        <p class="an-section-title" style="margin-top:0;">Oferta 30K</p>
+        ${tabela30kHTML()}
+      </div>
       <div style="margin-bottom:40px;">
         <p class="an-section-title" style="margin-top:0;">Oferta 35K</p>
         ${tabela35kHTML()}
