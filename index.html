@@ -671,12 +671,51 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .btn-receber:hover { background:var(--green-light); }
 .cob-date-input { font-family:'Inter',sans-serif; font-size:12px; color:var(--text); border:0.5px solid var(--border); border-radius:6px; background:var(--cream); padding:4px 8px; outline:none; cursor:pointer; transition:border-color .15s; }
 .cob-date-input:hover,.cob-date-input:focus { border-color:var(--coral); background:#fff; }
-.cob-followups { display:flex; align-items:center; gap:13px; flex-shrink:0; }
-.cob-fu-label { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
-.cob-fu { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--text); cursor:pointer; user-select:none; }
-.cob-fu input { cursor:pointer; accent-color:var(--coral); width:15px; height:15px; margin:0; }
-.cob-fu-count { font-size:11px; color:var(--muted); white-space:nowrap; margin-left:2px; }
-.cob-divider { width:1px; align-self:stretch; min-height:26px; background:var(--border); flex-shrink:0; margin:0; }
+/* ══ Card do dia — calendário de cobranças (redesenho) ══ */
+.cob-daycard { background:#EFE9DC; border-radius:14px; margin-top:16px; overflow:hidden; }
+.cob-daycard-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:20px; flex-wrap:wrap; }
+.cob-day-date { font-size:15px; font-weight:500; color:#1F2E1D; }
+.cob-day-count { font-size:13px; color:#6B6355; margin-top:3px; }
+.cob-day-total { font-size:13px; color:#6B6355; white-space:nowrap; }
+.cob-day-total b { font-weight:500; color:#1F2E1D; }
+.cob-daygrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:12px; padding:0 20px 20px; }
+
+.cob-lanc { background:#FAF6EC; border:0.5px solid #D9D1BE; border-radius:12px; padding:16px 18px; }
+.cob-lanc.is-recebido { opacity:.85; }
+.cob-lanc.is-reembolso { border-left:2px solid #1F4B7C; }
+.cob-lanc-top { display:flex; justify-content:space-between; gap:12px; }
+.cob-lanc-id { min-width:0; }
+.cob-lanc-nome { font-size:15px; font-weight:500; color:#1F2E1D; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cob-lanc-meta { font-size:12px; color:#6B6355; margin-top:3px; display:flex; align-items:center; flex-wrap:wrap; gap:5px; }
+.cob-lanc-meta .sep { color:#A39B8A; }
+.cob-lanc-money { text-align:right; flex-shrink:0; }
+.cob-lanc-valor { font-size:17px; font-weight:500; color:#1F2E1D; white-space:nowrap; }
+
+.cob-pill-status { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:3px 10px; font-size:12px; font-weight:500; margin-top:6px; white-space:nowrap; }
+.cob-pill-status .cob-dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
+.cob-pill-status.st-atrasado { background:#F5D9CA; color:#8B3A1F; }
+.cob-pill-status.st-pendente { background:#F1E4C2; color:#7C5A11; }
+.cob-pill-status.st-recebido { background:#DCE8CE; color:#3B5A22; }
+.cob-pill-status.st-reembolso { background:#DCE7F0; color:#1F4B7C; }
+
+.cob-lanc-bottom { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; border-top:0.5px solid #E5DECB; margin-top:14px; padding-top:12px; }
+
+/* Zona de cobranças (mantém classes usadas pelo handler toggleCobranca) */
+.cob-followups { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.cob-fu-label { font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:#6B6355; }
+.cob-fu { display:inline-flex; align-items:center; gap:5px; border-radius:999px; border:0.5px solid #D9D1BE; padding:3px 9px; background:#FAF6EC; cursor:pointer; font-size:12px; color:#6B6355; user-select:none; transition:background .12s,border-color .12s,color .12s; }
+.cob-fu:has(input:checked) { background:#DCE8CE; border-color:#3B5A22; color:#3B5A22; }
+.cob-fu input { width:13px; height:13px; margin:0; accent-color:#3B5A22; cursor:pointer; }
+.cob-fu-count { font-size:11px; color:#A39B8A; white-space:nowrap; margin-left:2px; }
+
+/* Ação */
+.cob-lanc-acao { flex-shrink:0; }
+.cob-btn-receber { display:inline-flex; align-items:center; gap:6px; background:#2E4A2E; color:#FAF6EC; border:none; border-radius:999px; padding:7px 14px; font-family:'Inter',sans-serif; font-size:12px; font-weight:500; cursor:pointer; transition:background .12s; }
+.cob-btn-receber:hover { background:#24391F; }
+.cob-confirmado { font-size:11px; color:#6B6355; display:inline-flex; align-items:center; gap:5px; }
+.cob-venc-edit { background:none; border:none; cursor:pointer; padding:0 2px; font-size:11px; line-height:1; opacity:.7; }
+.cob-venc-edit:hover { opacity:1; }
+.cob-venc-input { font-family:'Inter',sans-serif; font-size:12px; color:#1F2E1D; border:0.5px solid #D9D1BE; border-radius:6px; background:#FAF6EC; padding:2px 6px; outline:none; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -5187,9 +5226,9 @@ function renderCobrancas(){
       </div>
       <div class="cal-grid" id="calGrid"></div>
     </div>
-    <div id="calDetail" style="display:none;" class="cal-detail">
-      <p class="cal-detail-title" id="calDetailTitle"></p>
-      <div id="calDetailList"></div>
+    <div id="calDetail" style="display:none;" class="cob-daycard">
+      <div class="cob-daycard-head" id="calDetailHeader"></div>
+      <div id="calDetailList" class="cob-daygrid"></div>
     </div>`;
 
   atualizarCalLabel();
@@ -5273,72 +5312,106 @@ function renderCalendario(){
   grid.innerHTML=cells;
 }
 
+// Ícone (emoji) do método de pagamento
+function iconeMetodoCob(metodo){
+  const m=(metodo||'').toLowerCase();
+  if(m.includes('pix')) return '⚡';
+  if(m.includes('cart')||m.includes('cred')||m.includes('déb')||m.includes('deb')) return '💳';
+  if(m.includes('bolet')) return '🧾';
+  return '';
+}
+
 function mostrarDetalheCalDia(dateStr){
   const detail=document.getElementById('calDetail');
-  const titulo=document.getElementById('calDetailTitle');
+  const header=document.getElementById('calDetailHeader');
   const lista=document.getElementById('calDetailList');
   if(!detail) return;
   const hoje=new Date(); hoje.setHours(0,0,0,0);
   const hojStr=hoje.toISOString().split('T')[0];
   const pagsDia=[...todosPagamentos,...todosReembPagamentos].filter(p=>p.data_prevista&&p.data_prevista.split('T')[0]===dateStr);
   const [ano,mes,dia]=dateStr.split('-');
-  titulo.textContent=`${dia}/${mes}/${ano} — ${pagsDia.length} lançamento(s)`;
+
+  // Cabeçalho do dia: data por extenso + contador + total consolidado
+  const DIAS_EXT=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const dObj=new Date(Number(ano),Number(mes)-1,Number(dia));
+  const dataExtenso=`${DIAS_EXT[dObj.getDay()]}, ${Number(dia)} de ${MESES_NOMES[Number(mes)-1].toLowerCase()}`;
+  const totalDia=pagsDia.reduce((s,p)=>s+Number((p.categoria==='reembolso'?p.valor:p.valor_bruto)||0),0);
+  const n=pagsDia.length;
+  header.innerHTML=`
+    <div class="cob-day-when">
+      <div class="cob-day-date">${dataExtenso}</div>
+      <div class="cob-day-count">${n} lançamento${n===1?'':'s'} neste dia</div>
+    </div>
+    <div class="cob-day-total">Total: <b>${fmtBRL(totalDia)}</b></div>`;
+
   if(pagsDia.length===0){
-    lista.innerHTML='<p style="font-size:13px;color:var(--muted);padding:12px 0;">Nenhum pagamento neste dia.</p>';
+    lista.innerHTML='<p style="font-size:13px;color:#6B6355;padding:0 20px 20px;">Nenhum lançamento neste dia.</p>';
   } else {
     lista.innerHTML=pagsDia.map(p=>{
+      // ═══ REEMBOLSO (saída) ═══
       if(p.categoria==='reembolso'){
-        const atr=p.status==='pendente'&&p.data_prevista.split('T')[0]<hojStr;
-        const sC=p.status==='pago'?'s-confirmada':atr?'s-cancelada':'reemb-badge';
-        const sL=p.status==='pago'?'Pago':atr?'Atrasado':'A pagar';
-        const dAtual=(p.data_prevista||dateStr).split('T')[0];
         const pago=p.status==='pago';
-        return`<div class="cob-item" style="border-left:3px solid #7C3AED;">
-          <div class="cob-item-info">
-            <div class="cob-item-cliente">↩ ${escHtml(p.nome_cliente)} <span style="font-size:10px;color:#6D28D9;font-weight:600;">REEMBOLSO</span></div>
-            <div class="cob-item-meta">Saída${p.responsavel?' · resp: '+escHtml(p.responsavel):''}${p.closer?' · '+escHtml(p.closer):''}</div>
+        const atr=p.status==='pendente'&&p.data_prevista.split('T')[0]<hojStr;
+        const stCls=pago?'st-recebido':atr?'st-atrasado':'st-reembolso';
+        const stLbl=pago?'✓ Pago':atr?'↩ Atrasado':'↩ A pagar';
+        const dAtual=(p.data_prevista||dateStr).split('T')[0];
+        const vencEdit=!pago?`<button type="button" class="cob-venc-edit" title="Editar vencimento" onclick="const i=this.parentNode.querySelector('.cob-venc-input');i.style.display='inline-block';this.style.display='none';i.focus();">✏️</button><input type="date" class="cob-venc-input" style="display:none;" value="${dAtual}" onchange="atualizarDataReembParcela('${p.id}',this.value,'${dateStr}')">`:'';
+        return`<div class="cob-lanc is-reembolso${pago?' is-recebido':''}">
+          <div class="cob-lanc-top">
+            <div class="cob-lanc-id">
+              <div class="cob-lanc-nome">${escHtml(p.nome_cliente)}</div>
+              <div class="cob-lanc-meta">↩ Reembolso${p.responsavel?`<span class="sep">·</span>${escHtml(p.responsavel)}`:''}${p.closer?`<span class="sep">·</span>${escHtml(p.closer)}`:''}<span class="sep">·</span>Venc. ${fmtDataBR(dAtual)}${vencEdit}</div>
+            </div>
+            <div class="cob-lanc-money">
+              <div class="cob-lanc-valor">${fmtBRL(p.valor)}</div>
+              <span class="cob-pill-status ${stCls}">${stLbl}</span>
+            </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:2px;align-items:center;flex-shrink:0;">
-            <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Vencimento</span>
-            ${pago?`<span style="font-size:12px;color:var(--muted);">${fmtDataBR(dAtual)}</span>`
-                 :`<input type="date" class="cob-date-input" value="${dAtual}" onchange="atualizarDataReembParcela('${p.id}',this.value,'${dateStr}')">`}
+          <div class="cob-lanc-bottom">
+            <span></span>
+            <div class="cob-lanc-acao">
+              ${pago?`<span class="cob-confirmado">✓ Pago</span>`:`<button class="cob-btn-receber" onclick="marcarReembPago('${p.id}','${dateStr}')">✓ Marcar como pago</button>`}
+            </div>
           </div>
-          <div class="cob-item-valor" style="color:#6D28D9;">${fmtBRL(p.valor)}</div>
-          <span class="status-badge ${sC}">${sL}</span>
-          ${!pago?`<button class="btn-receber" onclick="marcarReembPago('${p.id}','${dateStr}')">✓ Pago</button>`:''}
         </div>`;
       }
+      // ═══ COBRANÇA (entrada) ═══
+      const recebido=p.status==='recebido';
       const atrasado=p.status==='pendente'&&p.data_prevista<hojStr;
-      const sClass=p.status==='recebido'?'s-confirmada':atrasado?'s-cancelada':'s-pendente';
-      const sLabel=p.status==='recebido'?'Recebido':atrasado?'Atrasado':'Pendente';
+      const stCls=recebido?'st-recebido':atrasado?'st-atrasado':'st-pendente';
+      const stLbl=recebido?'Recebido':atrasado?'Atrasado':'Pendente';
+      const stInner=recebido?`✓ ${stLbl}`:`<span class="cob-dot"></span>${stLbl}`;
       const nome=p.vendas?.nome_cliente||'Cliente sem nome';
       const closer=p.vendas?.closer||'';
       const dataAtual=(p.data_prevista||dateStr).split('T')[0];
-      const recebido=p.status==='recebido';
-      return`<div class="cob-item">
-        <div class="cob-item-info" style="flex:0 1 auto;">
-          <div class="cob-item-cliente">${nome}</div>
-          <div class="cob-item-meta">${p.metodo||'—'}${p.gateway?' · '+p.gateway:''}${closer?' · '+closer:''}</div>
+      const mIcon=iconeMetodoCob(p.metodo);
+      const vencEdit=!recebido?`<button type="button" class="cob-venc-edit" title="Editar vencimento" onclick="const i=this.parentNode.querySelector('.cob-venc-input');i.style.display='inline-block';this.style.display='none';i.focus();">✏️</button><input type="date" class="cob-venc-input" style="display:none;" value="${dataAtual}" onchange="atualizarDataPagamento('${p.id}',this.value,'${dateStr}')">`:'';
+      const nMarc=[p.cobranca_1,p.cobranca_2,p.cobranca_3].filter(Boolean).length;
+      return`<div class="cob-lanc${recebido?' is-recebido':''}">
+        <div class="cob-lanc-top">
+          <div class="cob-lanc-id">
+            <div class="cob-lanc-nome">${escHtml(nome)}</div>
+            <div class="cob-lanc-meta">${mIcon?mIcon+' ':''}${escHtml(p.metodo||'—')}${closer?`<span class="sep">·</span>${escHtml(closer)}`:''}<span class="sep">·</span>Venc. ${fmtDataBR(dataAtual)}${vencEdit}</div>
+          </div>
+          <div class="cob-lanc-money">
+            <div class="cob-lanc-valor">${fmtBRL(p.valor_bruto)}</div>
+            <span class="cob-pill-status ${stCls}">${stInner}</span>
+          </div>
         </div>
-        ${!recebido?`<div class="cob-divider" style="margin-left:auto;"></div>
-        <div class="cob-followups" title="Controle de cobranças feitas nesta parcela">
-          <span class="cob-fu-label">Cobranças:</span>
-          <label class="cob-fu"><input type="checkbox" ${p.cobranca_1?'checked':''} onchange="toggleCobranca('${p.id}',1,this.checked,'${dateStr}')">1ª</label>
-          <label class="cob-fu"><input type="checkbox" ${p.cobranca_2?'checked':''} onchange="toggleCobranca('${p.id}',2,this.checked,'${dateStr}')">2ª</label>
-          <label class="cob-fu"><input type="checkbox" ${p.cobranca_3?'checked':''} onchange="toggleCobranca('${p.id}',3,this.checked,'${dateStr}')">3ª</label>
-          <span class="cob-fu-count">${[p.cobranca_1,p.cobranca_2,p.cobranca_3].filter(Boolean).length}/3</span>
-        </div>`:''}
-        <div class="cob-divider" style="margin-left:auto;"></div>
-        <div style="display:flex;flex-direction:column;gap:2px;align-items:center;flex-shrink:0;">
-          <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Vencimento</span>
+        <div class="cob-lanc-bottom">
           ${recebido
-            ? `<span style="font-size:12px;color:var(--muted);">${fmtDataBR(dataAtual)}</span>`
-            : `<input type="date" class="cob-date-input" value="${dataAtual}" title="Editar data de vencimento" onchange="atualizarDataPagamento('${p.id}',this.value,'${dateStr}')">`
-          }
+            ? `<span></span>`
+            : `<div class="cob-followups" title="Controle de cobranças feitas nesta parcela">
+            <span class="cob-fu-label">Cobranças</span>
+            <label class="cob-fu"><input type="checkbox" ${p.cobranca_1?'checked':''} onchange="toggleCobranca('${p.id}',1,this.checked,'${dateStr}')">1ª</label>
+            <label class="cob-fu"><input type="checkbox" ${p.cobranca_2?'checked':''} onchange="toggleCobranca('${p.id}',2,this.checked,'${dateStr}')">2ª</label>
+            <label class="cob-fu"><input type="checkbox" ${p.cobranca_3?'checked':''} onchange="toggleCobranca('${p.id}',3,this.checked,'${dateStr}')">3ª</label>
+            <span class="cob-fu-count">${nMarc}/3</span>
+          </div>`}
+          <div class="cob-lanc-acao">
+            ${recebido?`<span class="cob-confirmado">✓ Recebido</span>`:`<button class="cob-btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Marcar como recebido</button>`}
+          </div>
         </div>
-        <div class="cob-item-valor">${fmtBRL(p.valor_bruto)}</div>
-        <span class="status-badge ${sClass}">${sLabel}</span>
-        ${!recebido?`<button class="btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Recebido</button>`:''}
       </div>`;
     }).join('');
   }
@@ -5388,7 +5461,7 @@ async function toggleCobranca(id,num,checked,dateStr){
   // Atualiza só o contador sem re-renderizar tudo (mantém foco/scroll)
   const item=document.querySelector(`.cob-followups input[onchange*="'${id}',${num},"]`)?.closest('.cob-followups');
   const cnt=item?.querySelector('.cob-fu-count');
-  if(cnt&&p) cnt.textContent=[p.cobranca_1,p.cobranca_2,p.cobranca_3].filter(Boolean).length+'/3 cobrança(s)';
+  if(cnt&&p) cnt.textContent=[p.cobranca_1,p.cobranca_2,p.cobranca_3].filter(Boolean).length+'/3';
   try{
     await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify({[col]:checked})});
   }catch(e){
