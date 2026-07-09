@@ -713,9 +713,12 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .cob-btn-receber { display:inline-flex; align-items:center; gap:6px; background:#2E4A2E; color:#FAF6EC; border:none; border-radius:999px; padding:7px 14px; font-family:'Inter',sans-serif; font-size:12px; font-weight:500; cursor:pointer; transition:background .12s; }
 .cob-btn-receber:hover { background:#24391F; }
 .cob-confirmado { font-size:11px; color:#6B6355; display:inline-flex; align-items:center; gap:5px; }
-.cob-venc-edit { background:none; border:none; cursor:pointer; padding:0 2px; font-size:11px; line-height:1; opacity:.7; }
-.cob-venc-edit:hover { opacity:1; }
-.cob-venc-input { font-family:'Inter',sans-serif; font-size:12px; color:#1F2E1D; border:0.5px solid #D9D1BE; border-radius:6px; background:#FAF6EC; padding:2px 6px; outline:none; cursor:pointer; }
+.cob-venc-lbl { color:#6B6355; }
+.cob-venc-input { font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:#1F2E1D; border:1px solid #C7BDA6; border-radius:7px; background:#FFFDF7; padding:2px 7px; outline:none; cursor:pointer; transition:border-color .12s,background .12s,box-shadow .12s; }
+.cob-venc-input:hover { border-color:#2E4A2E; background:#fff; }
+.cob-venc-input:focus { border-color:#2E4A2E; background:#fff; box-shadow:0 0 0 2px rgba(46,74,46,.12); }
+.cob-venc-input::-webkit-calendar-picker-indicator { cursor:pointer; opacity:.75; }
+.cob-venc-input:hover::-webkit-calendar-picker-indicator { opacity:1; }
 </style>
 </head>
 <body>
@@ -5355,12 +5358,12 @@ function mostrarDetalheCalDia(dateStr){
         const stCls=pago?'st-recebido':atr?'st-atrasado':'st-reembolso';
         const stLbl=pago?'✓ Pago':atr?'↩ Atrasado':'↩ A pagar';
         const dAtual=(p.data_prevista||dateStr).split('T')[0];
-        const vencEdit=!pago?`<button type="button" class="cob-venc-edit" title="Editar vencimento" onclick="const i=this.parentNode.querySelector('.cob-venc-input');i.style.display='inline-block';this.style.display='none';i.focus();">✏️</button><input type="date" class="cob-venc-input" style="display:none;" value="${dAtual}" onchange="atualizarDataReembParcela('${p.id}',this.value,'${dateStr}')">`:'';
+        const vencHtml=pago?`Venc. ${fmtDataBR(dAtual)}`:`<span class="cob-venc-lbl">Venc.</span><input type="date" class="cob-venc-input" value="${dAtual}" title="Editar vencimento" onchange="atualizarDataReembParcela('${p.id}',this.value,'${dateStr}')">`;
         return`<div class="cob-lanc is-reembolso${pago?' is-recebido':''}">
           <div class="cob-lanc-top">
             <div class="cob-lanc-id">
               <div class="cob-lanc-nome">${escHtml(p.nome_cliente)}</div>
-              <div class="cob-lanc-meta">↩ Reembolso${p.responsavel?`<span class="sep">·</span>${escHtml(p.responsavel)}`:''}${p.closer?`<span class="sep">·</span>${escHtml(p.closer)}`:''}<span class="sep">·</span>Venc. ${fmtDataBR(dAtual)}${vencEdit}</div>
+              <div class="cob-lanc-meta">↩ Reembolso${p.responsavel?`<span class="sep">·</span>${escHtml(p.responsavel)}`:''}${p.closer?`<span class="sep">·</span>${escHtml(p.closer)}`:''}<span class="sep">·</span>${vencHtml}</div>
             </div>
             <div class="cob-lanc-money">
               <div class="cob-lanc-valor">${fmtBRL(p.valor)}</div>
@@ -5385,13 +5388,13 @@ function mostrarDetalheCalDia(dateStr){
       const closer=p.vendas?.closer||'';
       const dataAtual=(p.data_prevista||dateStr).split('T')[0];
       const mIcon=iconeMetodoCob(p.metodo);
-      const vencEdit=!recebido?`<button type="button" class="cob-venc-edit" title="Editar vencimento" onclick="const i=this.parentNode.querySelector('.cob-venc-input');i.style.display='inline-block';this.style.display='none';i.focus();">✏️</button><input type="date" class="cob-venc-input" style="display:none;" value="${dataAtual}" onchange="atualizarDataPagamento('${p.id}',this.value,'${dateStr}')">`:'';
+      const vencHtml=recebido?`Venc. ${fmtDataBR(dataAtual)}`:`<span class="cob-venc-lbl">Venc.</span><input type="date" class="cob-venc-input" value="${dataAtual}" title="Editar vencimento" onchange="atualizarDataPagamento('${p.id}',this.value,'${dateStr}')">`;
       const nMarc=[p.cobranca_1,p.cobranca_2,p.cobranca_3].filter(Boolean).length;
       return`<div class="cob-lanc${recebido?' is-recebido':''}">
         <div class="cob-lanc-top">
           <div class="cob-lanc-id">
             <div class="cob-lanc-nome">${escHtml(nome)}</div>
-            <div class="cob-lanc-meta">${mIcon?mIcon+' ':''}${escHtml(p.metodo||'—')}${closer?`<span class="sep">·</span>${escHtml(closer)}`:''}<span class="sep">·</span>Venc. ${fmtDataBR(dataAtual)}${vencEdit}</div>
+            <div class="cob-lanc-meta">${mIcon?mIcon+' ':''}${escHtml(p.metodo||'—')}${closer?`<span class="sep">·</span>${escHtml(closer)}`:''}<span class="sep">·</span>${vencHtml}</div>
           </div>
           <div class="cob-lanc-money">
             <div class="cob-lanc-valor">${fmtBRL(p.valor_bruto)}</div>
