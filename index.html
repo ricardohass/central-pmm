@@ -661,7 +661,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .status-badge.reemb-badge { background:#EDE9FE; color:#6D28D9; }
 .cal-detail { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:20px; margin-top:16px; }
 .cal-detail-title { font-size:13px; font-weight:500; color:var(--text); margin-bottom:12px; padding-bottom:10px; border-bottom:0.5px solid var(--border); }
-.cob-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:0.5px solid var(--border); flex-wrap:wrap; }
+.cob-item { display:flex; align-items:center; gap:16px; padding:12px 0; border-bottom:0.5px solid var(--border); flex-wrap:wrap; }
 .cob-item:last-child { border-bottom:none; }
 .cob-item-info { flex:1; min-width:120px; }
 .cob-item-cliente { font-size:13px; font-weight:500; color:var(--text); }
@@ -671,12 +671,12 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .btn-receber:hover { background:var(--green-light); }
 .cob-date-input { font-family:'Inter',sans-serif; font-size:12px; color:var(--text); border:0.5px solid var(--border); border-radius:6px; background:var(--cream); padding:4px 8px; outline:none; cursor:pointer; transition:border-color .15s; }
 .cob-date-input:hover,.cob-date-input:focus { border-color:var(--coral); background:#fff; }
-.cob-followups { display:flex; align-items:center; gap:9px; flex-shrink:0; }
+.cob-followups { display:flex; align-items:center; gap:13px; flex-shrink:0; }
 .cob-fu-label { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
-.cob-fu { display:flex; align-items:center; gap:4px; font-size:12px; color:var(--text); cursor:pointer; user-select:none; }
+.cob-fu { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--text); cursor:pointer; user-select:none; }
 .cob-fu input { cursor:pointer; accent-color:var(--coral); width:15px; height:15px; margin:0; }
-.cob-fu-count { font-size:11px; color:var(--muted); white-space:nowrap; }
-.cob-divider { width:1px; align-self:stretch; min-height:26px; background:var(--border); flex-shrink:0; margin:0 3px; }
+.cob-fu-count { font-size:11px; color:var(--muted); white-space:nowrap; margin-left:2px; }
+.cob-divider { width:1px; align-self:stretch; min-height:26px; background:var(--border); flex-shrink:0; margin:0; }
 </style>
 </head>
 <body>
@@ -5316,11 +5316,11 @@ function mostrarDetalheCalDia(dateStr){
       const dataAtual=(p.data_prevista||dateStr).split('T')[0];
       const recebido=p.status==='recebido';
       return`<div class="cob-item">
-        <div class="cob-item-info">
+        <div class="cob-item-info" style="flex:0 1 auto;">
           <div class="cob-item-cliente">${nome}</div>
           <div class="cob-item-meta">${p.metodo||'—'}${p.gateway?' · '+p.gateway:''}${closer?' · '+closer:''}</div>
         </div>
-        ${!recebido?`<div class="cob-divider"></div>
+        ${!recebido?`<div class="cob-divider" style="margin-left:auto;"></div>
         <div class="cob-followups" title="Controle de cobranças feitas nesta parcela">
           <span class="cob-fu-label">Cobranças:</span>
           <label class="cob-fu"><input type="checkbox" ${p.cobranca_1?'checked':''} onchange="toggleCobranca('${p.id}',1,this.checked,'${dateStr}')">1ª</label>
@@ -5328,7 +5328,7 @@ function mostrarDetalheCalDia(dateStr){
           <label class="cob-fu"><input type="checkbox" ${p.cobranca_3?'checked':''} onchange="toggleCobranca('${p.id}',3,this.checked,'${dateStr}')">3ª</label>
           <span class="cob-fu-count">${[p.cobranca_1,p.cobranca_2,p.cobranca_3].filter(Boolean).length}/3</span>
         </div>`:''}
-        <div class="cob-divider"></div>
+        <div class="cob-divider" style="margin-left:auto;"></div>
         <div style="display:flex;flex-direction:column;gap:2px;align-items:center;flex-shrink:0;">
           <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Vencimento</span>
           ${recebido
