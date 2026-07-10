@@ -49,8 +49,13 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .page-title { font-family:'Playfair Display',serif; font-size:26px; font-weight:400; color:var(--green); margin-bottom:28px; }
 
 /* HOME */
-.home-nav { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:28px; justify-content:center; }
-.home-hint { font-size:13px; color:var(--muted); margin-top:8px; margin-bottom:28px; }
+.home-hero { max-width:720px; margin:0 auto; text-align:center; padding:8vh 0 6vh; }
+.home-hero .page-eyebrow { margin-bottom:18px; }
+.home-greeting { font-size:15px; font-weight:500; color:var(--green); margin-bottom:22px; }
+.home-tagline { font-family:'Playfair Display',serif; font-weight:400; font-size:clamp(29px,4.4vw,47px); line-height:1.16; color:var(--green); text-wrap:balance; margin:0 0 24px; }
+.home-tagline em { font-style:italic; color:var(--coral); }
+.home-rule { display:block; width:44px; height:2px; background:var(--coral); border-radius:2px; margin:0 auto 22px; opacity:.9; }
+.home-hint { font-size:14px; color:var(--muted); margin:0; }
 .home-nav-btn { display:flex; align-items:center; gap:7px; background:#fff; border:0.5px solid var(--border); border-radius:8px; padding:8px 14px; cursor:pointer; font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--text); transition:border-color .15s,background .15s; white-space:nowrap; }
 .home-nav-btn:hover { border-color:var(--coral); background:var(--cream2); }
 .home-nav-icon { font-size:14px; color:var(--coral); }
@@ -763,14 +768,13 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 
     <!-- HOME -->
     <div id="page-home" class="page">
-      <div style="text-align:center;max-width:640px;margin:0 auto;">
+      <div class="home-hero">
         <p class="page-eyebrow">Grupo Prø — comercial</p>
-        <p class="page-title" id="homeTitle">Bem-vindo à central</p>
+        <p class="home-greeting" id="homeTitle">Bem-vindo à central</p>
+        <h1 class="home-tagline">Transformamos perfis em marcas que <em>multiplicam e monetizam a audiência</em>.</h1>
+        <span class="home-rule"></span>
         <p class="home-hint">Use as guias no topo para navegar pela Central.</p>
       </div>
-
-      <!-- Atalhos discretos -->
-      <div class="home-nav" id="homeGrid"></div>
 
       <!-- Snapshot do mês -->
       <div id="homeSnapshot" style="display:none;">
@@ -2204,7 +2208,7 @@ function aplicarPermissoes(){
     if(resumo) resumo.style.display='block';
   }
   const grid=document.getElementById('homeGrid');
-  grid.innerHTML=telasPermitidas.filter(p=>p!=='home').map(p=>{
+  if(grid) grid.innerHTML=telasPermitidas.filter(p=>p!=='home').map(p=>{
     const c=HOME_CARDS[p];if(!c)return'';
     return`<button class="home-nav-btn" onclick="sp('${p}',document.getElementById('tab-${p}'))"><span class="home-nav-icon">${c.icon}</span>${c.label}</button>`;
   }).join('');
