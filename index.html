@@ -2085,7 +2085,7 @@ const TODAS_TELAS=[
 ];
 const PERM_DEFAULT={
   admin:['dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos','faq'],
-  closer:['performance','analises','metas','faq'],
+  closer:['performance','analises','metas','links','depoimentos','acessos','faq'],
   sdr:['cobrancas','faq'],
   social_seller:['faq'],
 };
@@ -3777,18 +3777,6 @@ let _acessosById={};
 
 async function carregarAcessos(){
   const isAdminAcessos=currentUser.funcao==='admin';
-  // Closers só veem seus próprios acessos + recursos gerais
-  const ACESSOS_CLOSER_NOMES=[
-    'E-mail Estrategista 001','E-mail Estrategista 002','E-mail Estrategista 003','E-mail Estrategista 004','E-mail Estrategista 005',
-    'Análise de instagram','Formulário - cadastro de novo cliente','Template de apresentação de vendas','Manual do Closer','Processo de vendas'
-  ];
-  const CLOSER_EMAIL_MAP={
-    'Amanda Duarte':'E-mail Estrategista 001',
-    'Gabriel Rocha':'E-mail Estrategista 002',
-    'Caroline Neiva':'E-mail Estrategista 003',
-    'Janaina Xavier':'E-mail Estrategista 004',
-    'Lígia Oliveira':'E-mail Estrategista 005',
-  };
   const tbody=document.getElementById('acessosTbody');
   tbody.innerHTML='<tr><td colspan="7" class="empty-state">Carregando...</td></tr>';
   try{
@@ -3801,14 +3789,22 @@ async function carregarAcessos(){
     }
     if(rows.length===0){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Nenhum acesso cadastrado.</td></tr>';return;}
 
-    // Filtrar para closers
+    // Não-admin: só o PRÓPRIO e-mail do Google + o Dashboard (entrepro, não sensível).
+    // Nada de GitHub, Supabase, e-mail comercial geral, Hotmart, Cispay, Asaas, e-mails de terceiros etc.
     if(!isAdminAcessos){
-      const emailDoCloser=CLOSER_EMAIL_MAP[currentUser.nome]||null;
-      const permitidos=ACESSOS_CLOSER_NOMES.filter(n=>
-        n!=='E-mail Estrategista 001'&&n!=='E-mail Estrategista 002'&&n!=='E-mail Estrategista 003'&&n!=='E-mail Estrategista 004'
-        ||n===emailDoCloser
-      );
-      rows=rows.filter(a=>permitidos.some(p=>a.nome&&a.nome.toLowerCase().includes(p.toLowerCase())));
+      const meuEmail=(currentUser.email||'').toLowerCase().trim();
+      const meuNome=(currentUser.nome||'').toLowerCase().trim();
+      rows=rows.filter(a=>{
+        const nome=(a.nome||'').toLowerCase().trim();
+        if(nome==='dashboard') return true; // liberado para todos
+        const ehEmailEstrategista=/e-?mail\s+estrategista/.test(nome);
+        if(ehEmailEstrategista){
+          const loginBate=meuEmail!=='' && (a.login||'').toLowerCase().trim()===meuEmail;
+          const obsBate=meuNome!=='' && (a.observacao||'').toLowerCase().trim()===meuNome;
+          return loginBate||obsBate;
+        }
+        return false;
+      });
     }
 
     _acessosOrdem=rows.map(a=>a.id);
@@ -3836,8 +3832,8 @@ function renderAcessosTbody(rows,tbody){
       <td>${senhaHTML}</td>
       <td style="font-size:12px;color:var(--muted);user-select:text;">${a.observacao||'—'}</td>
       <td style="white-space:nowrap;">
-        <button class="btn-edit" onclick="editarAcesso('${a.id}')" title="Editar">&#9998;</button>
-        <button class="btn-del" onclick="excluirAcesso('${a.id}')" title="Excluir">&#10005;</button>
+        ${currentUser.funcao==='admin'?`<button class="btn-edit" onclick="editarAcesso('${a.id}')" title="Editar">&#9998;</button>
+        <button class="btn-del" onclick="excluirAcesso('${a.id}')" title="Excluir">&#10005;</button>`:''}
       </td>
     </tr>`;
   }).join('');
