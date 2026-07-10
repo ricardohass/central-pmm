@@ -1068,7 +1068,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       </div>
       <!-- Seção exclusiva para closers: minhas vendas e comissão (topo) -->
       <div id="minhasVendasSection" style="display:none;">
-        <p class="chart-title" style="margin-bottom:14px;">Minhas vendas — mês atual</p>
+        <p class="chart-title" style="margin-bottom:14px;">Minhas vendas</p>
         <div class="perf-totals" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
           <div class="ptotal"><div class="ptotal-val" id="cv-vendas">0</div><div class="ptotal-label">Vendas no mês</div></div>
           <div class="ptotal"><div class="ptotal-val coral" id="cv-faixa">—</div><div class="ptotal-label">Faixa de comissão</div></div>
@@ -1081,6 +1081,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           </table>
         </div>
       </div>
+      <p class="chart-title" id="perfFunilTitle" style="display:none;margin:32px 0 14px;">Meu funil</p>
       <div class="perf-totals perf-funil">
         <div class="ptotal"><div class="ptotal-val" id="tot-agend">0</div><div class="ptotal-label">Agendamentos</div></div>
         <div class="perf-conn"><span class="perf-conn-arrow">&#10142;</span><span class="perf-conn-pct" id="conn-agend-reun">—</span><span class="perf-conn-label">comparecimento</span></div>
@@ -1102,6 +1103,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           <button class="btn-salvar" onclick="salvarRegistro()">&#10003; Salvar</button>
         </div>
       </div>
+      <p class="chart-title" id="perfDiaTitle" style="display:none;margin:32px 0 14px;">Meu dia a dia</p>
       <div class="perf-table-wrap">
         <table class="perf-table">
           <thead><tr><th>Data</th><th>Agendamentos</th><th>Reuniões</th><th>Vendas</th><th>Conversão</th><th></th></tr></thead>
@@ -2168,6 +2170,11 @@ function iniciarApp(){
   // Calculadora de metas: só admin (removida da performance do closer)
   const calcMetas=document.getElementById('calcMetas');
   if(calcMetas) calcMetas.style.display=currentUser.funcao==='admin'?'':'none';
+  // Títulos "Meu funil" / "Meu dia a dia": só na visão do closer
+  ['perfFunilTitle','perfDiaTitle'].forEach(id=>{
+    const e=document.getElementById(id);
+    if(e) e.style.display=currentUser.funcao==='admin'?'none':'';
+  });
 }
 
 function aplicarPermissoes(){
