@@ -49,7 +49,10 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .page-title { font-family:'Playfair Display',serif; font-size:26px; font-weight:400; color:var(--green); margin-bottom:28px; }
 
 /* HOME */
-.home-hero { max-width:720px; margin:0 auto; text-align:center; padding:8vh 0 6vh; }
+.home-hero { max-width:720px; margin:0 auto; text-align:center; padding:28px 20px; }
+/* Home "solo" (sem snapshot): ocupa a altura toda, hero centralizado e rodapé no fim */
+#page-home.home-fill.active { display:flex; flex-direction:column; min-height:100%; }
+#page-home.home-fill .home-hero { margin:auto; }
 .home-logo { display:block; width:82px; height:auto; margin:0 auto 26px; }
 .home-hero .page-eyebrow { margin-bottom:18px; }
 .home-greeting { font-size:15px; font-weight:500; color:var(--green); margin-bottom:22px; }
@@ -2220,6 +2223,9 @@ function aplicarPermissoes(){
   const snapEl=document.getElementById('homeSnapshot');
   if(snapEl) snapEl.style.display=currentUser.funcao==='admin'?'block':'none';
   if(currentUser.funcao==='admin') carregarHomeSnapshot();
+  // Home sem snapshot (não-admin): preenche a altura e centraliza o hero
+  const pageHome=document.getElementById('page-home');
+  if(pageHome) pageHome.classList.toggle('home-fill', currentUser.funcao!=='admin');
 
   sp('home',document.getElementById('tab-home'));
 }
