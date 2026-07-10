@@ -1066,6 +1066,21 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           <button class="btn-novo" id="btnRelatorioSemanal" onclick="abrirRelatorioSemanal()" style="background:var(--green);">📋 Relatório semanal</button>
         </div>
       </div>
+      <!-- Seção exclusiva para closers: minhas vendas e comissão (topo) -->
+      <div id="minhasVendasSection" style="display:none;">
+        <p class="chart-title" style="margin-bottom:14px;">Minhas vendas — mês atual</p>
+        <div class="perf-totals" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
+          <div class="ptotal"><div class="ptotal-val" id="cv-vendas">0</div><div class="ptotal-label">Vendas no mês</div></div>
+          <div class="ptotal"><div class="ptotal-val coral" id="cv-faixa">—</div><div class="ptotal-label">Faixa de comissão</div></div>
+          <div class="ptotal"><div class="ptotal-val" id="cv-valor">—</div><div class="ptotal-label">Comissão prevista</div></div>
+        </div>
+        <div class="perf-table-wrap" style="margin-bottom:32px;">
+          <table class="perf-table">
+            <thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Gateway</th><th>Valor bruto</th><th>Valor líquido</th><th>Base comissão</th><th>Status</th></tr></thead>
+            <tbody id="minhasVendasTbody"></tbody>
+          </table>
+        </div>
+      </div>
       <div class="perf-totals perf-funil">
         <div class="ptotal"><div class="ptotal-val" id="tot-agend">0</div><div class="ptotal-label">Agendamentos</div></div>
         <div class="perf-conn"><span class="perf-conn-arrow">&#10142;</span><span class="perf-conn-pct" id="conn-agend-reun">—</span><span class="perf-conn-label">comparecimento</span></div>
@@ -1114,21 +1129,6 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           <table class="closer-table">
             <thead><tr><th>#</th><th>Closer</th><th>Agendamentos</th><th>Reuniões</th><th>Vendas</th><th>Conversão</th><th>Faixa</th></tr></thead>
             <tbody id="closerTbody"></tbody>
-          </table>
-        </div>
-      </div>
-      <!-- Seção exclusiva para closers: minhas vendas e comissão -->
-      <div id="minhasVendasSection" style="display:none;margin-top:32px;">
-        <p class="chart-title" style="margin-bottom:14px;">Minhas vendas — mês atual</p>
-        <div class="perf-totals" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
-          <div class="ptotal"><div class="ptotal-val" id="cv-vendas">0</div><div class="ptotal-label">Vendas no mês</div></div>
-          <div class="ptotal"><div class="ptotal-val coral" id="cv-faixa">—</div><div class="ptotal-label">Faixa de comissão</div></div>
-          <div class="ptotal"><div class="ptotal-val" id="cv-valor">—</div><div class="ptotal-label">Comissão prevista</div></div>
-        </div>
-        <div class="perf-table-wrap">
-          <table class="perf-table">
-            <thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Gateway</th><th>Valor bruto</th><th>Valor líquido</th><th>Base comissão</th><th>Status</th></tr></thead>
-            <tbody id="minhasVendasTbody"></tbody>
           </table>
         </div>
       </div>
@@ -2165,6 +2165,9 @@ function iniciarApp(){
   // Só admin adiciona novos links de venda
   const btnNovoLink=document.getElementById('btnNovoLink');
   if(btnNovoLink) btnNovoLink.style.display=currentUser.funcao==='admin'?'':'none';
+  // Calculadora de metas: só admin (removida da performance do closer)
+  const calcMetas=document.getElementById('calcMetas');
+  if(calcMetas) calcMetas.style.display=currentUser.funcao==='admin'?'':'none';
 }
 
 function aplicarPermissoes(){
