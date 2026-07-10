@@ -49,7 +49,8 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .page-title { font-family:'Playfair Display',serif; font-size:26px; font-weight:400; color:var(--green); margin-bottom:28px; }
 
 /* HOME */
-.home-nav { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:28px; }
+.home-nav { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:28px; justify-content:center; }
+.home-hint { font-size:13px; color:var(--muted); margin-top:8px; margin-bottom:28px; }
 .home-nav-btn { display:flex; align-items:center; gap:7px; background:#fff; border:0.5px solid var(--border); border-radius:8px; padding:8px 14px; cursor:pointer; font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--text); transition:border-color .15s,background .15s; white-space:nowrap; }
 .home-nav-btn:hover { border-color:var(--coral); background:var(--cream2); }
 .home-nav-icon { font-size:14px; color:var(--coral); }
@@ -339,9 +340,9 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .an-closer-name { font-size:14px; font-weight:500; color:var(--text); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
 .an-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
 .an-metric { background:var(--cream); border:0.5px solid var(--border); border-radius:10px; padding:13px 14px; display:flex; flex-direction:column; gap:9px; }
-.an-metric-top { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.an-metric-top { display:flex; flex-direction:column; gap:8px; }
 .an-metric-name { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:500; }
-.an-metric-now { font-size:20px; font-weight:600; color:var(--text); line-height:1; white-space:nowrap; }
+.an-metric-now { background:#fff; border:0.5px solid var(--border); border-radius:9px; padding:12px; font-size:22px; font-weight:600; color:var(--text); line-height:1.1; text-align:center; white-space:nowrap; }
 .an-metric-cmp { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--muted); line-height:1.3; }
 .an-cmp-txt b { font-weight:500; color:var(--text); }
 .an-delta { font-size:11px; font-weight:500; padding:2px 7px; border-radius:20px; white-space:nowrap; line-height:1.6; }
@@ -762,8 +763,11 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 
     <!-- HOME -->
     <div id="page-home" class="page">
-      <p class="page-eyebrow">Grupo Prø — comercial</p>
-      <p class="page-title" id="homeTitle">Bem-vindo à central</p>
+      <div style="text-align:center;max-width:640px;margin:0 auto;">
+        <p class="page-eyebrow">Grupo Prø — comercial</p>
+        <p class="page-title" id="homeTitle">Bem-vindo à central</p>
+        <p class="home-hint">Use as guias no topo para navegar pela Central.</p>
+      </div>
 
       <!-- Atalhos discretos -->
       <div class="home-nav" id="homeGrid"></div>
@@ -792,25 +796,6 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         <div class="home-ranking">
           <p class="home-ranking-title">Ranking de closers — mês atual</p>
           <div id="snap-ranking"></div>
-        </div>
-      </div>
-
-      <!-- Materiais — visível para não-admins (closers, SDR, social seller) -->
-      <div id="homeMateriais" style="display:none;margin-top:4px;">
-        <p class="time-section-title" style="margin-top:24px;margin-bottom:14px;">Processos e materiais</p>
-        <div class="processos-grid">
-          <a class="processo-btn" href="https://canva.link/7waq4w44thlxdrc" target="_blank">
-            <span class="processo-btn-icon">📊</span>Template de apresentação de vendas
-          </a>
-          <a class="processo-btn" href="https://whimsical.com/lionx-company/fluxo-reuniao-passo-a-passo-pmm-Cr2NxKcaD1TAUPMmosttzB" target="_blank">
-            <span class="processo-btn-icon">🔄</span>Processo de vendas
-          </a>
-          <a class="processo-btn" href="https://pmmcentral.entrepro.com.br/novo-cliente" target="_blank">
-            <span class="processo-btn-icon">📋</span>Formulário de novo cliente
-          </a>
-          <a class="processo-btn" href="https://docs.google.com/document/d/1fTpM41VFxfQqmhT-9DkC1NMOx9NB_JQPWHQlZDlzy-U/edit" target="_blank">
-            <span class="processo-btn-icon">📖</span>Manual do Closer
-          </a>
         </div>
       </div>
 
@@ -2188,9 +2173,6 @@ function aplicarPermissoes(){
   // Time interno desativado — sempre oculto
   const tabTime=document.getElementById('tab-time');
   if(tabTime) tabTime.style.display='none';
-  // Materiais na home: só para não-admins
-  const matEl=document.getElementById('homeMateriais');
-  if(matEl) matEl.style.display=funcao!=='admin'?'block':'none';
   if(funcao==='admin'){
     document.getElementById('dash-admin-view').style.display='block';
     document.getElementById('dash-closer-view').style.display='none';
@@ -3806,17 +3788,16 @@ async function carregarAcessos(){
     // E-mails de estrategista: cada pessoa vê só o próprio.
     if(!isAdminAcessos){
       const meuEmail=(currentUser.email||'').toLowerCase().trim();
-      const meuNome=(currentUser.nome||'').toLowerCase().trim();
-      const BLOQUEADOS=['e-mail comercial (conta principal)','github','database - supabase','hotmart','cispay','asaas','dashboard'];
+      const meuNum=(meuEmail.match(/estrategista0*(\d+)/)||[])[1]||null; // ex.: estrategista005 -> "5"
+      const BLOQUEADOS=['e-mail comercial (conta principal)','github','database - supabase','hotmart','cispay','asaas','dashboard','clint (crm)','hubla'];
       rows=rows.filter(a=>{
         const nome=(a.nome||'').toLowerCase().trim();
+        // E-mail e gravações de estrategista: cada um vê só o próprio (casa pelo número)
+        const m=nome.match(/estrategista\s*0*(\d+)/);
+        if(m) return meuNum!==null && m[1]===meuNum;
+        // Gravações de calls não-estrategista (e-mail comercial): esconder
+        if(nome.includes('gravaç') && nome.includes('call')) return false;
         if(BLOQUEADOS.includes(nome)) return false;
-        // e-mails de estrategista: só o próprio
-        if(/e-?mail\s+estrategista/.test(nome)){
-          const loginBate=meuEmail!=='' && (a.login||'').toLowerCase().trim()===meuEmail;
-          const obsBate=meuNome!=='' && (a.observacao||'').toLowerCase().trim()===meuNome;
-          return loginBate||obsBate;
-        }
         return true;
       });
     }
