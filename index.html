@@ -20,7 +20,9 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .login-box { background:var(--cream); border-radius:16px; padding:48px 40px; width:100%; max-width:400px; }
 .login-logo { font-family:'Playfair Display',serif; font-size:28px; color:var(--green); margin-bottom:4px; }
 .login-logo em { color:var(--coral); font-style:italic; }
-.login-sub { font-size:13px; color:var(--muted); margin-bottom:32px; }
+.login-logo-img { display:block; width:210px; max-width:80%; height:auto; margin:0 auto 12px; }
+.login-brand { font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--coral); text-align:center; margin-bottom:6px; }
+.login-sub { font-size:13px; color:var(--muted); margin-bottom:32px; text-align:center; }
 .login-field { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
 .login-field label { font-size:12px; font-weight:500; color:var(--text); }
 .login-field input { font-family:'Inter',sans-serif; font-size:14px; color:var(--text); border:0.5px solid var(--border); border-radius:8px; background:#fff; padding:10px 12px; outline:none; transition:border-color .15s; }
@@ -735,7 +737,8 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo">PMM <em>central comercial</em></div>
+    <img class="login-logo-img" src="pmm-green.png" alt="PMM — Programa Multiplique e Monetize">
+    <p class="login-brand">Central Comercial</p>
     <p class="login-sub">Entre com suas credenciais</p>
     <div class="login-field"><label>E-mail</label><input type="email" id="loginEmail" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')fazerLogin()"></div>
     <div class="login-field"><label>Senha</label><input type="password" id="loginSenha" placeholder="••••••••" onkeydown="if(event.key==='Enter')fazerLogin()"></div>
