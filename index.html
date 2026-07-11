@@ -2952,7 +2952,9 @@ function calcularMetas(){
 }
 
 async function renderPerf(){
-  const closer=document.getElementById('closerSelect').value;
+  let closer=document.getElementById('closerSelect').value;
+  // Não-admin vê sempre apenas os próprios números (nunca a visão do time)
+  if(currentUser && currentUser.funcao!=='admin') closer=currentUser.nome;
   const isTodos=closer==='__todos__';
   atualizarLabelPerfMes();
   const anoMes=perfAno+'-'+String(perfMes+1).padStart(2,'0');
@@ -2996,7 +2998,7 @@ async function renderPerf(){
 
   // Resumo do time (só admin)
   const ctbody=document.getElementById('closerTbody');
-  if(ctbody){
+  if(ctbody && currentUser && currentUser.funcao==='admin'){
     const resumos=await Promise.all(CLOSERS_LIST.map(async(c,i)=>{
       const regs=await getCloserData(c,perfAno+'-'+String(perfMes+1).padStart(2,'0'));
       const a=regs.reduce((s,r)=>s+r.agend,0);
