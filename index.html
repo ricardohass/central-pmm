@@ -2652,9 +2652,11 @@ async function salvarVenda(){
   const temParcelado=pagamentos.some(p=>p.metodo==='Cartão'&&(p.parcelas||1)>1);
   const formaPagamento=(pagamentos.length>1||temParcelado)?'parcelado':'a_vista';
   const totalParcelas=pagamentos.length>1?pagamentos.length:(pagamentos[0]?.parcelas||1);
+  // A venda "sai" na data do 1º pagamento (entrada), não no dia do cadastro
+  const dataVenda=pagamentos.length?[...pagamentos.map(p=>p.data_prevista)].sort()[0]:data;
 
   const body={
-    data_venda:data,
+    data_venda:dataVenda,
     nome_cliente:document.getElementById('vfCliente').value||null,
     produto,
     origem:document.getElementById('vfOrigem').value||null,
