@@ -5450,7 +5450,9 @@ function mostrarDetalheCalDia(dateStr){
             <span class="cob-fu-count">${nMarc}/3</span>
           </div>`}
           <div class="cob-lanc-acao">
-            ${recebido?`<span class="cob-confirmado">✓ Recebido</span>`:`<button class="cob-btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Marcar como recebido</button>`}
+            ${recebido
+              ? `<span class="cob-confirmado">✓ Recebido em <input type="date" class="cob-venc-input" style="margin-left:2px;" value="${(p.data_recebimento||p.data_prevista||dateStr).split('T')[0]}" title="Data em que o valor entrou (usada nos levantamentos/comissão)" onchange="atualizarDataRecebimento('${p.id}',this.value,'${dateStr}')"></span>`
+              : `<button class="cob-btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Marcar como recebido</button>`}
           </div>
         </div>
       </div>`;
@@ -5461,11 +5463,13 @@ function mostrarDetalheCalDia(dateStr){
 }
 
 async function marcarRecebido(id,dateStr){
+  const hoje=new Date().toISOString().split('T')[0];
   try{
-    await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:'recebido'})});
+    // Grava a data em que o valor entrou (hoje) — usada nos levantamentos/comissão
+    await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:'recebido',data_recebimento:hoje})});
     const p=todosPagamentos.find(x=>x.id===id);
     if(p){
-      p.status='recebido';
+      p.status='recebido'; p.data_recebimento=hoje;
       // Atualiza valor_restante na venda
       if(p.vendas?.id){
         const restante=todosPagamentos.filter(x=>x.vendas?.id===p.vendas.id&&x.status==='pendente').reduce((s,x)=>s+Number(x.valor_bruto||0),0);
@@ -5475,6 +5479,16 @@ async function marcarRecebido(id,dateStr){
     renderCobrancas();
     mostrarDetalheCalDia(dateStr);
   }catch(e){pmmAlert('Erro ao marcar como recebido: '+e.message,'❌','Erro');}
+}
+
+// Corrige a data em que o valor efetivamente entrou (para levantamentos exatos)
+async function atualizarDataRecebimento(id,novaData,dateStr){
+  if(!novaData) return;
+  try{
+    await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify({data_recebimento:novaData})});
+    const p=todosPagamentos.find(x=>x.id===id);
+    if(p) p.data_recebimento=novaData;
+  }catch(e){pmmAlert('Erro ao atualizar data de recebimento: '+e.message,'❌','Erro');}
 }
 
 async function atualizarDataPagamento(id,novaData,dateStrOriginal){
