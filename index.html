@@ -1064,17 +1064,17 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           <button class="btn-novo" id="btnRelatorioSemanal" onclick="abrirRelatorioSemanal()" style="background:var(--green);">📋 Relatório semanal</button>
         </div>
       </div>
-      <!-- Seção exclusiva para closers: minhas vendas e comissão (topo) -->
+      <!-- Seção exclusiva para closers: recebido no mês / comissão (topo) -->
       <div id="minhasVendasSection" style="display:none;">
-        <p class="chart-title" style="margin-bottom:14px;">Minhas vendas</p>
+        <p class="chart-title" style="margin-bottom:14px;">Recebido no mês <span style="font-weight:400;color:var(--muted);font-size:12px;">— base da minha comissão (tudo que entrou no mês, das minhas vendas)</span></p>
         <div class="perf-totals" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
-          <div class="ptotal"><div class="ptotal-val" id="cv-vendas">0</div><div class="ptotal-label">Vendas no mês</div></div>
+          <div class="ptotal"><div class="ptotal-val" id="cv-vendas">—</div><div class="ptotal-label">Recebido no mês</div></div>
           <div class="ptotal"><div class="ptotal-val coral" id="cv-faixa">—</div><div class="ptotal-label">Faixa de comissão</div></div>
           <div class="ptotal"><div class="ptotal-val" id="cv-valor">—</div><div class="ptotal-label">Comissão prevista</div></div>
         </div>
         <div class="perf-table-wrap" style="margin-bottom:32px;">
           <table class="perf-table">
-            <thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Gateway</th><th>Valor bruto</th><th>Valor líquido</th><th>Base comissão</th><th>Status</th></tr></thead>
+            <thead><tr><th>Recebido em</th><th>Cliente</th><th>Valor</th><th>Método</th><th>Venda em</th></tr></thead>
             <tbody id="minhasVendasTbody"></tbody>
           </table>
         </div>
@@ -3013,29 +3013,29 @@ async function renderPerf(){
     ctbody.innerHTML=resumos.join('');
   }
 
-  // Comissões para closer
+  // Comissão do closer: % sobre TUDO que ENTROU no mês (parcelas recebidas), das vendas originadas por ele
   const secao=document.getElementById('minhasVendasSection');
   if(secao && currentUser && currentUser.funcao==='closer'){
     secao.style.display='block';
     try{
       const primeiroDia=anoMes+'-01';
       const ultimoDia=anoMes+'-'+new Date(perfAno,perfMes+1,0).getDate();
-      const vendas=await supaFetch('vendas?closer=eq.'+encodeURIComponent(closer)+'&data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=not.in.(cancelada,reembolso)&select=*');
-      const baseTotal=vendas.reduce((s,v)=>s+Number(v.base_comissao||0),0);
+      const parc=await supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=valor_bruto,data_recebimento,metodo,vendas!inner(nome_cliente,closer,data_venda)&vendas.closer=eq.'+encodeURIComponent(closer)+'&order=data_recebimento.asc');
+      const baseTotal=parc.reduce((s,p)=>s+Number(p.valor_bruto||0),0);
       const faixa=cp!==null?getFaixa(cp):null;
       const pctComissao=faixa?faixa.pct:0;
-      document.getElementById('cv-vendas').textContent=vendas.length;
+      document.getElementById('cv-vendas').textContent=fmtBRL(baseTotal);
       document.getElementById('cv-faixa').textContent=faixa?faixa.nome+' ('+pctComissao+'%)':'—';
       document.getElementById('cv-valor').textContent=fmtBRL((baseTotal*pctComissao)/100);
       const tbody=document.getElementById('minhasVendasTbody');
-      tbody.innerHTML=vendas.length===0
-        ?'<tr><td colspan="8" class="empty-state">Nenhuma venda registrada neste mês.</td></tr>'
-        :vendas.map(v=>`<tr>
-          <td>${fmtDataBR(v.data_venda)}</td><td>${v.nome_cliente||'—'}</td>
-          <td>${v.origem||'—'}</td><td>${v.gateway||'—'}</td>
-          <td>${fmtBRL(v.valor_bruto)}</td><td>${fmtBRL(v.valor_liquido)}</td>
-          <td>${fmtBRL(v.base_comissao)}</td>
-          <td><span class="status-badge s-${v.status||'confirmada'}">${cap(v.status||'confirmada')}</span></td>
+      tbody.innerHTML=parc.length===0
+        ?'<tr><td colspan="5" class="empty-state">Nenhum valor recebido neste mês.</td></tr>'
+        :parc.map(p=>`<tr>
+          <td>${fmtDataBR(p.data_recebimento)}</td>
+          <td>${p.vendas?.nome_cliente||'—'}</td>
+          <td>${fmtBRL(p.valor_bruto)}</td>
+          <td>${p.metodo||'—'}</td>
+          <td>${fmtDataBR(p.vendas?.data_venda)}</td>
         </tr>`).join('');
     }catch(e){console.error(e);}
   }
