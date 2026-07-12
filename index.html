@@ -1066,7 +1066,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       </div>
       <!-- Seção exclusiva para closers: recebido no mês / comissão (topo) -->
       <div id="minhasVendasSection" style="display:none;">
-        <p class="chart-title" style="margin-bottom:14px;">Recebido no mês <span style="font-weight:400;color:var(--muted);font-size:12px;">— base da minha comissão (tudo que entrou no mês, das minhas vendas)</span></p>
+        <p class="chart-title" id="cvTitulo" style="margin-bottom:14px;">Recebido no mês <span style="font-weight:400;color:var(--muted);font-size:12px;">— base da minha comissão (tudo que entrou no mês, das minhas vendas)</span></p>
         <div class="perf-totals" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px;">
           <div class="ptotal"><div class="ptotal-val" id="cv-vendas">—</div><div class="ptotal-label">Recebido no mês</div></div>
           <div class="ptotal"><div class="ptotal-val coral" id="cv-faixa">—</div><div class="ptotal-label">Faixa de comissão</div></div>
@@ -1081,7 +1081,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         </div>
       </div>
       <p class="chart-title" id="perfFunilTitle" style="display:none;margin:32px 0 14px;">Meu funil</p>
-      <div class="perf-totals perf-funil">
+      <div class="perf-totals perf-funil" id="perfFunilBlock">
         <div class="ptotal"><div class="ptotal-val" id="tot-agend">0</div><div class="ptotal-label">Agendamentos</div></div>
         <div class="perf-conn"><span class="perf-conn-arrow">&#10142;</span><span class="perf-conn-pct" id="conn-agend-reun">—</span><span class="perf-conn-label">comparecimento</span></div>
         <div class="ptotal"><div class="ptotal-val" id="tot-reun">0</div><div class="ptotal-label">Reuniões</div></div>
@@ -1103,7 +1103,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         </div>
       </div>
       <p class="chart-title" id="perfDiaTitle" style="display:none;margin:32px 0 14px;">Meu dia a dia</p>
-      <div class="perf-table-wrap">
+      <div class="perf-table-wrap" id="perfDiaBlock">
         <table class="perf-table">
           <thead><tr><th>Data</th><th>Agendamentos</th><th>Reuniões</th><th>Vendas</th><th>Conversão</th><th></th></tr></thead>
           <tbody id="perfTbody"></tbody>
@@ -2086,8 +2086,8 @@ const TODAS_TELAS=[
 const PERM_DEFAULT={
   admin:['dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos','faq'],
   closer:['performance','analises','metas','links','depoimentos','acessos','faq'],
-  sdr:['cobrancas','faq'],
-  social_seller:['faq'],
+  sdr:['performance','cobrancas','faq'],
+  social_seller:['performance','faq'],
 };
 function getPerms(){
   const s=localStorage.getItem('pmm_perms');
@@ -2172,7 +2172,7 @@ function iniciarApp(){
   // Títulos "Meu funil" / "Meu dia a dia": só na visão do closer
   ['perfFunilTitle','perfDiaTitle'].forEach(id=>{
     const e=document.getElementById(id);
-    if(e) e.style.display=currentUser.funcao==='admin'?'none':'';
+    if(e) e.style.display=currentUser.funcao==='closer'?'':'none';
   });
 }
 
@@ -2196,21 +2196,23 @@ function aplicarPermissoes(){
   }
   const sel=document.getElementById('closerSelect');
   const resumo=document.getElementById('resumoTime');
-  if(funcao==='closer'){
-    // Busca pelo nome exato do usuário logado no banco
-    let found=false;
-    const nomeUser=currentUser.nome.toLowerCase().trim();
-    for(let i=0;i<sel.options.length;i++){
-      if(sel.options[i].value.toLowerCase().trim()===nomeUser){sel.selectedIndex=i;found=true;break;}
-    }
-    if(!found){
-      // Fallback: qualquer opção que contenha o primeiro nome
-      const primeiroNome=currentUser.nome.split(' ')[0].toLowerCase();
+  if(funcao!=='admin'){
+    if(funcao==='closer'){
+      // Busca pelo nome exato do usuário logado no banco
+      let found=false;
+      const nomeUser=currentUser.nome.toLowerCase().trim();
       for(let i=0;i<sel.options.length;i++){
-        if(sel.options[i].value.toLowerCase().includes(primeiroNome)){sel.selectedIndex=i;found=true;break;}
+        if(sel.options[i].value.toLowerCase().trim()===nomeUser){sel.selectedIndex=i;found=true;break;}
       }
+      if(!found){
+        // Fallback: qualquer opção que contenha o primeiro nome
+        const primeiroNome=currentUser.nome.split(' ')[0].toLowerCase();
+        for(let i=0;i<sel.options.length;i++){
+          if(sel.options[i].value.toLowerCase().includes(primeiroNome)){sel.selectedIndex=i;found=true;break;}
+        }
+      }
+      if(!found) console.warn('Closer não encontrado no select:',currentUser.nome);
     }
-    if(!found) console.warn('Closer não encontrado no select:',currentUser.nome);
     sel.disabled=true;
     if(resumo) resumo.style.display='none';
   } else {
@@ -2959,6 +2961,12 @@ async function renderPerf(){
   // Não-admin vê sempre apenas os próprios números (nunca a visão do time)
   if(currentUser && currentUser.funcao!=='admin') closer=currentUser.nome;
   const isTodos=closer==='__todos__';
+  // SDR / social seller: veem só a seção de comissão (0,5%); escondem funil, dia-a-dia e seletor
+  const _apoio=currentUser&&(currentUser.funcao==='sdr'||currentUser.funcao==='social_seller');
+  const _fb=document.getElementById('perfFunilBlock'), _db=document.getElementById('perfDiaBlock'), _selEl=document.getElementById('closerSelect');
+  if(_fb) _fb.style.display=_apoio?'none':'';
+  if(_db) _db.style.display=_apoio?'none':'';
+  if(_selEl) _selEl.style.display=_apoio?'none':'';
   atualizarLabelPerfMes();
   const anoMes=perfAno+'-'+String(perfMes+1).padStart(2,'0');
   // "+ Novo registro" não faz sentido na visão geral (não há closer definido)
@@ -3014,25 +3022,38 @@ async function renderPerf(){
     ctbody.innerHTML=resumos.join('');
   }
 
-  // Comissão do closer: % sobre TUDO que ENTROU no mês (parcelas recebidas), das vendas originadas por ele
+  // Comissão: closer (faixa%) e SDR/social seller (0,5%) — sobre TUDO que ENTROU no mês, das vendas deles
   const secao=document.getElementById('minhasVendasSection');
-  // Oculta só o histórico até jun/2026 (contas antigas); jul/2026 em diante fica sempre visível ao closer
-  const _mesPassadoCloser=(perfAno*12+perfMes)<(2026*12+6);
-  if(secao && currentUser && currentUser.funcao==='closer' && _mesPassadoCloser){
-    // Comissões de meses anteriores (até jun/2026) ficam ocultas no acesso do closer
+  const _fc=currentUser&&currentUser.funcao;
+  const _temComissao=_fc==='closer'||_fc==='sdr'||_fc==='social_seller';
+  // Oculta o histórico até jun/2026 (contas antigas); jul/2026 em diante fica sempre visível
+  const _mesBloqueado=(perfAno*12+perfMes)<(2026*12+6);
+  if(secao && _temComissao && _mesBloqueado){
     secao.style.display='none';
-  } else if(secao && currentUser && currentUser.funcao==='closer'){
+  } else if(secao && _temComissao){
     secao.style.display='block';
     try{
       const primeiroDia=anoMes+'-01';
       const ultimoDia=anoMes+'-'+new Date(perfAno,perfMes+1,0).getDate();
-      const parc=await supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=valor_bruto,data_recebimento,metodo,vendas!inner(nome_cliente,closer,data_venda)&vendas.closer=eq.'+encodeURIComponent(closer)+'&order=data_recebimento.asc');
+      const campo=_fc==='closer'?'closer':(_fc==='sdr'?'sdr':'social_seller');
+      const parc=await supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=valor_bruto,data_recebimento,metodo,vendas!inner(nome_cliente,data_venda)&vendas.'+campo+'=eq.'+encodeURIComponent(currentUser.nome)+'&order=data_recebimento.asc');
       const baseTotal=parc.reduce((s,p)=>s+Number(p.valor_bruto||0),0);
-      const faixa=cp!==null?getFaixa(cp):null;
-      const pctComissao=faixa?faixa.pct:0;
+      let pct,faixaLabel,subtitulo;
+      if(_fc==='closer'){
+        const faixa=cp!==null?getFaixa(cp):null;
+        pct=faixa?faixa.pct:0;
+        faixaLabel=faixa?faixa.nome+' ('+pct+'%)':'—';
+        subtitulo='tudo que entrou no mês, das minhas vendas';
+      } else {
+        pct=0.5;
+        faixaLabel='0,5%';
+        subtitulo=(_fc==='sdr'?'0,5% de tudo que entrou nas vendas em que sou SDR':'0,5% de tudo que entrou nas vendas em que sou social seller');
+      }
+      const tit=document.getElementById('cvTitulo');
+      if(tit) tit.innerHTML='Recebido no mês <span style="font-weight:400;color:var(--muted);font-size:12px;">— base da minha comissão ('+subtitulo+')</span>';
       document.getElementById('cv-vendas').textContent=fmtBRL(baseTotal);
-      document.getElementById('cv-faixa').textContent=faixa?faixa.nome+' ('+pctComissao+'%)':'—';
-      document.getElementById('cv-valor').textContent=fmtBRL((baseTotal*pctComissao)/100);
+      document.getElementById('cv-faixa').textContent=faixaLabel;
+      document.getElementById('cv-valor').textContent=fmtBRL((baseTotal*pct)/100);
       const tbody=document.getElementById('minhasVendasTbody');
       tbody.innerHTML=parc.length===0
         ?'<tr><td colspan="5" class="empty-state">Nenhum valor recebido neste mês.</td></tr>'
