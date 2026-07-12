@@ -2286,7 +2286,7 @@ async function carregarHomeSnapshot(){
     const [todasMes, vendaHoje, pgRecebidosMes, reembMes] = await Promise.all([
       supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=not.in.(cancelada,reembolso)&select=*'),
       supaFetch('vendas?data_venda=eq.'+hojStr+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,valor_restante,produto,closer'),
-      supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+primeiroDia+'&data_prevista=lte.'+ultimoDia+'&select=valor_bruto'),
+      supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=valor_bruto'),
       supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,modalidade,vendas!inner(data_venda,valor_bruto),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
     ]);
 
@@ -2348,7 +2348,7 @@ async function carregarDashboard(){
   try{
     const [todas, pgRecebidos, reembImpacto]=await Promise.all([
       supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&select=*'),
-      supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+primeiroDia+'&data_prevista=lte.'+ultimoDia+'&select=valor_bruto,valor_liquido'),
+      supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=valor_bruto,valor_liquido'),
       supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,modalidade,vendas!inner(data_venda,valor_bruto),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
     ]);
     ajustarWonderPago(todas); // Wonder conta só o valor pago (ranking, origem, gateway, gráfico)
@@ -2686,7 +2686,7 @@ async function salvarVenda(){
     // Salva cronograma na tabela pagamentos_venda
     if(vendaId&&pagamentos.length>0){
       if(id) await supaFetch('pagamentos_venda?venda_id=eq.'+id,{method:'DELETE',headers:{'Prefer':''}});
-      const inserts=pagamentos.map(p=>({...p,venda_id:vendaId}));
+      const inserts=pagamentos.map(p=>({...p,venda_id:vendaId,data_recebimento:p.status==='recebido'?p.data_prevista:null}));
       try{
         await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(inserts)});
       }catch(e2){
@@ -5009,6 +5009,7 @@ async function migrarVendasQuebradas(){
         valor_bruto:Number(r.valor_bruto||0),
         valor_liquido:Number(r.valor_liquido||0),
         status:detectStatus(r),
+        data_recebimento:detectStatus(r)==='recebido'?(r.data_venda?r.data_venda.split('T')[0]:hoje):null,
       }));
 
       // Pagamentos faltando (ex: 1/3 e 2/3 mas sem 3/3)
@@ -5204,9 +5205,10 @@ async function carregarCobrancas(){
   try{
     const hoje=new Date();
     const anoMes=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+    const ultimoDiaMes=anoMes+'-'+new Date(hoje.getFullYear(),hoje.getMonth()+1,0).getDate();
     const [pendentes,recebidosMes,reembPags]=await Promise.all([
       supaFetch('pagamentos_venda?status=eq.pendente&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
-      supaFetch('pagamentos_venda?status=eq.recebido&data_prevista=gte.'+anoMes+'-01&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
+      supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01&data_recebimento=lte.'+ultimoDiaMes+'&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
       supaFetch('reembolsos_pagamentos?select=*,reembolsos(nome_cliente,id,closer,responsavel,tipo)&order=data_prevista.asc').catch(()=>[]),
     ]);
     todosPagamentos=[...pendentes,...recebidosMes];
