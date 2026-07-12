@@ -3015,9 +3015,10 @@ async function renderPerf(){
 
   // Comissão do closer: % sobre TUDO que ENTROU no mês (parcelas recebidas), das vendas originadas por ele
   const secao=document.getElementById('minhasVendasSection');
-  const _mesPassadoCloser=(perfAno*12+perfMes)<(new Date().getFullYear()*12+new Date().getMonth());
+  // Oculta só o histórico até jun/2026 (contas antigas); jul/2026 em diante fica sempre visível ao closer
+  const _mesPassadoCloser=(perfAno*12+perfMes)<(2026*12+6);
   if(secao && currentUser && currentUser.funcao==='closer' && _mesPassadoCloser){
-    // Comissões de meses anteriores ficam ocultas no acesso do closer
+    // Comissões de meses anteriores (até jun/2026) ficam ocultas no acesso do closer
     secao.style.display='none';
   } else if(secao && currentUser && currentUser.funcao==='closer'){
     secao.style.display='block';
