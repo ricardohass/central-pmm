@@ -3815,13 +3815,18 @@ async function carregarAcessos(){
     if(!isAdminAcessos){
       const meuEmail=(currentUser.email||'').toLowerCase().trim();
       const meuNum=(meuEmail.match(/estrategista0*(\d+)/)||[])[1]||null; // ex.: estrategista005 -> "5"
-      const BLOQUEADOS=['e-mail comercial (conta principal)','github','database - supabase','hotmart','cispay','asaas','dashboard','clint (crm)','hubla'];
+      const BLOQUEADOS=['github','database - supabase','hotmart','cispay','asaas','dashboard','clint (crm)','hubla'];
       rows=rows.filter(a=>{
         const nome=(a.nome||'').toLowerCase().trim();
-        // E-mail e gravações de estrategista: cada um vê só o próprio (casa pelo número)
-        const m=nome.match(/estrategista\s*0*(\d+)/);
-        if(m) return meuNum!==null && m[1]===meuNum;
-        // Gravações de calls não-estrategista (e-mail comercial): esconder
+        // Contas de e-mail: cada closer só vê a PRÓPRIA (esconde comercial, de SDR, de outros estrategistas e qualquer e-mail novo)
+        if(/^e-?mail\b/.test(nome)){
+          const loginBate=meuEmail!=='' && (a.login||'').toLowerCase().trim()===meuEmail;
+          const m=nome.match(/estrategista\s*0*(\d+)/);
+          return loginBate || (m && meuNum!==null && m[1]===meuNum);
+        }
+        // Gravações de calls: só as próprias (por número); as demais (ex.: comercial) escondidas
+        const mg=nome.match(/estrategista\s*0*(\d+)/);
+        if(mg) return meuNum!==null && mg[1]===meuNum;
         if(nome.includes('gravaç') && nome.includes('call')) return false;
         if(BLOQUEADOS.includes(nome)) return false;
         return true;
