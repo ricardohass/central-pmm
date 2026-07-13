@@ -2966,7 +2966,8 @@ async function renderPerf(){
   const _fb=document.getElementById('perfFunilBlock'), _db=document.getElementById('perfDiaBlock'), _selEl=document.getElementById('closerSelect');
   if(_fb) _fb.style.display=_apoio?'none':'';
   if(_db) _db.style.display=_apoio?'none':'';
-  if(_selEl) _selEl.style.display=_apoio?'none':'';
+  // Seletor de closer só para admin — closer/SDR/social nunca veem nomes de terceiros
+  if(_selEl) _selEl.style.display=(currentUser&&currentUser.funcao!=='admin')?'none':'';
   atualizarLabelPerfMes();
   const anoMes=perfAno+'-'+String(perfMes+1).padStart(2,'0');
   // "+ Novo registro" não faz sentido na visão geral (não há closer definido)
