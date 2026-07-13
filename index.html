@@ -2519,6 +2519,9 @@ async function carregarVendas(){
   }catch(e){tbody.innerHTML='<tr><td colspan="11" class="empty-state">Erro ao carregar vendas.</td></tr>';}
 }
 
+// Busca ignorando acentos: "Marcio" acha "Márcio" e vice-versa
+function semAcento(s){return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
+
 function filtrarVendas(){
   const cliente=(document.getElementById('f-cliente').value||'').toLowerCase();
   const status=document.getElementById('f-status').value;
@@ -2530,7 +2533,7 @@ function filtrarVendas(){
   const ate=document.getElementById('f-ate').value;
 
   const filtradas=todasVendas.filter(v=>{
-    if(cliente&&!((v.nome_cliente||'').toLowerCase().includes(cliente))) return false;
+    if(cliente&&!semAcento(v.nome_cliente).includes(semAcento(cliente))) return false;
     if(status&&v.status!==status) return false;
     if(gateway&&v.gateway!==gateway) return false;
     if(closer&&v.closer!==closer) return false;
