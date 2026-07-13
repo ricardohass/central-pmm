@@ -2086,8 +2086,8 @@ const TODAS_TELAS=[
 const PERM_DEFAULT={
   admin:['dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos','faq'],
   closer:['performance','analises','metas','links','depoimentos','acessos','faq'],
-  sdr:['performance','cobrancas','faq'],
-  social_seller:['performance','faq'],
+  sdr:['performance','cobrancas','acessos','faq'],
+  social_seller:['performance','acessos','faq'],
 };
 function getPerms(){
   const s=localStorage.getItem('pmm_perms');
@@ -3840,15 +3840,18 @@ async function carregarAcessos(){
     if(!isAdminAcessos){
       const meuEmail=(currentUser.email||'').toLowerCase().trim();
       const meuNum=(meuEmail.match(/estrategista0*(\d+)/)||[])[1]||null; // ex.: estrategista005 -> "5"
-      const BLOQUEADOS=['github','database - supabase','hotmart','cispay','asaas','dashboard','clint (crm)','hubla'];
+      const BLOQUEADOS=['github','database - supabase','hotmart','cispay','asaas','dashboard','hubla'];
       rows=rows.filter(a=>{
         const nome=(a.nome||'').toLowerCase().trim();
+        const loginA=(a.login||'').toLowerCase().trim();
         // Contas de e-mail: cada closer só vê a PRÓPRIA (esconde comercial, de SDR, de outros estrategistas e qualquer e-mail novo)
         if(/^e-?mail\b/.test(nome)){
-          const loginBate=meuEmail!=='' && (a.login||'').toLowerCase().trim()===meuEmail;
+          const loginBate=meuEmail!=='' && loginA===meuEmail;
           const m=nome.match(/estrategista\s*0*(\d+)/);
           return loginBate || (m && meuNum!==null && m[1]===meuNum);
         }
+        // Clint (CRM): cada um só vê o próprio (login = seu e-mail); o Clint compartilhado fica oculto
+        if(nome.includes('clint')) return meuEmail!=='' && loginA===meuEmail;
         // Gravações de calls: só as próprias (por número); as demais (ex.: comercial) escondidas
         const mg=nome.match(/estrategista\s*0*(\d+)/);
         if(mg) return meuNum!==null && mg[1]===meuNum;
