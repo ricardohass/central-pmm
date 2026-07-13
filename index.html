@@ -1184,7 +1184,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         </div>
         <div class="usuarios-table-wrap">
           <table class="usuarios-table">
-            <thead><tr><th>Nome</th><th>E-mail</th><th>Senha</th><th>Função</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Senha</th><th>Função</th><th>Status</th><th>Último acesso</th><th></th></tr></thead>
             <tbody id="usuariosTbody"></tbody>
           </table>
         </div>
@@ -2119,6 +2119,8 @@ async function fazerLogin(){
     const rows=await supaFetch('usuarios?email=eq.'+encodeURIComponent(email)+'&status=eq.ativo&select=*');
     if(!rows.length||rows[0].senha!==senha){err.textContent='E-mail ou senha incorretos.';return;}
     currentUser=rows[0];
+    // Registra o último acesso (não bloqueia o login se falhar)
+    supaFetch('usuarios?id=eq.'+currentUser.id,{method:'PATCH',body:JSON.stringify({ultimo_acesso:new Date().toISOString()})}).catch(()=>{});
     iniciarApp();
   }catch(e){err.textContent='Erro de conexão. Tente novamente.';}
 }
@@ -3101,7 +3103,7 @@ const CLOSERS_INICIAIS=[
 let closersSemeados=false;
 async function carregarUsuarios(){
   const tbody=document.getElementById('usuariosTbody');
-  tbody.innerHTML='<tr><td colspan="6" class="empty-state">Carregando...</td></tr>';
+  tbody.innerHTML='<tr><td colspan="7" class="empty-state">Carregando...</td></tr>';
   try{
     let rows=await supaFetch('usuarios?order=nome.asc&select=*');
     // Criar closers que ainda não existem no banco
@@ -3120,6 +3122,7 @@ async function carregarUsuarios(){
       <td>${u.nome}</td><td style="color:var(--muted);font-size:12px;">${u.email}</td>
       <td class="senha-cell">${u.senha}</td><td>${fBadge(u.funcao)}</td>
       <td><span class="status-${u.status}">${u.status==='ativo'?'Ativo':'Inativo'}</span></td>
+      <td style="font-size:12px;white-space:nowrap;">${u.ultimo_acesso?new Date(u.ultimo_acesso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'<span style="color:var(--muted);">Nunca</span>'}</td>
       <td><button class="btn-edit" onclick='abrirModal(${JSON.stringify(u)})'>&#9998;</button></td>
     </tr>`).join('');
   }catch(e){tbody.innerHTML='<tr><td colspan="6" class="empty-state">Erro ao carregar.</td></tr>';}
