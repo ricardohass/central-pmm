@@ -454,22 +454,51 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 /* LINKS DE VENDA */
 .links-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
 .links-header .page-title { margin-bottom:0; }
-.links-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
-.link-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:8px; transition:border-color .15s; }
-.link-card:hover { border-color:var(--green); }
-.link-card.inativo { opacity:0.5; }
-.link-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
-.link-nome { font-size:13px; font-weight:500; color:var(--text); }
-.link-gateway { font-size:11px; font-weight:500; padding:2px 8px; border-radius:20px; background:var(--cream2); color:var(--muted); flex-shrink:0; }
-.link-valor { font-family:'Playfair Display',serif; font-size:22px; color:var(--green); line-height:1.2; }
-.link-desc { font-size:12px; color:var(--muted); line-height:1.5; }
-.link-actions { display:flex; align-items:center; justify-content:space-between; margin-top:4px; }
-.link-copy-btn { font-family:'Inter',sans-serif; font-size:12px; font-weight:500; background:var(--green); color:#fff; border:none; border-radius:7px; padding:6px 14px; cursor:pointer; display:flex; align-items:center; gap:5px; }
+.link-copy-btn { font-family:'Inter',sans-serif; font-size:12px; font-weight:500; background:var(--green); color:#fff; border:none; border-radius:7px; padding:6px 14px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px; min-width:104px; }
 .link-copy-btn:hover { background:var(--green-light); }
 .link-copy-btn.copied { background:#2E7D52; }
-.link-edit-btns { display:flex; gap:4px; }
-.link-url { font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .link-inativo-badge { font-size:10px; font-weight:500; background:#FEE2E2; color:#991B1B; padding:2px 8px; border-radius:20px; }
+/* Links de venda — padrão único de tabela. Toda oferta (PMM e Wonder) usa as
+   mesmas colunas, larguras e estilos, para que os blocos fiquem alinhados. */
+.lk-produto { font-family:'Playfair Display',serif; font-size:20px; color:var(--green); margin:0 0 6px; }
+.lk-produto-linha { height:0.5px; background:var(--border); margin-bottom:22px; }
+.lk-bloco { margin-bottom:48px; }
+.lk-oferta { margin-bottom:32px; }
+.lk-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; overflow:hidden; }
+.lk-scroll { overflow-x:auto; }
+.lk-banner { background:var(--green); padding:11px 18px; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+.lk-banner-rotulo { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,0.7); }
+.lk-banner-valor { font-family:'Playfair Display',serif; font-size:18px; color:#fff; }
+.lk-table { width:100%; border-collapse:collapse; table-layout:fixed; min-width:780px; }
+.lk-table th { padding:10px 16px; text-align:left; font-size:11px; font-weight:500; color:var(--muted); background:var(--cream); border-bottom:0.5px solid var(--border); }
+.lk-table td { padding:12px 16px; border-bottom:0.5px solid var(--border); font-size:13px; color:var(--text); vertical-align:middle; }
+.lk-table tr.lk-alt td { background:var(--cream); }
+.lk-table tbody tr:last-child td { border-bottom:none; }
+.lk-table tbody tr:hover td { background:var(--cream2); }
+.lk-cond { font-size:13px; font-weight:500; color:var(--text); }
+.lk-sub { display:block; font-size:10px; font-weight:400; color:var(--muted); margin-top:3px; }
+.lk-total { font-weight:600; }
+.lk-muted { font-size:12px; color:var(--muted); }
+.lk-vazio { color:#C6CCC6; }
+/* Link e chave em uma linha só, com reticências: mantém a altura das linhas
+   uniforme. O valor completo fica no title (hover) e no botão Copiar. */
+.lk-chave, .lk-link { display:block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lk-chave { font-family:'SF Mono',Menlo,monospace; font-size:12px; color:var(--muted); }
+.lk-link { color:var(--green); font-size:12px; text-decoration:none; }
+.lk-link:hover { text-decoration:underline; }
+.lk-acoes { text-align:right; white-space:nowrap; }
+.lk-acoes-wrap { display:flex; align-items:center; justify-content:flex-end; gap:4px; }
+.lk-sep td { background:var(--cream2); font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); padding:8px 16px; }
+.lk-table tr.lk-sep:hover td { background:var(--cream2); }
+.lk-inativo td .lk-cond, .lk-inativo td .lk-link, .lk-inativo td .lk-chave { opacity:0.55; }
+.lk-c { text-align:center; }
+.lk-div { border-left:0.5px solid var(--border); }
+.lk-grupo th { color:var(--green); font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:12px 16px; }
+.lk-rodape { padding:10px 18px; border-top:0.5px solid var(--border); background:var(--cream); font-size:11px; color:var(--muted); }
+.lk-msg { font-size:13px; color:var(--muted); padding:12px 0 0; }
+.lk-backlog-btn { display:flex; align-items:center; gap:8px; background:#fff; border:0.5px solid var(--border); border-radius:10px; padding:11px 18px; cursor:pointer; font-family:'Inter',sans-serif; font-size:13px; color:var(--muted); width:100%; text-align:left; transition:border-color .15s; }
+.lk-backlog-btn:hover { border-color:var(--green); }
+.lk-backlog-icon { font-size:12px; display:inline-block; transition:transform .2s; }
 .oferta-table tr:hover td { background:var(--cream); }
 .oferta-table td { padding:11px 14px; border-bottom:0.5px solid var(--border); color:var(--text); }
 .oferta-table tr:last-child td { border-bottom:none; }
@@ -4527,74 +4556,103 @@ function sim(v){ return v
   ? '<span style="color:#065F46;font-size:15px;">✓</span>'
   : '<span style="color:#D3D1C7;font-size:14px;">—</span>'; }
 
-function tabela25kHTML(links){
-  const isAdmin=currentUser&&currentUser.funcao==='admin';
-  const linkMap={};
-  links.forEach(l=>{
-    const mParcela=l.nome.match(/([\d]+)x/);
-    const k=l.nome.toLowerCase().includes('vista')?'À vista':
-             l.nome.toLowerCase().includes('12')?'Até 12x':
-             l.nome.toLowerCase().includes('especial')?'Preço especial':
-             l.nome.toLowerCase().includes('entrada')?'Entrada 3.5K':
-             mParcela?mParcela[1]+'x':l.nome;
-    linkMap[k]=l;
-  });
+// ── LINKS DE VENDA — padrão único ──
+// Toda oferta monta linhas no mesmo formato canônico e é renderizada por
+// lkTabelaHTML, com as mesmas colunas e larguras. A separação por produto
+// (PMM / Wonder) e por oferta é feita pelos títulos, não por layouts distintos.
+//
+// Linha:      {cond, sub, parcela, total, gateway, url, chave, copyId, inativo, acoes}
+// Separador:  {sep:'Texto'}  — agrupa linhas dentro da mesma tabela
 
-  const rows=OFERTA_25K.map((o,i)=>{
-    const l=linkMap[o.parcelas] || (o.url ? {url:o.url, id:'fixed_'+i} : null);
-    const urlToCopy=l?l.url:o.url||'';
-    const btnId='cbtn_'+(l?l.id:'f'+i);
-    const copiarBtn=urlToCopy
-      ?`<button class="link-copy-btn" id="${btnId}" onclick="copiarLink('${urlToCopy}','${btnId.replace('cbtn_','')}')" style="font-size:12px;padding:6px 14px;white-space:nowrap;">📋 Copiar</button>`
-      :'<span style="color:var(--muted);font-size:12px;">—</span>';
-    const editBtn=l&&l.id&&!l.id.startsWith('fixed')&&isAdmin
-      ?`<button class="btn-edit" onclick='editarLink(${JSON.stringify(l).replace(/'/g,"\'")})'  title="Editar">&#9998;</button>`:'';
-    const bgRow=i%2===0?'':'background:var(--cream);';
-    const obsHTML=o.obs?`<br><span style="font-size:10px;color:var(--muted);">${o.obs}</span>`:'';
-    return`<tr style="${bgRow}">
-      <td style="padding:13px 18px;font-weight:600;color:var(--green);font-size:13px;border-bottom:0.5px solid var(--border);">${o.parcelas}${obsHTML}</td>
-      <td style="padding:13px 18px;font-size:13px;border-bottom:0.5px solid var(--border);">${o.parcela?fmtBRL(o.parcela):'—'}</td>
-      <td style="padding:13px 18px;font-size:13px;font-weight:500;border-bottom:0.5px solid var(--border);">${fmtBRL(o.total)}</td>
-      <td style="padding:13px 18px;text-align:center;border-bottom:0.5px solid var(--border);border-left:0.5px solid var(--border);">${sim(o.cartao)}</td>
-      <td style="padding:13px 18px;text-align:center;border-bottom:0.5px solid var(--border);">${sim(o.pix)}</td>
-      <td style="padding:13px 18px;text-align:center;border-bottom:0.5px solid var(--border);border-left:0.5px solid var(--border);">${sim(o.ac1)}</td>
-      <td style="padding:13px 18px;text-align:center;border-bottom:0.5px solid var(--border);">${sim(o.ac2)}</td>
-      <td style="padding:13px 18px;text-align:center;border-bottom:0.5px solid var(--border);">${sim(o.ac3)}</td>
-      <td style="padding:13px 18px;text-align:right;border-bottom:0.5px solid var(--border);white-space:nowrap;">
-        <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">
-          ${copiarBtn}${editBtn}
-        </div>
-      </td>
-    </tr>`;
+// Larguras fixas em px nas colunas de valor/gateway/ações e o resto para o link:
+// garante que as ações sempre caibam (copiar + editar + excluir) e que todas as
+// tabelas fiquem alinhadas entre si, independente do conteúdo.
+const LK_COLS = `<colgroup>
+  <col style="width:190px"><col style="width:120px"><col style="width:120px">
+  <col style="width:115px"><col><col style="width:200px">
+</colgroup>`;
+
+const LK_VAZIO = '<span class="lk-vazio">—</span>';
+
+function lkValor(v){
+  return (v===null||v===undefined||v==='') ? LK_VAZIO : fmtBRL(v);
+}
+
+function lkLinhaHTML(r,alt){
+  if(r.sep) return `<tr class="lk-sep"><td colspan="6">${r.sep}</td></tr>`;
+  const copiavel = r.url||r.chave||'';
+  const destino = r.url
+    ? `<a class="lk-link" href="${r.url}" target="_blank" title="${r.url}">${r.url}</a>`
+    : (r.chave?`<span class="lk-chave" title="${r.chave}">${r.chave}</span>`:LK_VAZIO);
+  const btnCopiar = copiavel
+    ? `<button class="link-copy-btn" id="cbtn_${r.copyId}" onclick="copiarLink('${copiavel}','${r.copyId}')">📋 Copiar</button>`
+    : '';
+  const classes = [alt?'lk-alt':'', r.inativo?'lk-inativo':''].filter(Boolean).join(' ');
+  return `<tr class="${classes}">
+    <td>
+      <span class="lk-cond">${r.cond}</span>
+      ${r.inativo?'<span class="link-inativo-badge">Inativo</span>':''}
+      ${r.sub?`<span class="lk-sub">${r.sub}</span>`:''}
+    </td>
+    <td>${lkValor(r.parcela)}</td>
+    <td class="lk-total">${lkValor(r.total)}</td>
+    <td class="lk-muted">${r.gateway||LK_VAZIO}</td>
+    <td>${destino}</td>
+    <td class="lk-acoes"><div class="lk-acoes-wrap">${btnCopiar}${r.acoes||''}</div></td>
+  </tr>`;
+}
+
+function lkTabelaHTML(banner,linhas){
+  let alt=false;
+  const corpo=linhas.map(r=>{
+    if(r.sep) return lkLinhaHTML(r);
+    const html=lkLinhaHTML(r,alt); alt=!alt; return html;
   }).join('');
-
-  return`<div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;">
-    <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:720px;">
-      <thead>
-        <tr style="background:var(--cream);">
-          <th colspan="3" style="padding:12px 18px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--green);border-bottom:0.5px solid var(--border);">Condições de pagamento</th>
-          <th colspan="2" style="padding:12px 18px;text-align:center;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--coral);border-bottom:0.5px solid var(--border);border-left:0.5px solid var(--border);">Forma de pgto</th>
-          <th colspan="3" style="padding:12px 18px;text-align:center;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#8A5E00;border-bottom:0.5px solid var(--border);border-left:0.5px solid var(--border);">🎁 Acomp. estratégico</th>
-          <th style="border-bottom:0.5px solid var(--border);"></th>
-        </tr>
-        <tr style="background:var(--cream);">
-          <th style="padding:8px 18px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Parcelas</th>
-          <th style="padding:8px 18px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor/parcela</th>
-          <th style="padding:8px 18px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Total</th>
-          <th style="padding:8px 18px;text-align:center;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);border-left:0.5px solid var(--border);">Cartão</th>
-          <th style="padding:8px 18px;text-align:center;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">PIX/Boleto</th>
-          <th style="padding:8px 18px;text-align:center;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);border-left:0.5px solid var(--border);">1 mês</th>
-          <th style="padding:8px 18px;text-align:center;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">2 meses</th>
-          <th style="padding:8px 18px;text-align:center;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">3 meses</th>
-          <th style="padding:8px 18px;border-bottom:0.5px solid var(--border);"></th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <div style="padding:10px 18px;border-top:0.5px solid var(--border);background:var(--cream);font-size:11px;color:var(--muted);">
-      Acompanhamento estratégico = bônus de calls mensais inclusos
+  const bannerHTML = banner
+    ? `<div class="lk-banner">
+         <span class="lk-banner-rotulo">${banner.rotulo}</span>
+         <span class="lk-banner-valor">— ${banner.valor}</span>
+       </div>`
+    : '';
+  return `<div class="lk-card">
+    ${bannerHTML}
+    <div class="lk-scroll">
+      <table class="lk-table">${LK_COLS}
+        <thead><tr>
+          <th>Condição</th><th>Valor/parcela</th><th>Total</th>
+          <th>Gateway</th><th>Chave / Link</th><th></th>
+        </tr></thead>
+        <tbody>${corpo}</tbody>
+      </table>
     </div>
   </div>`;
+}
+
+function lkOfertaHTML(titulo,banner,linhas){
+  return `<div class="lk-oferta">
+    <p class="an-section-title" style="margin-top:0;">${titulo}</p>
+    ${lkTabelaHTML(banner,linhas)}
+  </div>`;
+}
+
+function produtoTituloHTML(nome){
+  return `<p class="lk-produto">${nome}</p><div class="lk-produto-linha"></div>`;
+}
+
+// Oferta 30K — dados hard-coded
+const OFERTA_30K_PARCELAS = [
+  {parcelas:'2x', base:30000, parcela:15800, total:31600, plataforma:'Asaas', url:'https://www.asaas.com/c/vqque04r7q65fb1i'},
+  {parcelas:'3x', base:30000, parcela:10850, total:32550, plataforma:'Asaas', url:'https://www.asaas.com/c/ymysfkwm9co6y9u2'},
+  {parcelas:'4x', base:30000, parcela:8350,  total:33400, plataforma:'Asaas', url:'https://www.asaas.com/c/h9kl0dd2yt5rqpsq'},
+  {parcelas:'5x', base:30000, parcela:6850,  total:34250, plataforma:'Asaas', url:'https://www.asaas.com/c/coyc8zpkzgzat31z'},
+  {parcelas:'6x', base:30000, parcela:5800,  total:34800, plataforma:'Asaas', url:'https://www.asaas.com/c/zmcmrlzpfqbwuot8'},
+];
+
+function linhas30K(){
+  return OFERTA_30K_PARCELAS.map((o,i)=>({
+    cond:o.parcelas, parcela:o.parcela, total:o.total,
+    gateway:o.plataforma, url:o.url, copyId:'30r'+i,
+  }));
 }
 
 // Oferta 35K — dados hard-coded
@@ -4614,181 +4672,112 @@ const OFERTA_35K_PARCELAS = [
   {parcelas:'6x',             base:35000, parcela:6750,  total:40500,  plataforma:'Asaas',  url:'https://www.asaas.com/c/t0v0d37x0wy3peh3'},
 ];
 
-function tabela35kHTML(){
-  const principalRows = OFERTA_35K_PRINCIPAL.map((item,i)=>{
-    const conteudo = item.url
-      ? `<a href="${item.url}" target="_blank" style="color:var(--green);font-size:12px;text-decoration:none;word-break:break-all;">${item.url}</a>`
-      : `<span style="font-family:monospace;font-size:12px;color:var(--muted);">${item.chave}</span>`;
-    const copiavel = item.url||item.chave;
-    const btnId='cbtn_35p'+i;
-    const copyBtn=`<button class="link-copy-btn" id="${btnId}" onclick="copiarLink('${copiavel}','35p${i}')" style="font-size:12px;padding:5px 12px;white-space:nowrap;">📋 Copiar</button>`;
-    const bg=i%2===0?'':'background:var(--cream);';
-    return`<tr style="${bg}">
-      <td style="padding:12px 16px;font-size:13px;font-weight:500;color:var(--text);border-bottom:0.5px solid var(--border);">${item.nome}</td>
-      <td style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:0.5px solid var(--border);white-space:nowrap;">${item.parcelas}</td>
-      <td style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:0.5px solid var(--border);white-space:nowrap;">${item.gateway}</td>
-      <td style="padding:12px 16px;border-bottom:0.5px solid var(--border);">${conteudo}</td>
-      <td style="padding:12px 16px;border-bottom:0.5px solid var(--border);text-align:right;">${copyBtn}</td>
-    </tr>`;
-  }).join('');
-
-  const parcelasRows = OFERTA_35K_PARCELAS.map((item,i)=>{
-    const btnId='cbtn_35r'+i;
-    const copyBtn=`<button class="link-copy-btn" id="${btnId}" onclick="copiarLink('${item.url}','35r${i}')" style="font-size:12px;padding:5px 12px;white-space:nowrap;">📋 Copiar</button>`;
-    const bg=i%2===0?'':'background:var(--cream);';
-    return`<tr style="${bg}">
-      <td style="padding:12px 16px;font-weight:600;color:var(--green);font-size:13px;border-bottom:0.5px solid var(--border);">${item.parcelas}</td>
-      <td style="padding:12px 16px;font-size:13px;border-bottom:0.5px solid var(--border);">${fmtBRL(item.base)}</td>
-      <td style="padding:12px 16px;font-size:13px;border-bottom:0.5px solid var(--border);">${fmtBRL(item.parcela)}</td>
-      <td style="padding:12px 16px;font-size:13px;font-weight:600;border-bottom:0.5px solid var(--border);">${fmtBRL(item.total)}</td>
-      <td style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:0.5px solid var(--border);">${item.plataforma}</td>
-      <td style="padding:12px 16px;border-bottom:0.5px solid var(--border);text-align:right;">${copyBtn}</td>
-    </tr>`;
-  }).join('');
-
-  return`
-    <div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;margin-bottom:14px;">
-      <div style="background:var(--green);padding:11px 18px;display:flex;align-items:center;gap:12px;">
-        <span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,0.7);">À vista</span>
-        <span style="font-family:'Playfair Display',serif;font-size:18px;color:#fff;">— R$ 35.000</span>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:580px;">
-        <thead><tr style="background:var(--cream);">
-          <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Condição</th>
-          <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Parcelas</th>
-          <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Gateway</th>
-          <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Chave / Link</th>
-          <th style="border-bottom:0.5px solid var(--border);"></th>
-        </tr></thead>
-        <tbody>${principalRows}</tbody>
-      </table>
-    </div>
-    <div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:580px;">
-        <thead><tr style="background:var(--cream);">
-          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--green);border-bottom:0.5px solid var(--border);">Parcelas</th>
-          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor Base</th>
-          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor Parcela</th>
-          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor Final</th>
-          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Plataforma</th>
-          <th style="border-bottom:0.5px solid var(--border);"></th>
-        </tr></thead>
-        <tbody>${parcelasRows}</tbody>
-      </table>
-    </div>`;
+function linhas35K(){
+  const parcelamento=OFERTA_35K_PARCELAS.map((o,i)=>({
+    cond:o.parcelas, parcela:o.parcela, total:o.total,
+    gateway:o.plataforma, url:o.url, copyId:'35r'+i,
+  }));
+  // O link à vista da Cispay já aparece no parcelamento — não repetir embaixo.
+  const jaListados=parcelamento.map(p=>p.url);
+  const outras=OFERTA_35K_PRINCIPAL
+    .filter(o=>!(o.url&&jaListados.indexOf(o.url)!==-1))
+    .map((o,i)=>({
+      cond:o.nome, sub:o.parcelas, gateway:o.gateway,
+      url:o.url, chave:o.chave, copyId:'35p'+i,
+    }));
+  return outras.length
+    ? parcelamento.concat([{sep:'Outras formas de pagamento'}],outras)
+    : parcelamento;
 }
 
-// Oferta 30K — dados hard-coded
-const OFERTA_30K_PARCELAS = [
-  {parcelas:'2x', base:30000, parcela:15800, total:31600, plataforma:'Asaas', url:'https://www.asaas.com/c/vqque04r7q65fb1i'},
-  {parcelas:'3x', base:30000, parcela:10850, total:32550, plataforma:'Asaas', url:'https://www.asaas.com/c/ymysfkwm9co6y9u2'},
-  {parcelas:'4x', base:30000, parcela:8350,  total:33400, plataforma:'Asaas', url:'https://www.asaas.com/c/h9kl0dd2yt5rqpsq'},
-  {parcelas:'5x', base:30000, parcela:6850,  total:34250, plataforma:'Asaas', url:'https://www.asaas.com/c/coyc8zpkzgzat31z'},
-  {parcelas:'6x', base:30000, parcela:5800,  total:34800, plataforma:'Asaas', url:'https://www.asaas.com/c/zmcmrlzpfqbwuot8'},
-];
-
-function tabela30kHTML(){
-  const parcelasRows = OFERTA_30K_PARCELAS.map((item,i)=>{
-    const btnId='cbtn_30r'+i;
-    const copyBtn=`<button class="link-copy-btn" id="${btnId}" onclick="copiarLink('${item.url}','30r${i}')" style="font-size:12px;padding:5px 12px;white-space:nowrap;">📋 Copiar</button>`;
-    const bg=i%2===0?'':'background:var(--cream);';
-    return`<tr style="${bg}">
-      <td style="padding:12px 16px;font-weight:600;color:var(--green);font-size:13px;border-bottom:0.5px solid var(--border);">${item.parcelas}</td>
-      <td style="padding:12px 16px;font-size:13px;border-bottom:0.5px solid var(--border);">${fmtBRL(item.base)}</td>
-      <td style="padding:12px 16px;font-size:13px;border-bottom:0.5px solid var(--border);">${fmtBRL(item.parcela)}</td>
-      <td style="padding:12px 16px;font-size:13px;font-weight:600;border-bottom:0.5px solid var(--border);">${fmtBRL(item.total)}</td>
-      <td style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:0.5px solid var(--border);">${item.plataforma}</td>
-      <td style="padding:12px 16px;border-bottom:0.5px solid var(--border);text-align:right;">${copyBtn}</td>
-    </tr>`;
-  }).join('');
-
-  return`
-    <div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;">
-      <div style="background:var(--green);padding:11px 18px;display:flex;align-items:center;gap:12px;">
-        <span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,0.7);">Valor base</span>
-        <span style="font-family:'Playfair Display',serif;font-size:18px;color:#fff;">— R$ 30.000</span>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:580px;">
-        <thead><tr style="background:var(--cream);">
-          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--green);border-bottom:0.5px solid var(--border);">Parcelas</th>
-          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor Base</th>
-          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor Parcela</th>
-          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Valor Final</th>
-          <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Plataforma</th>
-          <th style="border-bottom:0.5px solid var(--border);"></th>
-        </tr></thead>
-        <tbody>${parcelasRows}</tbody>
-      </table>
-    </div>`;
-}
-
-// Wonder Prø — dados hard-coded (produto separado do PMM)
+// Wonder Prø — produto separado do PMM
 const OFERTA_WONDER = [
-  {nome:'Recorrência — cartão', parcelas:'Mensal', gateway:'Asaas',       url:'https://www.asaas.com/c/zmge8p7y8swax3gu', chave:null},
-  {nome:'PIX (CNPJ)',           parcelas:'1x',     gateway:'BTG Pactual', url:null, chave:'65.412.647/0001-76'},
+  {cond:'Cartão — recorrência', sub:'Cobrança mensal', parcela:10000, gateway:'Asaas',       url:'https://www.asaas.com/c/zmge8p7y8swax3gu', copyId:'wd0'},
+  {cond:'PIX (CNPJ)',           sub:'Cobrança mensal', parcela:10000, gateway:'BTG Pactual', chave:'65.412.647/0001-76',                     copyId:'wd1'},
 ];
 
-function tabelaWonderHTML(){
-  const linhas = OFERTA_WONDER.map((item,i)=>{
-    const conteudo = item.url
-      ? `<a href="${item.url}" target="_blank" style="color:var(--green);font-size:12px;text-decoration:none;word-break:break-all;">${item.url}</a>`
-      : `<span style="font-family:monospace;font-size:12px;color:var(--muted);">${item.chave}</span>`;
-    const copiavel = item.url||item.chave;
-    const copyBtn=`<button class="link-copy-btn" id="cbtn_wd${i}" onclick="copiarLink('${copiavel}','wd${i}')" style="font-size:12px;padding:5px 12px;white-space:nowrap;">📋 Copiar</button>`;
-    const bg=i%2===0?'':'background:var(--cream);';
-    return`<tr style="${bg}">
-      <td style="padding:12px 16px;font-size:13px;font-weight:500;color:var(--text);border-bottom:0.5px solid var(--border);">${item.nome}</td>
-      <td style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:0.5px solid var(--border);white-space:nowrap;">${item.parcelas}</td>
-      <td style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:0.5px solid var(--border);white-space:nowrap;">${item.gateway}</td>
-      <td style="padding:12px 16px;border-bottom:0.5px solid var(--border);">${conteudo}</td>
-      <td style="padding:12px 16px;border-bottom:0.5px solid var(--border);text-align:right;">${copyBtn}</td>
+// Backlog: linhas vindas do banco (links_vendas)
+function linhasBacklog(rows){
+  const isAdmin=currentUser&&currentUser.funcao==='admin';
+  return rows.map(l=>{
+    const acoes=isAdmin
+      ? `<button class="btn-edit" onclick='editarLink(${JSON.stringify(l).replace(/'/g,"\'")})' title="Editar">&#9998;</button>
+         <button class="btn-del" onclick="excluirLink('${l.id}')" title="Excluir">&#10005;</button>`
+      : '';
+    return {
+      cond:l.nome, sub:l.descricao, total:l.valor, gateway:l.gateway,
+      url:l.url, copyId:l.id, inativo:!l.ativo, acoes:acoes,
+    };
+  });
+}
+
+// Oferta 25K — matriz de condições (colunas próprias, mesmo estilo das demais)
+const LK_COLS_25K = `<colgroup>
+  <col><col style="width:125px"><col style="width:125px">
+  <col style="width:80px"><col style="width:90px">
+  <col style="width:70px"><col style="width:80px"><col style="width:80px">
+  <col style="width:170px">
+</colgroup>`;
+
+function tabela25kHTML(links){
+  const isAdmin=currentUser&&currentUser.funcao==='admin';
+  const linkMap={};
+  links.forEach(l=>{
+    const mParcela=l.nome.match(/([\d]+)x/);
+    const k=l.nome.toLowerCase().includes('vista')?'À vista':
+             l.nome.toLowerCase().includes('12')?'Até 12x':
+             l.nome.toLowerCase().includes('especial')?'Preço especial':
+             l.nome.toLowerCase().includes('entrada')?'Entrada 3.5K':
+             mParcela?mParcela[1]+'x':l.nome;
+    linkMap[k]=l;
+  });
+
+  let alt=false;
+  const rows=OFERTA_25K.map((o,i)=>{
+    const l=linkMap[o.parcelas] || (o.url ? {url:o.url, id:'fixed_'+i} : null);
+    const urlToCopy=l?l.url:o.url||'';
+    const copyId=l?l.id:'f'+i;
+    const copiarBtn=urlToCopy
+      ? `<button class="link-copy-btn" id="cbtn_${copyId}" onclick="copiarLink('${urlToCopy}','${copyId}')">📋 Copiar</button>`
+      : LK_VAZIO;
+    const editBtn=l&&l.id&&!String(l.id).startsWith('fixed')&&isAdmin
+      ? `<button class="btn-edit" onclick='editarLink(${JSON.stringify(l).replace(/'/g,"\'")})' title="Editar">&#9998;</button>`
+      : '';
+    const classe=alt?'lk-alt':''; alt=!alt;
+    return `<tr class="${classe}">
+      <td><span class="lk-cond">${o.parcelas}</span>${o.obs?`<span class="lk-sub">${o.obs}</span>`:''}</td>
+      <td>${o.parcela?fmtBRL(o.parcela):LK_VAZIO}</td>
+      <td class="lk-total">${fmtBRL(o.total)}</td>
+      <td class="lk-c lk-div">${sim(o.cartao)}</td>
+      <td class="lk-c">${sim(o.pix)}</td>
+      <td class="lk-c lk-div">${sim(o.ac1)}</td>
+      <td class="lk-c">${sim(o.ac2)}</td>
+      <td class="lk-c">${sim(o.ac3)}</td>
+      <td class="lk-acoes"><div class="lk-acoes-wrap">${copiarBtn}${editBtn}</div></td>
     </tr>`;
   }).join('');
 
-  return`
-    <div style="background:#fff;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;">
-      <div style="background:var(--green);padding:11px 18px;display:flex;align-items:center;gap:12px;">
-        <span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,0.7);">Recorrência</span>
-        <span style="font-family:'Playfair Display',serif;font-size:18px;color:#fff;">— R$ 10.000/mês</span>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:580px;">
-        <thead><tr style="background:var(--cream);">
-          <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Condição</th>
-          <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Parcelas</th>
-          <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Gateway</th>
-          <th style="padding:9px 16px;text-align:left;font-size:11px;font-weight:500;color:var(--muted);border-bottom:0.5px solid var(--border);">Chave / Link</th>
-          <th style="border-bottom:0.5px solid var(--border);"></th>
-        </tr></thead>
-        <tbody>${linhas}</tbody>
+  return `<div class="lk-card">
+    <div class="lk-scroll">
+      <table class="lk-table" style="min-width:920px;">${LK_COLS_25K}
+        <thead>
+          <tr class="lk-grupo">
+            <th colspan="3">Condições de pagamento</th>
+            <th colspan="2" class="lk-c lk-div">Forma de pgto</th>
+            <th colspan="3" class="lk-c lk-div">🎁 Acomp. estratégico</th>
+            <th></th>
+          </tr>
+          <tr>
+            <th>Parcelas</th><th>Valor/parcela</th><th>Total</th>
+            <th class="lk-c lk-div">Cartão</th><th class="lk-c">PIX/Boleto</th>
+            <th class="lk-c lk-div">1 mês</th><th class="lk-c">2 meses</th><th class="lk-c">3 meses</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
       </table>
-    </div>`;
-}
-
-function produtoTituloHTML(nome){
-  return`<p style="font-family:'Playfair Display',serif;font-size:20px;color:var(--green);margin:0 0 6px;">${nome}</p>
-    <div style="height:0.5px;background:var(--border);margin-bottom:20px;"></div>`;
-}
-
-function linkCardHTML(l){
-  const isAdmin=currentUser&&currentUser.funcao==='admin';
-  return`<div class="link-card ${l.ativo?'':'inativo'}">
-    <div class="link-card-top">
-      <div>
-        <p class="link-nome">${l.nome}</p>
-        ${!l.ativo?'<span class="link-inativo-badge">Inativo</span>':''}
-      </div>
-      <span class="link-gateway">${l.gateway}</span>
     </div>
-    <p class="link-valor">${fmtBRL(l.valor)}</p>
-    ${l.descricao?`<p class="link-desc">${l.descricao}</p>`:''}
-    <p class="link-url" title="${l.url}">${l.url}</p>
-    <div class="link-actions">
-      <button class="link-copy-btn" id="cbtn_${l.id}" onclick="copiarLink('${l.url}','${l.id}')">📋 Copiar link</button>
-      ${isAdmin?`<div class="link-edit-btns">
-        <button class="btn-edit" onclick='editarLink(${JSON.stringify(l).replace(/'/g,"\'")})'  title="Editar">&#9998;</button>
-        <button class="btn-del" onclick="excluirLink('${l.id}')" title="Excluir">&#10005;</button>
-      </div>`:''}
-    </div>
+    <div class="lk-rodape">Acompanhamento estratégico = bônus de calls mensais inclusos</div>
   </div>`;
 }
 
@@ -4808,34 +4797,28 @@ async function carregarLinks(){
 
     const ofertaLabel={'34K':'Oferta 34K','25K':'Oferta 25K','15K':'Oferta 15K'};
 
-    // Backlog: ofertas antigas do banco (25K, 34K, 15K...) excluindo 35K que é hard-coded
-    const ofertasAntigas=Object.keys(grupos).filter(o=>o!=='35K').sort();
+    // Backlog: ofertas antigas do banco. 30K e 35K são hard-coded e ficam de fora.
+    const ofertasAntigas=Object.keys(grupos).filter(o=>o!=='35K'&&o!=='30K').sort();
     const backlogHTML=ofertasAntigas.length
       ? ofertasAntigas.map(oferta=>{
           const conteudo=oferta==='25K'
             ? tabela25kHTML(grupos[oferta])
-            : `<div class="links-grid">${grupos[oferta].map(linkCardHTML).join('')}</div>`;
-          return`<div style="margin-bottom:28px;">
+            : lkTabelaHTML(null,linhasBacklog(grupos[oferta]));
+          return`<div class="lk-oferta">
             <p class="an-section-title" style="margin-top:0;">${ofertaLabel[oferta]||oferta}</p>
             ${conteudo}
           </div>`;
         }).join('')
-      : '<p style="font-size:13px;color:var(--muted);padding:12px 0 0;">Nenhuma oferta anterior cadastrada.</p>';
+      : '<p class="lk-msg">Nenhuma oferta anterior cadastrada.</p>';
 
     el.innerHTML=`
-      <div style="margin-bottom:48px;">
+      <div class="lk-bloco">
         ${produtoTituloHTML('PMM')}
-        <div style="margin-bottom:40px;">
-          <p class="an-section-title" style="margin-top:0;">Oferta 30K</p>
-          ${tabela30kHTML()}
-        </div>
-        <div style="margin-bottom:40px;">
-          <p class="an-section-title" style="margin-top:0;">Oferta 35K</p>
-          ${tabela35kHTML()}
-        </div>
+        ${lkOfertaHTML('Oferta 30K',{rotulo:'Valor base',valor:'R$ 30.000'},linhas30K())}
+        ${lkOfertaHTML('Oferta 35K',{rotulo:'À vista',valor:'R$ 35.000'},linhas35K())}
         <div>
-          <button onclick="toggleLinksBacklog()" id="backlogToggleBtn" style="display:flex;align-items:center;gap:8px;background:#fff;border:0.5px solid var(--border);border-radius:10px;padding:11px 18px;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;color:var(--muted);width:100%;text-align:left;transition:border-color .15s;">
-            <span id="backlogToggleIcon" style="font-size:12px;display:inline-block;transition:transform .2s;">▶</span>
+          <button onclick="toggleLinksBacklog()" id="backlogToggleBtn" class="lk-backlog-btn">
+            <span id="backlogToggleIcon" class="lk-backlog-icon">▶</span>
             Ofertas anteriores — backlog (25K, 34K...)
           </button>
           <div id="backlogContent" style="display:none;margin-top:14px;">
@@ -4845,10 +4828,7 @@ async function carregarLinks(){
       </div>
       <div>
         ${produtoTituloHTML('Wonder Prø')}
-        <div>
-          <p class="an-section-title" style="margin-top:0;">Oferta 10K</p>
-          ${tabelaWonderHTML()}
-        </div>
+        ${lkOfertaHTML('Oferta 10K',{rotulo:'Recorrência',valor:'R$ 10.000/mês'},OFERTA_WONDER)}
       </div>`;
   }catch(e){el.innerHTML='<p class="dep-empty">Erro ao carregar links.</p>';}
 }
@@ -4867,7 +4847,13 @@ async function copiarLink(url,id){
   try{
     await navigator.clipboard.writeText(url);
     const btn=document.getElementById('cbtn_'+id);
-    if(btn){btn.textContent='✓ Copiado!';btn.classList.add('copied');setTimeout(()=>{btn.innerHTML='📋 Copiar link';btn.classList.remove('copied');},2000);}
+    if(btn){
+      // Guarda o rótulo original: restaurar um texto fixo trocava o label do botão.
+      if(!btn.dataset.rotulo) btn.dataset.rotulo=btn.innerHTML;
+      clearTimeout(btn._resetCopia);
+      btn.textContent='✓ Copiado!';btn.classList.add('copied');
+      btn._resetCopia=setTimeout(()=>{btn.innerHTML=btn.dataset.rotulo;btn.classList.remove('copied');},2000);
+    }
   }catch(e){pmmAlert('Não foi possível copiar automaticamente. URL: '+url,'📋','Copiar link');}
 }
 
