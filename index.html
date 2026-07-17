@@ -1331,11 +1331,6 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           <p class="page-title" style="margin-bottom:0;">Reembolsos &amp; Desistências</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <div class="date-nav">
-            <button class="date-btn" onclick="mudarReembMes(-1)">&#8249;</button>
-            <span class="date-label" id="reembMesLabel"></span>
-            <button class="date-btn" onclick="mudarReembMes(1)">&#8250;</button>
-          </div>
           <button class="btn-novo" onclick="abrirFormReemb()">+ Novo caso</button>
         </div>
       </div>
@@ -5658,7 +5653,8 @@ async function atualizarDataReembParcela(id,novaData,dateStrOriginal){
 }
 
 // ══════════════════════════ REEMBOLSOS ══════════════════════════
-let reembAno=new Date().getFullYear(), reembMes=new Date().getMonth();
+// A aba mostra TODOS os casos de uma vez (sem recorte por mês).
+// A data de solicitação aparece em cada card e os filtros ficam na própria lista.
 let reembFiltroTipo='', reembFiltroStatus='';
 let reembFiltroStatusReemb=[], reembFiltroBaixa=[], reembFiltroDistrato=[], reembFiltroNf=[];
 let reembResolvidosOpen=false;
@@ -5681,10 +5677,6 @@ const REEMB_BADGE={
 
 function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function reembDataRef(r){return (r.data_solicitacao||r.created_at||'').split('T')[0];}
-function reembNoMes(r){
-  const d=reembDataRef(r); if(!d) return false;
-  const p=d.split('-'); return Number(p[0])===reembAno && Number(p[1])===reembMes+1;
-}
 function reembPago(r){return (r.reembolsos_pagamentos||[]).filter(p=>p.status==='pago').reduce((s,p)=>s+Number(p.valor||0),0);}
 function reembPrevisto(r){
   const somaParc=(r.reembolsos_pagamentos||[]).reduce((s,p)=>s+Number(p.valor||0),0);
@@ -5697,7 +5689,13 @@ function reembProxVenc(r){
 }
 function reembDiasAtras(iso){
   if(!iso) return '';
-  const diff=Math.floor((new Date()-new Date(iso))/86400000);
+  const p=String(iso).split('T')[0].split('-');
+  if(p.length!==3) return '';
+  // compara datas de calendário local: new Date('2026-07-09') seria meia-noite UTC
+  // e faria um caso de hoje virar "há 1 dia" no fim da tarde no Brasil.
+  const alvo=new Date(Number(p[0]),Number(p[1])-1,Number(p[2]));
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const diff=Math.round((hoje-alvo)/86400000);
   if(diff<=0) return 'hoje'; if(diff===1) return 'há 1 dia'; return 'há '+diff+' dias';
 }
 function reembJanelaBadge(r){
@@ -5715,21 +5713,10 @@ async function carregarReembolsos(){
   container.innerHTML='<p class="empty-state">Carregando casos...</p>';
   try{
     todosReembolsos=await supaFetch('reembolsos?select=*,reembolsos_pagamentos(*),reembolsos_atualizacoes(*)&order=created_at.desc');
-    atualizarLabelReembMes();
     renderReembolsos();
   }catch(e){
     container.innerHTML='<div style="text-align:center;padding:48px;color:var(--coral);font-size:13px;">Erro ao carregar reembolsos.<br><span style="color:var(--muted);font-size:12px;">'+escHtml(e.message)+'</span></div>';
   }
-}
-function atualizarLabelReembMes(){
-  const el=document.getElementById('reembMesLabel');
-  if(el) el.textContent=MESES_NOMES[reembMes]+' '+reembAno;
-}
-function mudarReembMes(d){
-  reembMes+=d;
-  if(reembMes>11){reembMes=0;reembAno++;}
-  if(reembMes<0){reembMes=11;reembAno--;}
-  atualizarLabelReembMes(); renderReembolsos();
 }
 function setReembTipo(t){reembFiltroTipo=t;renderReembolsos();}
 function setReembStatus(s){reembFiltroStatus=s;renderReembolsos();}
@@ -5790,23 +5777,23 @@ function limparFiltrosReemb(){
 function renderReembolsos(){
   const container=document.getElementById('reembolsosContent');
   if(!container) return;
-  const doMes=todosReembolsos.filter(reembNoMes);
-  const total=doMes.length;
-  const emAberto=doMes.filter(r=>r.status!=='resolvido').length;
-  const cancel=doMes.filter(r=>r.tipo==='cancelamento').length;
-  const desist=doMes.filter(r=>r.tipo==='desistencia').length;
-  const aReembolsar=doMes.reduce((s,r)=>s+reembPrevisto(r),0);
-  const pago=doMes.reduce((s,r)=>s+reembPago(r),0);
+  const casos=todosReembolsos;
+  const total=casos.length;
+  const emAberto=casos.filter(r=>r.status!=='resolvido').length;
+  const cancel=casos.filter(r=>r.tipo==='cancelamento').length;
+  const desist=casos.filter(r=>r.tipo==='desistencia').length;
+  const aReembolsar=casos.reduce((s,r)=>s+reembPrevisto(r),0);
+  const pago=casos.reduce((s,r)=>s+reembPago(r),0);
   // análise interna
-  const reembFeitos=doMes.filter(r=>r.status_reembolso==='reembolsado').length;
-  const reembReverts=doMes.filter(r=>r.status_reembolso==='revertido'||r.status_reembolso==='nao_necessario').length;
-  const baixaPend=doMes.filter(r=>(r.status_baixa||'pendente')==='pendente').length;
-  const distratoPend=doMes.filter(r=>['pendente','enviado'].includes(r.status_distrato||'pendente')).length;
+  const reembFeitos=casos.filter(r=>r.status_reembolso==='reembolsado').length;
+  const reembReverts=casos.filter(r=>r.status_reembolso==='revertido'||r.status_reembolso==='nao_necessario').length;
+  const baixaPend=casos.filter(r=>(r.status_baixa||'pendente')==='pendente').length;
+  const distratoPend=casos.filter(r=>['pendente','enviado'].includes(r.status_distrato||'pendente')).length;
 
   container.innerHTML=`
     ${buildOverdueBanner()}
     <div class="cal-summary">
-      <div class="cob-card"><div class="cob-card-label">Total de casos</div><div class="cob-card-value">${total}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">no mês</div></div>
+      <div class="cob-card"><div class="cob-card-label">Total de casos</div><div class="cob-card-value">${total}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">desde o início</div></div>
       <div class="cob-card"><div class="cob-card-label">Em aberto</div><div class="cob-card-value amber">${emAberto}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">não resolvidos</div></div>
       <div class="cob-card"><div class="cob-card-label">Cancelamentos</div><div class="cob-card-value coral">${cancel}</div></div>
       <div class="cob-card"><div class="cob-card-label">Desistências</div><div class="cob-card-value" style="color:#C07A00;">${desist}</div></div>
@@ -5823,8 +5810,8 @@ function renderReembolsos(){
         </div>
       </div>
       <div class="reemb-viz-card">
-        <p class="reemb-viz-title">Principais motivos — ${MESES_NOMES[reembMes]}</p>
-        ${buildMotivosHTML(doMes)}
+        <p class="reemb-viz-title">Principais motivos — todos os casos</p>
+        ${buildMotivosHTML(casos)}
       </div>
     </div>
     <div class="reemb-analise">
@@ -5833,7 +5820,7 @@ function renderReembolsos(){
       <span>📉 Baixas pendentes: <b>${baixaPend}</b></span>
       <span>📄 Distratos a resolver: <b>${distratoPend}</b></span>
     </div>
-    ${buildRankingHTML(doMes)}
+    ${buildRankingHTML(casos)}
     <div class="section-tabs" style="margin-bottom:16px;align-items:center;">
       <button class="section-tab ${reembFiltroTipo===''?'active':''}" onclick="setReembTipo('')">Todos os tipos</button>
       <button class="section-tab ${reembFiltroTipo==='cancelamento'?'active':''}" onclick="setReembTipo('cancelamento')">Cancelamento</button>
@@ -5876,9 +5863,9 @@ function buildOverdueBanner(){
     <div class="reemb-atraso-itens">${itens}${mais}</div>
   </div>`;
 }
-function buildRankingHTML(doMes){
+function buildRankingHTML(casos){
   const by={};
-  doMes.forEach(r=>{
+  casos.forEach(r=>{
     const c=r.closer||'Sem closer';
     if(!by[c]) by[c]={n:0,v:0};
     by[c].n++; by[c].v+=reembPrevisto(r);
@@ -5887,7 +5874,7 @@ function buildRankingHTML(doMes){
   if(!arr.length) return '';
   const max=arr[0].n;
   return `<div class="reemb-rank">
-    <p class="reemb-viz-title">Reembolsos por closer — ${MESES_NOMES[reembMes]}</p>
+    <p class="reemb-viz-title">Reembolsos por closer — todos os casos</p>
     ${arr.map(x=>`<div class="reemb-rank-row">
       <span class="reemb-rank-nome">${escHtml(x.closer)}</span>
       <div class="reemb-rank-bar"><div class="reemb-rank-fill" style="width:${Math.round(x.n/max*100)}%;"></div></div>
@@ -5899,16 +5886,14 @@ function buildRankingHTML(doMes){
 function irParaReemb(id){
   const r=todosReembolsos.find(x=>x.id===id);
   if(!r) return;
-  const d=reembDataRef(r);
-  if(d){ const p=d.split('-'); reembAno=Number(p[0]); reembMes=Number(p[1])-1; atualizarLabelReembMes(); }
   reembFiltroTipo='';reembFiltroStatus='';reembFiltroStatusReemb=[];reembFiltroBaixa=[];reembFiltroDistrato=[];reembFiltroNf=[];
+  if(r.status==='resolvido') reembResolvidosOpen=true; // senão o caso fica escondido no acordeão
   renderReembolsos();
   const det=document.getElementById('reemb-det-'+id);
   if(det){ abrirReembDetalhe(det,id); det.scrollIntoView({behavior:'smooth',block:'center'}); }
 }
 function buildReembListaHTML(){
-  const doMes=todosReembolsos.filter(reembNoMes);
-  let base=doMes.slice();
+  let base=todosReembolsos.slice();
   if(reembFiltroTipo) base=base.filter(r=>r.tipo===reembFiltroTipo);
   if(reembFiltroStatusReemb.length) base=base.filter(r=>reembFiltroStatusReemb.includes(r.status_reembolso||'pendente'));
   if(reembFiltroBaixa.length) base=base.filter(r=>reembFiltroBaixa.includes(r.status_baixa||'pendente'));
@@ -5920,11 +5905,11 @@ function buildReembListaHTML(){
     let flat=base.slice();
     if(reembFiltroStatus) flat=flat.filter(r=>r.status===reembFiltroStatus);
     flat.sort(ordena);
-    return `<div id="reembLista">${flat.length?flat.map(renderReembCard).join(''):'<p class="empty-state">Nenhum caso com esse filtro neste mês.</p>'}</div>`;
+    return `<div id="reembLista">${flat.length?flat.map(renderReembCard).join(''):'<p class="empty-state">Nenhum caso com esse filtro.</p>'}</div>`;
   }
   const ativos=base.filter(r=>r.status!=='resolvido').sort(ordena);
   const resolvidos=base.filter(r=>r.status==='resolvido').sort(ordena);
-  const ativosHTML=ativos.length?ativos.map(renderReembCard).join(''):'<p class="empty-state">Nenhum caso em aberto neste mês.</p>';
+  const ativosHTML=ativos.length?ativos.map(renderReembCard).join(''):'<p class="empty-state">Nenhum caso em aberto.</p>';
   const resolvHTML=resolvidos.length?`
     <div class="reemb-resolv">
       <button class="reemb-resolv-head" onclick="toggleReembResolvidos()">
@@ -5995,7 +5980,9 @@ function renderReembCard(r){
   const prox=reembProxVenc(r);
   const previsto=reembPrevisto(r), pago=reembPago(r);
   const nAtu=(r.reembolsos_atualizacoes||[]).length;
-  const sub='Aberto por '+(r.aberto_por||'—')+' · '+reembDiasAtras(r.created_at)
+  const dRef=reembDataRef(r);
+  const sub='Solicitado em <strong>'+(dRef?fmtDataBR(dRef):'—')+'</strong> · '+reembDiasAtras(dRef)
+    +' · Aberto por '+escHtml(r.aberto_por||'—')
     +(r.estrategista?' · Estrategista: '+escHtml(r.estrategista):'')
     +(r.closer?' · Closer: <strong>'+escHtml(r.closer)+'</strong>':'');
   let venc;
