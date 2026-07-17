@@ -4561,7 +4561,7 @@ function pmmConfirm(msg, icon='⚠️', title='Confirmar', sub=''){
     document.getElementById('pmmModalIcon').textContent=icon;
     document.getElementById('pmmModalTitle').textContent=title;
     const msgEl=document.getElementById('pmmModalMsg');
-    if(sub){ msgEl.innerHTML=escHtml(msg)+'<span style="display:block;margin-top:10px;font-size:12px;color:var(--muted);line-height:1.45;">'+escHtml(sub)+'</span>'; }
+    if(sub){ msgEl.innerHTML=escHtml(msg)+'<span style="display:block;margin-top:14px;padding:11px 13px;background:rgba(212,87,42,0.08);border:1px solid rgba(212,87,42,0.28);border-radius:9px;font-size:13px;font-weight:500;color:var(--coral);line-height:1.5;">'+escHtml(sub)+'</span>'; }
     else { msgEl.textContent=msg; }
     document.getElementById('pmmModalActions').innerHTML=`
       <button class="pmm-btn-cancel" onclick="fecharPmmModal(false)">Cancelar</button>
@@ -6282,14 +6282,10 @@ async function sincronizarVendaDoReembolso(r){
 // ── Status e atualizações ──
 async function mudarStatusReemb(id,s){
   if(s==='resolvido'){
-    const r=todosReembolsos.find(x=>x.id===id);
-    const temVenda=r&&r.venda_id;
     const ok=await pmmConfirm(
-      'Marcar este caso como Resolvido?',
+      'Marcar esse caso como resolvido?',
       '✅','Resolver caso',
-      temVenda
-        ? 'Esta ação vai ocultar as cobranças futuras desta venda no calendário — vale inclusive para cancelamentos sem reembolso. Reabrindo o caso, elas voltam.'
-        : ''
+      'Se o cliente tiver parcelas futuras, elas serão excluídas e o processo não pode ser revertido.'
     );
     if(!ok) return;
   }
@@ -6492,8 +6488,8 @@ async function salvarReemb(){
   if(body.status==='resolvido'){
     const prev=id?todosReembolsos.find(x=>x.id===id):null;
     if(!prev||prev.status!=='resolvido'){
-      const ok=await pmmConfirm('Marcar este caso como Resolvido?','✅','Resolver caso',
-        body.venda_id?'Esta ação vai ocultar as cobranças futuras desta venda no calendário — vale inclusive para cancelamentos sem reembolso. Reabrindo o caso, elas voltam.':'');
+      const ok=await pmmConfirm('Marcar esse caso como resolvido?','✅','Resolver caso',
+        'Se o cliente tiver parcelas futuras, elas serão excluídas e o processo não pode ser revertido.');
       if(!ok) return;
     }
   }
