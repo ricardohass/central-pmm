@@ -733,6 +733,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .cal-dot.pendente  { background:#FEF3E2; color:#92600A; }
 .cal-dot.recebido  { background:#ECFDF5; color:#065F46; }
 .cal-dot.reemb     { background:#EDE9FE; color:#5B21B6; }
+.cal-dot.congelado { background:#E5EAF0; color:#3F5FA8; }
 .cal-dot.reemb-atrasado { background:#DDD6FE; color:#5B21B6; border:0.5px solid #7C3AED; }
 .cal-dot.reemb-pago { background:#F3F0FF; color:#8B7DB8; }
 .status-badge.reemb-badge { background:#EDE9FE; color:#6D28D9; }
@@ -760,6 +761,8 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .cob-lanc { background:#FAF6EC; border:0.5px solid #D9D1BE; border-radius:12px; padding:16px 18px; }
 .cob-lanc.is-recebido { opacity:.85; }
 .cob-lanc.is-reembolso { border-left:2px solid #1F4B7C; }
+.cob-lanc.is-congelada { border-left:2px solid #3F5FA8; background:#F3F6FA; }
+.cob-congelada-nota { font-size:11px; color:#3F5FA8; }
 .cob-lanc-top { display:flex; justify-content:space-between; gap:12px; }
 .cob-lanc-id { min-width:0; }
 .cob-lanc-nome { font-size:15px; font-weight:500; color:#1F2E1D; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -774,6 +777,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .cob-pill-status.st-pendente { background:#F1E4C2; color:#7C5A11; }
 .cob-pill-status.st-recebido { background:#DCE8CE; color:#3B5A22; }
 .cob-pill-status.st-reembolso { background:#DCE7F0; color:#1F4B7C; }
+.cob-pill-status.st-congelada { background:#E5EAF0; color:#3F5FA8; }
 
 .cob-lanc-bottom { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; border-top:0.5px solid #E5DECB; margin-top:14px; padding-top:12px; }
 
@@ -1596,10 +1600,11 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <option value="resolvido">Resolvido</option>
           </select>
         </div>
-        <div class="vf-field vf-full"><label>Vincular venda (opcional)</label>
+        <div class="vf-field vf-full"><label>Vincular venda (obrigatório) *</label>
           <select id="rfVenda" onchange="aoVincularVenda()">
-            <option value="">Nenhuma / não cadastrada</option>
+            <option value="">Selecione a venda na Central…</option>
           </select>
+          <p style="font-size:11px;color:var(--muted);margin:4px 0 0;">Todo reembolso precisa estar vinculado a uma venda cadastrada.</p>
         </div>
         <div class="vf-field vf-full"><label>Nome do cliente *</label><input type="text" id="rfCliente" placeholder="Nome completo do cliente"></div>
         <div class="vf-field"><label>Data da solicitação</label><input type="date" id="rfDataSolic" onchange="recalcJanelaArrep()"></div>
@@ -2629,7 +2634,7 @@ function filtrarVendas(){
       <td style="font-weight:500;white-space:nowrap">${brutoCell}</td>
       <td style="white-space:nowrap">${liqCell}</td>
       <td>${Number(v.valor_restante||0)>0?fmtBRL(v.valor_restante):'—'}</td>
-      <td style="white-space:nowrap"><span class="status-badge s-${v.status||'confirmada'}">${cap(v.status||'confirmada')}</span>${(v.status!=='reembolso'&&reembParcialVendas.has(v.id))?' <span class="status-badge reemb-badge" title="Esta venda teve reembolso parcial">↩ parcial</span>':''}</td>
+      <td style="white-space:nowrap"><span class="status-badge s-${v.status||'confirmada'}">${v.status==='reembolso'?'Reembolsada':cap(v.status||'confirmada')}</span>${(v.status!=='reembolso'&&reembParcialVendas.has(v.id))?' <span class="status-badge reemb-badge" title="Reembolso parcial — a venda segue contando, abatido só o valor devolvido">↩ Reembolsada (parcial)</span>':''}</td>
       <td style="white-space:nowrap">
         ${(()=>{const lp=v.links_pagamento?(Array.isArray(v.links_pagamento)?v.links_pagamento:JSON.parse(v.links_pagamento||'[]')):[];return lp.length>0?`<span title="${lp.length} comprovante(s)" style="color:var(--green);font-size:13px;margin-right:4px;">📎</span>`:''})()}
         <button class="btn-edit" onclick='abrirDetalheVenda(${JSON.stringify(v).replace(/'/g,"\'")})'  title="Ver detalhes">&#9998;</button>
@@ -4551,11 +4556,13 @@ function pmmAlert(msg, icon='ℹ️', title='Aviso'){
   });
 }
 
-function pmmConfirm(msg, icon='⚠️', title='Confirmar'){
+function pmmConfirm(msg, icon='⚠️', title='Confirmar', sub=''){
   return new Promise(resolve=>{
     document.getElementById('pmmModalIcon').textContent=icon;
     document.getElementById('pmmModalTitle').textContent=title;
-    document.getElementById('pmmModalMsg').textContent=msg;
+    const msgEl=document.getElementById('pmmModalMsg');
+    if(sub){ msgEl.innerHTML=escHtml(msg)+'<span style="display:block;margin-top:10px;font-size:12px;color:var(--muted);line-height:1.45;">'+escHtml(sub)+'</span>'; }
+    else { msgEl.textContent=msg; }
     document.getElementById('pmmModalActions').innerHTML=`
       <button class="pmm-btn-cancel" onclick="fecharPmmModal(false)">Cancelar</button>
       <button class="pmm-btn-ok" onclick="fecharPmmModal(true)">Confirmar</button>`;
@@ -5317,6 +5324,12 @@ let calMes=new Date().getMonth();
 let calAno=new Date().getFullYear();
 let todosPagamentos=[];
 let todosReembPagamentos=[];
+// Vendas com processo de reembolso: congelado = caso em aberto (marca + fora dos totais);
+// oculto = caso resolvido (some as cobranças futuras). Derivado dos casos, sem coluna nova no banco.
+let vendasReembCongelado=new Set();
+let vendasReembOculto=new Set();
+function pagCongelado(p){ return p && p.categoria!=='reembolso' && p.status==='pendente' && vendasReembCongelado.has(p.venda_id); }
+function pagOculto(p){ return p && p.categoria!=='reembolso' && p.status==='pendente' && vendasReembOculto.has(p.venda_id); }
 
 async function carregarCobrancas(){
   const container=document.getElementById('cobrancasContent');
@@ -5326,11 +5339,21 @@ async function carregarCobrancas(){
     const hoje=new Date();
     const anoMes=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
     const ultimoDiaMes=anoMes+'-'+new Date(hoje.getFullYear(),hoje.getMonth()+1,0).getDate();
-    const [pendentes,recebidosMes,reembPags]=await Promise.all([
+    const [pendentes,recebidosMes,reembPags,reembCasos]=await Promise.all([
       supaFetch('pagamentos_venda?status=eq.pendente&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
       supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01&data_recebimento=lte.'+ultimoDiaMes+'&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
       supaFetch('reembolsos_pagamentos?select=*,reembolsos(nome_cliente,id,closer,responsavel,tipo)&order=data_prevista.asc').catch(()=>[]),
+      supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status').catch(()=>[]),
     ]);
+    // Monta os conjuntos de congelado (caso aberto) e oculto (caso resolvido). Aberto tem prioridade.
+    vendasReembCongelado=new Set();
+    vendasReembOculto=new Set();
+    (reembCasos||[]).forEach(c=>{
+      if(!c.venda_id) return;
+      if(c.status==='resolvido') vendasReembOculto.add(c.venda_id);
+      else vendasReembCongelado.add(c.venda_id);
+    });
+    vendasReembCongelado.forEach(id=>vendasReembOculto.delete(id));
     todosPagamentos=[...pendentes,...recebidosMes];
     todosReembPagamentos=(reembPags||[]).filter(rp=>rp.data_prevista).map(rp=>({
       id:rp.id, categoria:'reembolso',
@@ -5354,10 +5377,13 @@ function renderCobrancas(){
   const em7=new Date(hoje); em7.setDate(hoje.getDate()+7);
   const em7Str=em7.toISOString().split('T')[0];
 
-  const atrasados=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista<hojStr);
-  const hojeArr=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista===hojStr);
-  const prox7=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista>hojStr&&p.data_prevista<=em7Str);
+  // Congeladas e ocultas ficam fora dos totais/alertas de cobrança
+  const ativa=p=>!pagCongelado(p)&&!pagOculto(p);
+  const atrasados=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista<hojStr&&ativa(p));
+  const hojeArr=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista===hojStr&&ativa(p));
+  const prox7=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista>hojStr&&p.data_prevista<=em7Str&&ativa(p));
   const recMes=todosPagamentos.filter(p=>p.status==='recebido');
+  const congeladas=todosPagamentos.filter(pagCongelado);
   const sumBRL=arr=>fmtBRL(arr.reduce((s,p)=>s+Number(p.valor_bruto||0),0));
   const reembPend=todosReembPagamentos.filter(p=>p.status==='pendente');
   const reembSum=fmtBRL(reembPend.reduce((s,p)=>s+Number(p.valor||0),0));
@@ -5369,6 +5395,7 @@ function renderCobrancas(){
       <div class="cob-card"><div class="cob-card-label">Próx. 7 dias</div><div class="cob-card-value">${sumBRL(prox7)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${prox7.length} a receber</div></div>
       <div class="cob-card"><div class="cob-card-label">Recebido (mês)</div><div class="cob-card-value" style="color:#2E7D52;">${sumBRL(recMes)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${recMes.length} pagamento(s)</div></div>
       <div class="cob-card" style="border-color:#C4B5FD;"><div class="cob-card-label" style="color:#6D28D9;">Reembolsos a pagar</div><div class="cob-card-value" style="color:#6D28D9;">${reembSum}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${reembPend.length} parcela(s) · saída</div></div>
+      ${congeladas.length?`<div class="cob-card" style="border-color:#B9C6DC;"><div class="cob-card-label" style="color:#3F5FA8;">❄ Congeladas</div><div class="cob-card-value" style="color:#3F5FA8;">${sumBRL(congeladas)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${congeladas.length} parcela(s) · reembolso em curso</div></div>`:''}
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
       <div class="date-nav">
@@ -5381,6 +5408,7 @@ function renderCobrancas(){
         <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#FEF3E2;"></span>Pendente</span>
         <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#ECFDF5;"></span>Recebido</span>
         <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#EDE9FE;"></span>↩ Reembolso (saída)</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#E5EAF0;"></span>❄ Congelada (reembolso em curso)</span>
       </div>
     </div>
     <div class="cal-wrap">
@@ -5421,6 +5449,7 @@ function renderCalendario(){
   const byDate={};
   [...todosPagamentos,...todosReembPagamentos].forEach(p=>{
     if(!p.data_prevista) return;
+    if(pagOculto(p)) return; // cobrança futura de venda com reembolso resolvido: some do calendário
     const key=p.data_prevista.split('T')[0];
     if(!byDate[key]) byDate[key]=[];
     byDate[key].push(p);
@@ -5449,14 +5478,15 @@ function renderCalendario(){
         const nm=(p.nome_cliente||'Cliente').split(' ')[0];
         return`<div class="cal-dot ${c}">↩ ${nm} ${fmtBRL(p.valor)}</div>`;
       }
-      const atrasado=p.status==='pendente'&&p.data_prevista<hojStr;
-      const cls=p.status==='recebido'?'recebido':atrasado?'atrasado':'pendente';
+      const congelado=pagCongelado(p);
+      const atrasado=!congelado&&p.status==='pendente'&&p.data_prevista<hojStr;
+      const cls=congelado?'congelado':p.status==='recebido'?'recebido':atrasado?'atrasado':'pendente';
       const nome=(p.vendas?.nome_cliente||'Cliente').split(' ')[0];
-      return`<div class="cal-dot ${cls}">${nome} ${fmtBRL(p.valor_bruto)}</div>`;
+      return`<div class="cal-dot ${cls}">${congelado?'❄ ':''}${nome} ${fmtBRL(p.valor_bruto)}</div>`;
     }).join('');
     const hidden=pagsDia.slice(3);
     const pDone=p=>p.categoria==='reembolso'?p.status==='pago':p.status==='recebido';
-    const pAtras=p=>p.status==='pendente'&&(p.data_prevista||'').split('T')[0]<hojStr;
+    const pAtras=p=>p.status==='pendente'&&!pagCongelado(p)&&(p.data_prevista||'').split('T')[0]<hojStr;
     let extraCls='pendente';
     if(hidden.length){ if(hidden.every(pDone)) extraCls='recebido'; else if(hidden.some(pAtras)) extraCls='atrasado'; }
     const extra=hidden.length?`<div class="cal-dot ${extraCls}">+${hidden.length} mais</div>`:'';
@@ -5491,7 +5521,7 @@ function mostrarDetalheCalDia(dateStr){
   if(!detail) return;
   const hoje=new Date(); hoje.setHours(0,0,0,0);
   const hojStr=hoje.toISOString().split('T')[0];
-  const pagsDia=[...todosPagamentos,...todosReembPagamentos].filter(p=>p.data_prevista&&p.data_prevista.split('T')[0]===dateStr);
+  const pagsDia=[...todosPagamentos,...todosReembPagamentos].filter(p=>p.data_prevista&&p.data_prevista.split('T')[0]===dateStr&&!pagOculto(p));
   const [ano,mes,dia]=dateStr.split('-');
 
   // Cabeçalho do dia: data por extenso + contador + total consolidado
@@ -5536,6 +5566,26 @@ function mostrarDetalheCalDia(dateStr){
               ${pago?`<span class="cob-confirmado">✓ Pago</span>`:`<button class="cob-btn-receber" onclick="marcarReembPago('${p.id}','${dateStr}')">✓ Marcar como pago</button>`}
             </div>
           </div>
+        </div>`;
+      }
+      // ═══ COBRANÇA CONGELADA (reembolso em curso) ═══
+      if(pagCongelado(p)){
+        const nomeC=p.vendas?.nome_cliente||'Cliente sem nome';
+        const closerC=p.vendas?.closer||'';
+        const mIconC=iconeMetodoCob(p.metodo);
+        const dC=(p.data_prevista||dateStr).split('T')[0];
+        return`<div class="cob-lanc is-congelada">
+          <div class="cob-lanc-top">
+            <div class="cob-lanc-id">
+              <div class="cob-lanc-nome">❄ ${escHtml(nomeC)}</div>
+              <div class="cob-lanc-meta">${mIconC?mIconC+' ':''}${escHtml(p.metodo||'—')}${closerC?`<span class="sep">·</span>${escHtml(closerC)}`:''}<span class="sep">·</span>Venc. ${fmtDataBR(dC)}</div>
+            </div>
+            <div class="cob-lanc-money">
+              <div class="cob-lanc-valor">${fmtBRL(p.valor_bruto)}</div>
+              <span class="cob-pill-status st-congelada">❄ Congelada</span>
+            </div>
+          </div>
+          <div class="cob-lanc-bottom"><span class="cob-congelada-nota">Reembolso/cancelamento em andamento — cobrança pausada</span><span></span></div>
         </div>`;
       }
       // ═══ COBRANÇA (entrada) ═══
@@ -6231,6 +6281,18 @@ async function sincronizarVendaDoReembolso(r){
 
 // ── Status e atualizações ──
 async function mudarStatusReemb(id,s){
+  if(s==='resolvido'){
+    const r=todosReembolsos.find(x=>x.id===id);
+    const temVenda=r&&r.venda_id;
+    const ok=await pmmConfirm(
+      'Marcar este caso como Resolvido?',
+      '✅','Resolver caso',
+      temVenda
+        ? 'Esta ação vai ocultar as cobranças futuras desta venda no calendário — vale inclusive para cancelamentos sem reembolso. Reabrindo o caso, elas voltam.'
+        : ''
+    );
+    if(!ok) return;
+  }
   try{
     await supaFetch('reembolsos?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:s,updated_at:new Date().toISOString()})});
     const r=todosReembolsos.find(x=>x.id===id); if(r)r.status=s;
@@ -6273,7 +6335,7 @@ async function loadVendasParaReemb(){
     vendasParaReemb=await supaFetch('vendas?select=id,nome_cliente,data_venda,closer,valor_bruto,valor_liquido&order=data_venda.desc&limit=300');
   }catch(e){vendasParaReemb=[];}
   const sel=document.getElementById('rfVenda');
-  if(sel) sel.innerHTML='<option value="">Nenhuma / não cadastrada</option>'+vendasParaReemb.map(v=>`<option value="${v.id}">${escHtml(v.nome_cliente||'Sem nome')} — ${v.data_venda?fmtDataBR(v.data_venda):''}${v.closer?' ('+escHtml(v.closer)+')':''}</option>`).join('');
+  if(sel) sel.innerHTML='<option value="">Selecione a venda na Central…</option>'+vendasParaReemb.map(v=>`<option value="${v.id}">${escHtml(v.nome_cliente||'Sem nome')} — ${v.data_venda?fmtDataBR(v.data_venda):''}${v.closer?' ('+escHtml(v.closer)+')':''}</option>`).join('');
 }
 let _rfVendaValor=0;
 function aoVincularVenda(){
@@ -6400,6 +6462,8 @@ function fecharFormReemb(){document.getElementById('reembFormOverlay').classList
 async function salvarReemb(){
   const cliente=document.getElementById('rfCliente').value.trim();
   if(!cliente){pmmAlert('Informe o nome do cliente.','⚠️','Campo obrigatório');return;}
+  const vendaIdSel=document.getElementById('rfVenda').value||null;
+  if(!vendaIdSel){pmmAlert('Vincule o caso a uma venda existente na Central. Não há reembolso de venda que não está cadastrada.','⚠️','Venda obrigatória');return;}
   const body={
     tipo:document.getElementById('rfTipo').value,
     status:document.getElementById('rfStatus').value,
@@ -6424,6 +6488,15 @@ async function salvarReemb(){
     updated_at:new Date().toISOString()
   };
   const id=document.getElementById('rfId').value;
+  // Confirma antes de resolver (mesma regra do botão "Resolvido"): resolver oculta as cobranças futuras
+  if(body.status==='resolvido'){
+    const prev=id?todosReembolsos.find(x=>x.id===id):null;
+    if(!prev||prev.status!=='resolvido'){
+      const ok=await pmmConfirm('Marcar este caso como Resolvido?','✅','Resolver caso',
+        body.venda_id?'Esta ação vai ocultar as cobranças futuras desta venda no calendário — vale inclusive para cancelamentos sem reembolso. Reabrindo o caso, elas voltam.':'');
+      if(!ok) return;
+    }
+  }
   try{
     if(id){
       await supaFetch('reembolsos?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});

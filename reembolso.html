@@ -63,6 +63,14 @@
 
       <form id="reembForm" onsubmit="enviar(event)">
       <div class="field">
+        <label>Venda na Central <span class="req">*</span></label>
+        <select id="f-venda" required onchange="aoEscolherVenda()">
+          <option value="">Carregando vendas…</option>
+        </select>
+        <p style="font-size:11px;color:var(--muted);margin:2px 0 0;">Todo reembolso precisa estar vinculado a uma venda já cadastrada. Se não achar a venda, cadastre-a antes na Central.</p>
+      </div>
+
+      <div class="field">
         <label>Nome do cliente que pediu o reembolso <span class="req">*</span></label>
         <input type="text" id="f-nome" placeholder="Nome completo do cliente" required>
       </div>
@@ -193,6 +201,35 @@ document.querySelectorAll('input[name="baixa"]').forEach(r=>r.addEventListener('
 
 function val(id){return (document.getElementById(id).value||'').trim();}
 
+// ── Carrega vendas da Central para o vínculo obrigatório ──
+let VENDAS_CENTRAL=[];
+function fmtDataOpt(iso){ if(!iso) return ''; const [y,m,d]=iso.split('T')[0].split('-'); return d+'/'+m+'/'+y; }
+async function carregarVendasForm(){
+  const sel=document.getElementById('f-venda');
+  try{
+    const res=await fetch(SUPA_URL+'/rest/v1/vendas?select=id,nome_cliente,data_venda,closer&order=data_venda.desc&limit=500',{
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+    });
+    VENDAS_CENTRAL=await res.json();
+    sel.innerHTML='<option value="">Selecione a venda…</option>'+VENDAS_CENTRAL.map(v=>{
+      const nome=(v.nome_cliente||'Sem nome').replace(/</g,'&lt;');
+      const cl=v.closer?' ('+v.closer.replace(/</g,'&lt;')+')':'';
+      return `<option value="${v.id}">${nome} — ${fmtDataOpt(v.data_venda)}${cl}</option>`;
+    }).join('');
+  }catch(e){
+    sel.innerHTML='<option value="">Erro ao carregar vendas — recarregue a página</option>';
+  }
+}
+function aoEscolherVenda(){
+  const v=VENDAS_CENTRAL.find(x=>x.id===document.getElementById('f-venda').value);
+  if(!v) return;
+  const nomeEl=document.getElementById('f-nome');
+  if(!nomeEl.value.trim()) nomeEl.value=v.nome_cliente||'';
+  if(v.data_venda && !document.getElementById('f-compra').value) document.getElementById('f-compra').value=v.data_venda.split('T')[0];
+  if(v.closer){ const cs=document.getElementById('f-closer'); for(let i=0;i<cs.options.length;i++){ if(cs.options[i].value===v.closer){ cs.selectedIndex=i; break; } } }
+}
+carregarVendasForm();
+
 // máscara de telefone: (11) 9.8867-6767
 function maskTel(value){
   let v=(value||'').replace(/\D/g,'').slice(0,11);
@@ -253,8 +290,12 @@ async function enviar(ev){
   // honeypot: se preenchido, é bot — finge sucesso e não grava
   if(val('f-website')){ document.getElementById('formView').style.display='none'; document.getElementById('okView').style.display='block'; return; }
 
+  const vendaId=val('f-venda');
+  if(!vendaId){ alert('Selecione a venda na Central. Todo reembolso precisa estar vinculado a uma venda cadastrada.'); return; }
+
   const baixa=document.querySelector('input[name=baixa]:checked').value;
   const body={
+    venda_id:vendaId,
     nome_cliente:nome,
     whatsapp_cliente:val('f-whatsapp')||null,
     plataforma_pagamento:val('f-plataforma')||null,
@@ -293,7 +334,7 @@ async function enviar(ev){
 }
 
 function novoCaso(){
-  ['f-nome','f-whatsapp','f-plataforma','f-formato','f-compra','f-solic','f-contrato','f-closer','f-estrategista','f-motivo','f-obs','f-website'].forEach(id=>document.getElementById(id).value='');
+  ['f-venda','f-nome','f-whatsapp','f-plataforma','f-formato','f-compra','f-solic','f-contrato','f-closer','f-estrategista','f-motivo','f-obs','f-website'].forEach(id=>document.getElementById(id).value='');
   document.querySelector('input[name=baixa][value=nao]').checked=true;
   document.getElementById('opt-nao').classList.add('sel');
   document.getElementById('opt-sim').classList.remove('sel');
