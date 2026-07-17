@@ -1675,7 +1675,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <div class="vf-section">
       <p class="vf-section-title">Acompanhamento interno</p>
       <div class="vf-grid-2">
-        <div class="vf-field"><label>Status do reembolso</label>
+        <div class="vf-field"><label>Status do financeiro</label>
           <select id="rfStatusReemb">
             <option value="pendente">Pendente</option>
             <option value="reembolsado">Reembolsado</option>
@@ -5731,7 +5731,7 @@ function _reembArrFiltro(qual){
   if(qual==='nf')return reembFiltroNf;
   return [];
 }
-const DD_LABEL={reembolso:'Reembolso',baixa:'Baixa',distrato:'Distrato',nf:'Nota fiscal'};
+const DD_LABEL={reembolso:'Financeiro',baixa:'Baixa',distrato:'Distrato',nf:'Nota fiscal'};
 function filtroDropdown(qual,label,mapa,arrSel){
   const opts=Object.keys(mapa).map(k=>`<label class="reemb-dd-opt"><input type="checkbox" ${arrSel.includes(k)?'checked':''} onchange="toggleReembFiltroOp('${qual}','${k}')">${mapa[k]}</label>`).join('');
   const cnt=arrSel.length?` (${arrSel.length})`:'';
@@ -5838,7 +5838,7 @@ function renderReembolsos(){
     </div>
     <div class="reemb-filtros">
       <span class="reemb-filtros-lbl">Acompanhamento:</span>
-      ${filtroDropdown('reembolso','Reembolso',STATUS_REEMB,reembFiltroStatusReemb)}
+      ${filtroDropdown('reembolso','Financeiro',STATUS_REEMB,reembFiltroStatusReemb)}
       ${filtroDropdown('baixa','Baixa',STATUS_BAIXA,reembFiltroBaixa)}
       ${filtroDropdown('distrato','Distrato',STATUS_DISTRATO,reembFiltroDistrato)}
       ${filtroDropdown('nf','Nota fiscal',STATUS_NF,reembFiltroNf)}
@@ -6097,7 +6097,7 @@ function renderReembDetalhe(id){
     <div class="reemb-det-sec">
       <div class="reemb-det-sec-head"><span class="reemb-sec-title">Acompanhamento interno</span></div>
       <div class="reemb-acomp-grid">
-        ${campoSelectReemb(id,'status_reembolso',STATUS_REEMB,r.status_reembolso||'pendente','Status do reembolso')}
+        ${campoSelectReemb(id,'status_reembolso',STATUS_REEMB,r.status_reembolso||'pendente','Status do financeiro')}
         ${campoSelectReemb(id,'status_baixa',STATUS_BAIXA,r.status_baixa||'pendente','Baixa no sistema interno de entrega')}
         ${campoSelectReemb(id,'status_distrato',STATUS_DISTRATO,r.status_distrato||'pendente','Distrato')}
         ${campoSelectReemb(id,'status_nf',STATUS_NF,r.status_nf||'nao_aplicavel','Nota fiscal')}
