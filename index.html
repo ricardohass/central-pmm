@@ -305,6 +305,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .badge-closer { background:#E1F5EE; color:#065F46; }
 .badge-sdr { background:#FEF3E2; color:#92600A; }
 .badge-social_seller { background:#FEF9E2; color:#856400; }
+.badge-operacional { background:#DCE7F0; color:#1F4B7C; }
 .status-ativo { font-size:11px; font-weight:500; background:#ECFDF5; color:#065F46; padding:3px 10px; border-radius:20px; }
 .status-inativo { font-size:11px; font-weight:500; background:#FEE2E2; color:#991B1B; padding:3px 10px; border-radius:20px; }
 .btn-edit { background:none; border:none; cursor:pointer; color:var(--muted); font-size:15px; padding:4px 6px; border-radius:4px; }
@@ -1931,6 +1932,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         <option value="closer">Closer</option>
         <option value="sdr">SDR</option>
         <option value="social_seller">Social Seller</option>
+        <option value="operacional">Operacional</option>
       </select>
     </div>
     <div class="modal-field"><label>Status</label>
@@ -2134,6 +2136,7 @@ const PERM_DEFAULT={
   closer:['performance','analises','metas','links','depoimentos','acessos','faq'],
   sdr:['performance','cobrancas','acessos','faq'],
   social_seller:['performance','acessos','faq'],
+  operacional:['cobrancas','reembolsos'],
 };
 function getPerms(){
   const s=localStorage.getItem('pmm_perms');
@@ -2812,6 +2815,7 @@ const FUNCOES=[
   {key:'closer',nome:'Closer',desc:'Vê os próprios dados de performance e dashboard'},
   {key:'sdr',nome:'SDR',desc:'Acesso às telas selecionadas abaixo'},
   {key:'social_seller',nome:'Social Seller',desc:'Acesso às telas selecionadas abaixo'},
+  {key:'operacional',nome:'Operacional',desc:'Financeiro pós-venda: cobranças e reembolsos'},
 ];
 function renderPermCards(){
   const perms=getPerms();
