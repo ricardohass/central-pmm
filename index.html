@@ -624,13 +624,13 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .reemb-caret { font-size:11px; color:var(--muted); flex-shrink:0; white-space:nowrap; }
 .reemb-caret i { display:inline-block; font-style:normal; transition:transform .15s; }
 .reemb-card.is-open .reemb-caret i { transform:rotate(180deg); }
-.reemb-detalhe { padding:16px 16px 16px 19px; background:#EFE9DC; }
+.reemb-detalhe { padding:13px 13px 13px 16px; background:#EFE9DC; }
 /* ══ Blocos internos ══ */
-.reemb-det-sec { background:#fff; border:1px solid #E2DACA; border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+.reemb-det-sec { background:#fff; border:1px solid #E2DACA; border-radius:12px; padding:13px 15px; margin-bottom:9px; }
 .reemb-det-sec:last-of-type { margin-bottom:0; }
-.reemb-det-sec-head { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:12px; color:var(--muted); padding-bottom:10px; margin-bottom:12px; border-bottom:1px solid #EFEAE0; }
+.reemb-det-sec-head { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:12px; color:var(--muted); padding-bottom:9px; margin-bottom:11px; border-bottom:1px solid #EFEAE0; }
 .reemb-sec-title { font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--green); }
-.reemb-det-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px 12px; }
+.reemb-det-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
 .reemb-det-lbl { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:3px; }
 .reemb-det-val { font-size:13px; font-weight:500; color:var(--text); }
 .reemb-parc { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid #EFEAE0; flex-wrap:wrap; }
@@ -653,11 +653,19 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .reemb-tl-texto { font-size:13px; color:var(--text); white-space:pre-wrap; }
 .reemb-analise { display:flex; flex-wrap:wrap; gap:8px 20px; background:#fff; border:1px solid #DCD3C0; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:12px; color:var(--muted); }
 .reemb-analise b { color:var(--text); font-weight:600; }
-.reemb-acomp-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 12px; }
+/* Sub-rótulo "Acompanhamento interno" dentro do card de status */
+.reemb-acomp-sub { font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:14px 0 11px; padding-top:12px; border-top:1px solid #EFEAE0; }
+.reemb-acomp-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
 .reemb-acomp-field { display:flex; flex-direction:column; gap:6px; }
 /* label com altura mínima: mantém os selects alinhados mesmo quando o texto quebra em 2 linhas */
-.reemb-acomp-field label { font-size:11px; font-weight:500; color:var(--muted); display:flex; align-items:flex-start; flex-wrap:wrap; gap:5px; min-height:30px; line-height:1.35; }
+.reemb-acomp-field label { font-size:11px; font-weight:500; color:var(--muted); display:flex; align-items:flex-start; gap:6px; min-height:28px; line-height:1.35; }
 .reemb-acomp-field select { width:100%; margin-top:auto; }
+/* pontinho de status: substitui o antigo badge ao lado do rótulo (sinal de cor sem quebrar linha) */
+.reemb-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:3px; }
+.reemb-dot.s-pendente { background:#D98A1F; }
+.reemb-dot.s-confirmada { background:#2E7D5B; }
+.reemb-dot.badge-admin { background:#3F5FA8; }
+.reemb-dot.reemb-badge-neutro { background:#A6A69E; }
 .reemb-badge-neutro { background:#EFEFEC; color:#6B6B6B; }
 .rf-parc-pago { display:flex; align-items:center; gap:4px; font-size:12px; color:var(--muted); white-space:nowrap; cursor:pointer; flex-shrink:0; }
 .rf-parc-pago input { width:14px; height:14px; accent-color:var(--green); margin:0; cursor:pointer; }
@@ -6092,10 +6100,7 @@ function renderReembDetalhe(id){
       <div class="reemb-seg">
         ${['em_aberto','negociando','resolvido'].map(s=>`<button class="reemb-status-btn ${r.status===s?'active':''}" onclick="mudarStatusReemb('${id}','${s}')">${REEMB_STATUS_LABEL[s]}</button>`).join('')}
       </div>
-    </div>
-
-    <div class="reemb-det-sec">
-      <div class="reemb-det-sec-head"><span class="reemb-sec-title">Acompanhamento interno</span></div>
+      <div class="reemb-acomp-sub">Acompanhamento interno</div>
       <div class="reemb-acomp-grid">
         ${campoSelectReemb(id,'status_reembolso',STATUS_REEMB,r.status_reembolso||'pendente','Status do financeiro')}
         ${campoSelectReemb(id,'status_baixa',STATUS_BAIXA,r.status_baixa||'pendente','Baixa no sistema interno de entrega')}
@@ -6184,7 +6189,7 @@ function campoSelectReemb(id,campo,mapa,valor,label){
   const cls=REEMB_BADGE[valor]||'s-pendente';
   const opts=Object.keys(mapa).map(k=>`<option value="${k}" ${valor===k?'selected':''}>${mapa[k]}</option>`).join('');
   return `<div class="reemb-acomp-field">
-    <label><span>${label}</span><span class="status-badge ${cls}">${mapa[valor]||valor}</span></label>
+    <label title="${mapa[valor]||valor}"><span class="reemb-dot ${cls}"></span><span>${label}</span></label>
     <select class="reemb-inline-input" onchange="atualizarCampoReemb('${id}','${campo}',this.value)">${opts}</select>
   </div>`;
 }
