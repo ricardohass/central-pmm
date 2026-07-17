@@ -47,6 +47,15 @@
   .copy-btn:hover{background:var(--green-light);}
   .link-btn{background:none;border:0.5px solid var(--coral);color:var(--coral);border-radius:9px;padding:10px 18px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;}
   .foot{text-align:center;font-size:11px;color:var(--muted);margin-top:18px;}
+  .vsearch{position:relative;}
+  .vsearch-selected{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--green);border-radius:9px;background:#EAF1EC;padding:11px 13px;font-size:14px;color:var(--text);}
+  .vsearch-selected .vs-clear{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:0 2px;flex-shrink:0;}
+  .vsearch-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:70;background:#fff;border:0.5px solid var(--border);border-radius:11px;box-shadow:0 12px 30px rgba(42,61,48,0.16);max-height:300px;overflow-y:auto;padding:5px;}
+  .vsearch-panel.open{display:block;}
+  .vsearch-opt{padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;color:var(--text);}
+  .vsearch-opt:hover{background:var(--cream);}
+  .vsearch-opt .vs-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+  .vsearch-empty{padding:13px 12px;font-size:13px;color:var(--muted);text-align:center;}
 </style>
 </head>
 <body>
@@ -64,10 +73,13 @@
       <form id="reembForm" onsubmit="enviar(event)">
       <div class="field">
         <label>Venda na Central <span class="req">*</span></label>
-        <select id="f-venda" required onchange="aoEscolherVenda()">
-          <option value="">Carregando vendas…</option>
-        </select>
-        <p style="font-size:11px;color:var(--muted);margin:2px 0 0;">Todo reembolso precisa estar vinculado a uma venda já cadastrada. Se não achar a venda, cadastre-a antes na Central.</p>
+        <input type="hidden" id="f-venda">
+        <div class="vsearch" id="fVendaBox">
+          <input type="text" id="fVendaSearch" placeholder="Buscar por nome, data da venda ou closer…" autocomplete="off" oninput="filtrarVendasExt()" onfocus="filtrarVendasExt()">
+          <div class="vsearch-panel" id="fVendaPanel"></div>
+        </div>
+        <div id="fVendaSelected" style="display:none;margin-top:6px;"></div>
+        <p style="font-size:11px;color:var(--muted);margin:6px 0 0;">Todo reembolso precisa estar vinculado a uma venda já cadastrada. Se não achar a venda, cadastre-a antes na Central.</p>
       </div>
 
       <div class="field">
@@ -201,33 +213,84 @@ document.querySelectorAll('input[name="baixa"]').forEach(r=>r.addEventListener('
 
 function val(id){return (document.getElementById(id).value||'').trim();}
 
-// ── Carrega vendas da Central para o vínculo obrigatório ──
+// ── Busca de venda (combobox por nome / data / closer) ──
 let VENDAS_CENTRAL=[];
+let VENDAS_PRONTAS=false;
 function fmtDataOpt(iso){ if(!iso) return ''; const [y,m,d]=iso.split('T')[0].split('-'); return d+'/'+m+'/'+y; }
+function semAcentoExt(s){ return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(); }
+function escExt(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function vendaLabelExt(v){ return (v.nome_cliente||'Sem nome')+' — '+fmtDataOpt(v.data_venda)+(v.closer?' ('+v.closer+')':''); }
 async function carregarVendasForm(){
-  const sel=document.getElementById('f-venda');
+  const inp=document.getElementById('fVendaSearch');
   try{
-    const res=await fetch(SUPA_URL+'/rest/v1/vendas?select=id,nome_cliente,data_venda,closer&order=data_venda.desc&limit=500',{
+    const res=await fetch(SUPA_URL+'/rest/v1/vendas?select=id,nome_cliente,data_venda,closer,produto&order=data_venda.desc&limit=2000',{
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
     });
     VENDAS_CENTRAL=await res.json();
-    sel.innerHTML='<option value="">Selecione a venda…</option>'+VENDAS_CENTRAL.map(v=>{
-      const nome=(v.nome_cliente||'Sem nome').replace(/</g,'&lt;');
-      const cl=v.closer?' ('+v.closer.replace(/</g,'&lt;')+')':'';
-      return `<option value="${v.id}">${nome} — ${fmtDataOpt(v.data_venda)}${cl}</option>`;
-    }).join('');
+    VENDAS_PRONTAS=true;
   }catch(e){
-    sel.innerHTML='<option value="">Erro ao carregar vendas — recarregue a página</option>';
+    if(inp) inp.placeholder='Erro ao carregar vendas — recarregue a página';
   }
 }
-function aoEscolherVenda(){
-  const v=VENDAS_CENTRAL.find(x=>x.id===document.getElementById('f-venda').value);
-  if(!v) return;
+function filtrarVendasExt(){
+  const inp=document.getElementById('fVendaSearch');
+  const panel=document.getElementById('fVendaPanel');
+  if(!inp||!panel) return;
+  if(!VENDAS_PRONTAS){ panel.innerHTML='<div class="vsearch-empty">Carregando vendas…</div>'; panel.classList.add('open'); return; }
+  const termo=inp.value.trim();
+  const q=semAcentoExt(termo);
+  const soDigitos=termo.replace(/\D/g,'');
+  let lista=VENDAS_CENTRAL;
+  if(q){
+    lista=VENDAS_CENTRAL.filter(v=>{
+      const dataBR=fmtDataOpt(v.data_venda);
+      const dataDig=dataBR.replace(/\D/g,'');
+      return semAcentoExt(v.nome_cliente||'').includes(q)
+        || semAcentoExt(v.closer||'').includes(q)
+        || semAcentoExt(v.produto||'').includes(q)
+        || (termo && dataBR.includes(termo))
+        || (soDigitos.length>=2 && dataDig.includes(soDigitos));
+    });
+  }
+  const MAX=40;
+  const extra=lista.length>MAX?lista.length-MAX:0;
+  const slice=lista.slice(0,MAX);
+  panel.innerHTML = slice.length
+    ? slice.map(v=>`<div class="vsearch-opt" onmousedown="event.preventDefault()" onclick="selecionarVendaExt('${v.id}')">
+        <div>${escExt(v.nome_cliente||'Sem nome')}</div>
+        <div class="vs-meta">${fmtDataOpt(v.data_venda)||'—'}${v.closer?' · '+escExt(v.closer):''}${v.produto?' · '+escExt(v.produto):''}</div>
+      </div>`).join('')+(extra?`<div class="vsearch-empty">+${extra} resultado(s) — refine a busca</div>`:'')
+    : '<div class="vsearch-empty">Nenhuma venda encontrada.</div>';
+  panel.classList.add('open');
+}
+function selecionarVendaExt(id){
+  const v=VENDAS_CENTRAL.find(x=>x.id===id); if(!v) return;
+  document.getElementById('f-venda').value=id;
+  document.getElementById('fVendaBox').style.display='none';
+  const sel=document.getElementById('fVendaSelected');
+  sel.style.display='block';
+  sel.innerHTML='<div class="vsearch-selected"><span>✓ '+escExt(vendaLabelExt(v))+'</span><button type="button" class="vs-clear" title="Trocar venda" onclick="limparVendaExt()">✕</button></div>';
+  document.getElementById('fVendaPanel').classList.remove('open');
+  // auto-preenche o que fizer sentido
   const nomeEl=document.getElementById('f-nome');
   if(!nomeEl.value.trim()) nomeEl.value=v.nome_cliente||'';
   if(v.data_venda && !document.getElementById('f-compra').value) document.getElementById('f-compra').value=v.data_venda.split('T')[0];
   if(v.closer){ const cs=document.getElementById('f-closer'); for(let i=0;i<cs.options.length;i++){ if(cs.options[i].value===v.closer){ cs.selectedIndex=i; break; } } }
 }
+function resetVendaExt(){
+  document.getElementById('f-venda').value='';
+  const box=document.getElementById('fVendaBox'); if(box) box.style.display='';
+  const inp=document.getElementById('fVendaSearch'); if(inp) inp.value='';
+  const sel=document.getElementById('fVendaSelected'); if(sel){ sel.style.display='none'; sel.innerHTML=''; }
+  const panel=document.getElementById('fVendaPanel'); if(panel) panel.classList.remove('open');
+}
+function limparVendaExt(){ resetVendaExt(); const inp=document.getElementById('fVendaSearch'); if(inp) inp.focus(); }
+document.addEventListener('click',e=>{
+  const box=document.getElementById('fVendaBox');
+  const panel=document.getElementById('fVendaPanel');
+  if(!box||!panel) return;
+  if(!box.contains(e.target)) panel.classList.remove('open');
+});
 carregarVendasForm();
 
 // máscara de telefone: (11) 9.8867-6767
@@ -334,7 +397,8 @@ async function enviar(ev){
 }
 
 function novoCaso(){
-  ['f-venda','f-nome','f-whatsapp','f-plataforma','f-formato','f-compra','f-solic','f-contrato','f-closer','f-estrategista','f-motivo','f-obs','f-website'].forEach(id=>document.getElementById(id).value='');
+  resetVendaExt();
+  ['f-nome','f-whatsapp','f-plataforma','f-formato','f-compra','f-solic','f-contrato','f-closer','f-estrategista','f-motivo','f-obs','f-website'].forEach(id=>document.getElementById(id).value='');
   document.querySelector('input[name=baixa][value=nao]').checked=true;
   document.getElementById('opt-nao').classList.add('sel');
   document.getElementById('opt-sim').classList.remove('sel');
