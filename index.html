@@ -636,6 +636,9 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .reemb-det-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
 .reemb-det-lbl { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:3px; }
 .reemb-det-val { font-size:13px; font-weight:500; color:var(--text); }
+/* Janela de arrependimento: badge em cima, "Nd · obrigatório/negociável" numa linha propria (sem quebrar no meio) */
+.reemb-janela { display:inline-flex; flex-direction:column; align-items:flex-start; gap:4px; }
+.reemb-janela-meta { font-size:11px; font-weight:400; color:var(--muted); white-space:nowrap; }
 .reemb-parc { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid #EFEAE0; flex-wrap:wrap; }
 .reemb-parc:first-of-type { border-top:none; padding-top:0; }
 .reemb-parc-valor { font-size:13px; font-weight:600; color:var(--text); min-width:90px; }
@@ -5717,9 +5720,10 @@ function reembJanelaBadge(r){
   if(!r.data_compra||!r.data_solicitacao) return '—';
   const dias=Math.round((new Date(r.data_solicitacao.split('T')[0])-new Date(r.data_compra.split('T')[0]))/86400000);
   if(dias<0) return '<span class="status-badge s-pendente">verificar datas</span>';
-  return dias<=7
-    ?`<span class="status-badge s-cancelada">Dentro dos 7 dias</span> <span style="font-size:11px;color:var(--muted);">${dias}d · obrigatório</span>`
-    :`<span class="status-badge s-confirmada">Fora dos 7 dias</span> <span style="font-size:11px;color:var(--muted);">${dias}d · negociável</span>`;
+  const [badge,meta]=dias<=7
+    ? ['<span class="status-badge s-cancelada">Dentro dos 7 dias</span>', dias+'d · obrigatório']
+    : ['<span class="status-badge s-confirmada">Fora dos 7 dias</span>', dias+'d · negociável'];
+  return `<span class="reemb-janela">${badge}<span class="reemb-janela-meta">${meta}</span></span>`;
 }
 
 async function carregarReembolsos(){
