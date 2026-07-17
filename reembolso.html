@@ -92,6 +92,12 @@
         <input type="tel" id="f-whatsapp" placeholder="(11) 9.8867-6767" inputmode="numeric" required>
       </div>
 
+      <div class="field">
+        <label>Valor da negociação (R$) <span class="req">*</span></label>
+        <input type="text" id="f-valor" inputmode="numeric" placeholder="Ex: 35.000,00" required oninput="this.value=maskMoeda(this.value)">
+        <p style="font-size:11px;color:var(--muted);margin:2px 0 0;">Valor em jogo na negociação — o closer precisa dele pra montar o termo de acordo.</p>
+      </div>
+
       <div class="grid2">
         <div class="field"><label>Plataforma de pagamento <span class="req">*</span></label>
           <select id="f-plataforma" required>
@@ -105,7 +111,7 @@
           </select>
         </div>
         <div class="field"><label>Formato de pagamento <span class="req">*</span></label>
-          <select id="f-formato" required>
+          <select id="f-formato" required onchange="toggleFormatoOutro()">
             <option value="">Selecione</option>
             <option>Cartão de crédito</option>
             <option>PIX</option>
@@ -114,6 +120,10 @@
             <option>Outro</option>
           </select>
         </div>
+      </div>
+      <div class="field" id="f-formato-desc-wrap" style="display:none;">
+        <label>Descreva o formato de pagamento <span class="req">*</span></label>
+        <input type="text" id="f-formato-desc" placeholder="Ex: 6x recorrente no cartão">
       </div>
 
       <div class="grid2">
@@ -152,7 +162,7 @@
 
       <div class="field">
         <label>Motivo do pedido de reembolso <span class="req">*</span></label>
-        <select id="f-motivo" required>
+        <select id="f-motivo" required onchange="toggleMotivoOutro()">
           <option value="">Selecione o motivo</option>
           <option>Arrependimento (até 7 dias)</option>
           <option>Dificuldade financeira</option>
@@ -164,8 +174,13 @@
           <option>Cobrança indevida/duplicada</option>
           <option>Não era o perfil ideal pro programa</option>
           <option>Encontrou outra solução/concorrente</option>
-          <option>Outro (ver observações)</option>
+          <option value="Outro">Outro (descrever abaixo)</option>
         </select>
+      </div>
+
+      <div class="field" id="f-motivo-desc-wrap" style="display:none;">
+        <label>Descreva o motivo <span class="req">*</span></label>
+        <input type="text" id="f-motivo-desc" placeholder="Explique o motivo do pedido de reembolso">
       </div>
 
       <div class="field">
@@ -213,6 +228,37 @@ document.querySelectorAll('input[name="baixa"]').forEach(r=>r.addEventListener('
 
 function val(id){return (document.getElementById(id).value||'').trim();}
 
+// ── Valor (máscara de moeda BR) ──
+function maskMoeda(v){
+  let n=(v||'').replace(/\D/g,'');
+  if(!n) return '';
+  n=(parseInt(n,10)/100).toFixed(2);
+  let [int,dec]=n.split('.');
+  int=int.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  return int+','+dec;
+}
+function parseMoeda(v){ return parseFloat((v||'').replace(/\./g,'').replace(',','.').replace(/[^\d.]/g,''))||0; }
+function fmtMoedaFromNum(x){
+  let [int,dec]=Number(x||0).toFixed(2).split('.');
+  int=int.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  return int+','+dec;
+}
+
+// ── "Outro" com descrição (formato de pagamento e motivo) ──
+function toggleFormatoOutro(){
+  const show=document.getElementById('f-formato').value==='Outro';
+  document.getElementById('f-formato-desc-wrap').style.display=show?'':'none';
+  if(!show) document.getElementById('f-formato-desc').value='';
+}
+function toggleMotivoOutro(){
+  const show=document.getElementById('f-motivo').value==='Outro';
+  document.getElementById('f-motivo-desc-wrap').style.display=show?'':'none';
+  if(!show) document.getElementById('f-motivo-desc').value='';
+}
+// Quando for "Outro", o valor que vale é a descrição digitada
+function formatoFinal(){ return document.getElementById('f-formato').value==='Outro' ? val('f-formato-desc') : val('f-formato'); }
+function motivoFinal(){ return document.getElementById('f-motivo').value==='Outro' ? val('f-motivo-desc') : val('f-motivo'); }
+
 // ── Busca de venda (combobox por nome / data / closer) ──
 let VENDAS_CENTRAL=[];
 let VENDAS_PRONTAS=false;
@@ -223,7 +269,7 @@ function vendaLabelExt(v){ return (v.nome_cliente||'Sem nome')+' — '+fmtDataOp
 async function carregarVendasForm(){
   const inp=document.getElementById('fVendaSearch');
   try{
-    const res=await fetch(SUPA_URL+'/rest/v1/vendas?select=id,nome_cliente,data_venda,closer,produto&order=data_venda.desc&limit=2000',{
+    const res=await fetch(SUPA_URL+'/rest/v1/vendas?select=id,nome_cliente,data_venda,closer,produto,valor_bruto&order=data_venda.desc&limit=2000',{
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
     });
     VENDAS_CENTRAL=await res.json();
@@ -276,6 +322,8 @@ function selecionarVendaExt(id){
   if(!nomeEl.value.trim()) nomeEl.value=v.nome_cliente||'';
   if(v.data_venda && !document.getElementById('f-compra').value) document.getElementById('f-compra').value=v.data_venda.split('T')[0];
   if(v.closer){ const cs=document.getElementById('f-closer'); for(let i=0;i<cs.options.length;i++){ if(cs.options[i].value===v.closer){ cs.selectedIndex=i; break; } } }
+  const valEl=document.getElementById('f-valor');
+  if(valEl && !valEl.value.trim() && Number(v.valor_bruto)>0) valEl.value=fmtMoedaFromNum(v.valor_bruto);
 }
 function resetVendaExt(){
   document.getElementById('f-venda').value='';
@@ -321,11 +369,12 @@ function montarResumo(){
   const add=(label,valor)=>{ if(valor) linhas.push(`*${label}:* ${valor}`); };
   add('Cliente',val('f-nome'));
   add('WhatsApp',val('f-whatsapp'));
+  add('Negociação',val('f-valor')?('R$ '+val('f-valor')):'');
   add('Data da compra',fmtData(val('f-compra')));
   add('Data da solicitação',fmtData(val('f-solic')));
   add('Plataforma',val('f-plataforma'));
-  add('Formato de pagamento',val('f-formato'));
-  add('Motivo',val('f-motivo'));
+  add('Formato de pagamento',formatoFinal());
+  add('Motivo',motivoFinal());
   add('Contrato',val('f-contrato'));
   add('Observações',val('f-obs'));
   return linhas.join('\n');
@@ -356,13 +405,20 @@ async function enviar(ev){
   const vendaId=val('f-venda');
   if(!vendaId){ alert('Selecione a venda na Central. Todo reembolso precisa estar vinculado a uma venda cadastrada.'); return; }
 
+  const valorNeg=parseMoeda(val('f-valor'));
+  if(valorNeg<=0){ alert('Informe o valor da negociação.'); document.getElementById('f-valor').focus(); return; }
+  // "Outro" precisa da descrição
+  if(document.getElementById('f-formato').value==='Outro' && !val('f-formato-desc')){ alert('Descreva o formato de pagamento (você marcou "Outro").'); document.getElementById('f-formato-desc').focus(); return; }
+  if(document.getElementById('f-motivo').value==='Outro' && !val('f-motivo-desc')){ alert('Descreva o motivo (você marcou "Outro").'); document.getElementById('f-motivo-desc').focus(); return; }
+
   const baixa=document.querySelector('input[name=baixa]:checked').value;
   const body={
     venda_id:vendaId,
     nome_cliente:nome,
     whatsapp_cliente:val('f-whatsapp')||null,
+    valor_total:valorNeg,
     plataforma_pagamento:val('f-plataforma')||null,
-    formato_pagamento:val('f-formato')||null,
+    formato_pagamento:formatoFinal()||null,
     tipo:'cancelamento',                 // classificado internamente depois
     status:'em_aberto',
     aberto_por:'Formulário externo',
@@ -371,7 +427,7 @@ async function enviar(ev){
     contrato_url:val('f-contrato')||null,
     closer:val('f-closer')||null,
     estrategista:val('f-estrategista')||null,
-    motivo:val('f-motivo')||null,
+    motivo:motivoFinal()||null,
     status_baixa: baixa==='sim' ? 'efetivada' : 'pendente',
     observacoes:val('f-obs')||null
   };
@@ -398,7 +454,9 @@ async function enviar(ev){
 
 function novoCaso(){
   resetVendaExt();
-  ['f-nome','f-whatsapp','f-plataforma','f-formato','f-compra','f-solic','f-contrato','f-closer','f-estrategista','f-motivo','f-obs','f-website'].forEach(id=>document.getElementById(id).value='');
+  ['f-nome','f-whatsapp','f-valor','f-plataforma','f-formato','f-formato-desc','f-compra','f-solic','f-contrato','f-closer','f-estrategista','f-motivo','f-motivo-desc','f-obs','f-website'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-formato-desc-wrap').style.display='none';
+  document.getElementById('f-motivo-desc-wrap').style.display='none';
   document.querySelector('input[name=baixa][value=nao]').checked=true;
   document.getElementById('opt-nao').classList.add('sel');
   document.getElementById('opt-sim').classList.remove('sel');
