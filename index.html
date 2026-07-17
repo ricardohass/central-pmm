@@ -617,6 +617,9 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .reemb-card-head { display:flex; align-items:center; gap:12px; padding:15px 16px 15px 19px; cursor:pointer; }
 .reemb-card-head:hover { background:var(--cream); }
 .reemb-card.is-open .reemb-card-head { background:#fff; border-bottom:1px solid #E2DACA; }
+/* Aberto: some com o resumo do topo (data/estrategista/closer/valor) — tudo isso reaparece em "Dados do caso" */
+.reemb-card.is-open .reemb-meta,
+.reemb-card.is-open .reemb-head-valor { display:none; }
 .reemb-avatar { width:36px; height:36px; border-radius:50%; background:var(--green); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:14px; flex-shrink:0; }
 .reemb-nome { font-size:15px; font-weight:600; color:var(--text); }
 .reemb-meta { font-size:12px; color:var(--muted); margin-top:3px; }
@@ -6012,7 +6015,7 @@ function renderReembCard(r){
         </div>
         <div class="reemb-meta">${sub}</div>
       </div>
-      <div style="text-align:right;flex-shrink:0;">
+      <div class="reemb-head-valor" style="text-align:right;flex-shrink:0;">
         <div class="reemb-valor">${fmtBRL(previsto)}</div>
         <div style="font-size:11px;color:var(--muted);">${venc}</div>
       </div>
