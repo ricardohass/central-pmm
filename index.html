@@ -605,41 +605,63 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .cob-card-value.coral { color:var(--coral); }
 .cob-card-value.amber { color:#C07A00; }
 /* Reembolsos */
-.reemb-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; margin-bottom:10px; overflow:hidden; }
-.reemb-card-head { display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer; }
+/* ══ Card de caso — contorno visível, tons separados do fundo da página ══ */
+.reemb-card { position:relative; background:#fff; border:1px solid #DCD3C0; border-radius:14px; margin-bottom:12px; overflow:hidden; transition:border-color .15s, box-shadow .15s; }
+.reemb-card:hover { border-color:#C6BBA2; }
+.reemb-card.is-open { border-color:rgba(61,92,74,0.55); box-shadow:0 10px 30px rgba(42,61,48,0.10); }
+/* trilho lateral da cor do tipo — amarra cabeçalho e detalhe como um caso só */
+.reemb-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--cream3); transition:background .15s; }
+.reemb-card.tipo-cancelamento::before { background:var(--coral); }
+.reemb-card.tipo-desistencia::before { background:#C07A00; }
+.reemb-card-head { display:flex; align-items:center; gap:12px; padding:15px 16px 15px 19px; cursor:pointer; }
 .reemb-card-head:hover { background:var(--cream); }
-.reemb-avatar { width:34px; height:34px; border-radius:50%; background:var(--green); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:14px; flex-shrink:0; }
-.reemb-nome { font-size:14px; font-weight:600; color:var(--text); }
+.reemb-card.is-open .reemb-card-head { background:#fff; border-bottom:1px solid #E2DACA; }
+.reemb-avatar { width:36px; height:36px; border-radius:50%; background:var(--green); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:14px; flex-shrink:0; }
+.reemb-nome { font-size:15px; font-weight:600; color:var(--text); }
 .reemb-meta { font-size:12px; color:var(--muted); margin-top:3px; }
-.reemb-valor { font-size:14px; font-weight:600; color:var(--green); }
-.reemb-detalhe { border-top:0.5px solid var(--border); padding:16px; background:var(--cream); }
-.reemb-det-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:14px; }
-.reemb-det-lbl { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:2px; }
-.reemb-det-val { font-size:13px; color:var(--text); }
-.reemb-det-sec { background:#fff; border:0.5px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:12px; }
-.reemb-det-sec-head { display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:600; color:var(--text); margin-bottom:10px; }
-.reemb-parc { display:flex; align-items:center; gap:10px; padding:7px 0; border-top:0.5px solid var(--border); flex-wrap:wrap; }
-.reemb-parc:first-of-type { border-top:none; }
+.reemb-valor { font-size:15px; font-weight:600; color:var(--green); }
+.reemb-caret { font-size:11px; color:var(--muted); flex-shrink:0; white-space:nowrap; }
+.reemb-caret i { display:inline-block; font-style:normal; transition:transform .15s; }
+.reemb-card.is-open .reemb-caret i { transform:rotate(180deg); }
+.reemb-detalhe { padding:16px 16px 16px 19px; background:#EFE9DC; }
+/* ══ Blocos internos ══ */
+.reemb-det-sec { background:#fff; border:1px solid #E2DACA; border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+.reemb-det-sec:last-of-type { margin-bottom:0; }
+.reemb-det-sec-head { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:12px; color:var(--muted); padding-bottom:10px; margin-bottom:12px; border-bottom:1px solid #EFEAE0; }
+.reemb-sec-title { font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--green); }
+.reemb-det-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px 12px; }
+.reemb-det-lbl { display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:3px; }
+.reemb-det-val { font-size:13px; font-weight:500; color:var(--text); }
+.reemb-parc { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid #EFEAE0; flex-wrap:wrap; }
+.reemb-parc:first-of-type { border-top:none; padding-top:0; }
 .reemb-parc-valor { font-size:13px; font-weight:600; color:var(--text); min-width:90px; }
-.reemb-status-btn { font-family:'Inter',sans-serif; font-size:12px; color:var(--muted); background:#fff; border:0.5px solid var(--border); border-radius:7px; padding:6px 12px; cursor:pointer; }
-.reemb-status-btn.active { background:var(--green); color:#fff; border-color:var(--green); }
-.reemb-mini-btn { font-family:'Inter',sans-serif; font-size:11px; color:var(--muted); background:none; border:none; cursor:pointer; }
-.reemb-mini-btn-coral { font-family:'Inter',sans-serif; font-size:12px; color:var(--coral); background:none; border:0.5px solid var(--coral); border-radius:7px; padding:5px 12px; cursor:pointer; }
-.reemb-inline-input { font-family:'Inter',sans-serif; font-size:13px; color:var(--text); border:0.5px solid var(--border); border-radius:8px; background:#fff; padding:8px 10px; outline:none; }
+/* ══ Botões: primário (verde) > secundário (coral outline) > terciário (texto) ══ */
+.reemb-seg { display:inline-flex; gap:3px; background:var(--cream2); border:1px solid #E2DACA; border-radius:10px; padding:3px; flex-wrap:wrap; }
+.reemb-status-btn { font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--muted); background:none; border:none; border-radius:7px; padding:7px 15px; cursor:pointer; transition:background .12s, color .12s; }
+.reemb-status-btn:hover { color:var(--text); }
+.reemb-status-btn.active { background:var(--green); color:#fff; box-shadow:0 1px 3px rgba(42,61,48,0.18); }
+.reemb-mini-btn { font-family:'Inter',sans-serif; font-size:11px; color:var(--muted); background:none; border:none; cursor:pointer; border-radius:6px; padding:4px 6px; transition:color .12s, background .12s; }
+.reemb-mini-btn:hover { color:var(--coral); background:var(--cream); }
+.reemb-mini-btn-coral { font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--coral); background:#fff; border:1px solid var(--coral); border-radius:8px; padding:6px 13px; cursor:pointer; transition:background .12s, color .12s; }
+.reemb-mini-btn-coral:hover { background:var(--coral); color:#fff; }
+.reemb-det-foot { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; padding-top:14px; border-top:1px solid #DFD7C5; flex-wrap:wrap; }
+.reemb-inline-input { font-family:'Inter',sans-serif; font-size:13px; color:var(--text); border:1px solid #DCD3C0; border-radius:8px; background:#fff; padding:8px 10px; outline:none; transition:border-color .15s; }
+.reemb-inline-input:focus { border-color:var(--coral); }
 .reemb-tl-item { border-left:2px solid var(--coral); padding:2px 0 6px 12px; margin-bottom:8px; }
 .reemb-tl-meta { font-size:11px; color:var(--muted); margin-bottom:3px; }
 .reemb-tl-texto { font-size:13px; color:var(--text); white-space:pre-wrap; }
-.reemb-analise { display:flex; flex-wrap:wrap; gap:8px 20px; background:#fff; border:0.5px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:12px; color:var(--muted); }
+.reemb-analise { display:flex; flex-wrap:wrap; gap:8px 20px; background:#fff; border:1px solid #DCD3C0; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:12px; color:var(--muted); }
 .reemb-analise b { color:var(--text); font-weight:600; }
-.reemb-acomp-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
-.reemb-acomp-field { display:flex; flex-direction:column; gap:5px; }
-.reemb-acomp-field label { font-size:11px; font-weight:500; color:var(--muted); display:flex; align-items:center; }
-.reemb-acomp-field select { width:100%; }
+.reemb-acomp-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px 12px; }
+.reemb-acomp-field { display:flex; flex-direction:column; gap:6px; }
+/* label com altura mínima: mantém os selects alinhados mesmo quando o texto quebra em 2 linhas */
+.reemb-acomp-field label { font-size:11px; font-weight:500; color:var(--muted); display:flex; align-items:flex-start; flex-wrap:wrap; gap:5px; min-height:30px; line-height:1.35; }
+.reemb-acomp-field select { width:100%; margin-top:auto; }
 .reemb-badge-neutro { background:#EFEFEC; color:#6B6B6B; }
 .rf-parc-pago { display:flex; align-items:center; gap:4px; font-size:12px; color:var(--muted); white-space:nowrap; cursor:pointer; flex-shrink:0; }
 .rf-parc-pago input { width:14px; height:14px; accent-color:var(--green); margin:0; cursor:pointer; }
 .reemb-viz { display:grid; grid-template-columns:1.4fr 1fr; gap:12px; margin-bottom:16px; }
-.reemb-viz-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:16px 18px; }
+.reemb-viz-card { background:#fff; border:1px solid #DCD3C0; border-radius:12px; padding:16px 18px; }
 .reemb-viz-title { font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
 .reemb-legend { display:flex; gap:16px; justify-content:center; font-size:11px; color:var(--muted); margin-top:8px; }
 .reemb-leg-dot { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle; }
@@ -672,7 +694,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .reemb-atraso-itens { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
 .reemb-atraso-item { font-family:'Inter',sans-serif; font-size:12px; color:#991B1B; background:#fff; border:0.5px solid #FCA5A5; border-radius:20px; padding:4px 11px; cursor:pointer; }
 .reemb-atraso-item:hover { background:#991B1B; color:#fff; }
-.reemb-rank { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:16px; }
+.reemb-rank { background:#fff; border:1px solid #DCD3C0; border-radius:12px; padding:16px 18px; margin-bottom:16px; }
 .reemb-rank-row { display:flex; align-items:center; gap:12px; padding:6px 0; }
 .reemb-rank-nome { font-size:13px; color:var(--text); min-width:120px; }
 .reemb-rank-bar { flex:1; height:7px; background:var(--cream2); border-radius:4px; overflow:hidden; min-width:60px; }
@@ -5882,7 +5904,7 @@ function irParaReemb(id){
   reembFiltroTipo='';reembFiltroStatus='';reembFiltroStatusReemb=[];reembFiltroBaixa=[];reembFiltroDistrato=[];reembFiltroNf=[];
   renderReembolsos();
   const det=document.getElementById('reemb-det-'+id);
-  if(det){ det.innerHTML=renderReembDetalhe(id); det.style.display='block'; det.scrollIntoView({behavior:'smooth',block:'center'}); }
+  if(det){ abrirReembDetalhe(det,id); det.scrollIntoView({behavior:'smooth',block:'center'}); }
 }
 function buildReembListaHTML(){
   const doMes=todosReembolsos.filter(reembNoMes);
@@ -5980,7 +6002,7 @@ function renderReembCard(r){
   if(prox) venc='vence '+fmtDataBR(prox);
   else if(previsto>0&&pago>=previsto) venc='quitado';
   else venc='sem vencimento';
-  return `<div class="reemb-card">
+  return `<div class="reemb-card tipo-${escHtml(r.tipo||'')}">
     <div class="reemb-card-head" onclick="toggleReembDetalhe('${r.id}')">
       <div class="reemb-avatar">${inicial}</div>
       <div style="flex:1;min-width:0;">
@@ -5995,22 +6017,32 @@ function renderReembCard(r){
         <div class="reemb-valor">${fmtBRL(previsto)}</div>
         <div style="font-size:11px;color:var(--muted);">${venc}</div>
       </div>
-      <span style="font-size:11px;color:var(--muted);flex-shrink:0;white-space:nowrap;">${nAtu} att ▾</span>
+      <span class="reemb-caret">${nAtu} att <i>▾</i></span>
     </div>
     <div class="reemb-detalhe" id="reemb-det-${r.id}" style="display:none;"></div>
   </div>`;
 }
 
+function abrirReembDetalhe(el,id){
+  el.innerHTML=renderReembDetalhe(id);
+  el.style.display='block';
+  const card=el.closest('.reemb-card');
+  if(card) card.classList.add('is-open');
+}
 function toggleReembDetalhe(id){
   const el=document.getElementById('reemb-det-'+id);
   if(!el) return;
-  if(el.style.display==='none'){ el.innerHTML=renderReembDetalhe(id); el.style.display='block'; }
-  else { el.style.display='none'; }
+  if(el.style.display==='none'){ abrirReembDetalhe(el,id); }
+  else {
+    el.style.display='none';
+    const card=el.closest('.reemb-card');
+    if(card) card.classList.remove('is-open');
+  }
 }
 function refreshReembDetalhe(id){
   renderReembolsos();
   const el=document.getElementById('reemb-det-'+id);
-  if(el){ el.innerHTML=renderReembDetalhe(id); el.style.display='block'; }
+  if(el) abrirReembDetalhe(el,id);
 }
 
 function renderReembDetalhe(id){
@@ -6047,29 +6079,32 @@ function renderReembDetalhe(id){
     </div>`).join(''):'<p style="font-size:12px;color:var(--muted);padding:6px 0;">Nenhuma atualização ainda.</p>';
 
   return `
-    <div class="reemb-det-grid">
-      <div><span class="reemb-det-lbl">Solicitação</span><span class="reemb-det-val">${r.data_solicitacao?fmtDataBR(r.data_solicitacao):'—'}</span></div>
-      <div><span class="reemb-det-lbl">Responsável</span><span class="reemb-det-val">${escHtml(r.responsavel||'—')}</span></div>
-      <div><span class="reemb-det-lbl">Closer</span><span class="reemb-det-val">${escHtml(r.closer||'—')}</span></div>
-      <div><span class="reemb-det-lbl">Estrategista</span><span class="reemb-det-val">${escHtml(r.estrategista||'—')}</span></div>
-      <div><span class="reemb-det-lbl">Motivo</span><span class="reemb-det-val">${escHtml(r.motivo||'—')}</span></div>
-      <div><span class="reemb-det-lbl">Contrato</span><span class="reemb-det-val">${r.contrato_url?`<a href="${escHtml(r.contrato_url)}" target="_blank" rel="noopener" style="color:var(--coral);">abrir contrato ↗</a>`:'—'}</span></div>
-      <div><span class="reemb-det-lbl">Data da compra</span><span class="reemb-det-val">${r.data_compra?fmtDataBR(r.data_compra):'—'}</span></div>
-      <div><span class="reemb-det-lbl">Forma do reembolso</span><span class="reemb-det-val">${escHtml(r.forma_reembolso||'—')}</span></div>
-      <div><span class="reemb-det-lbl">Valor retido</span><span class="reemb-det-val">${Number(r.valor_retido)>0?fmtBRL(r.valor_retido):'—'}</span></div>
-      ${(r.data_compra&&r.data_solicitacao)?`<div><span class="reemb-det-lbl">Janela arrependimento</span><span class="reemb-det-val">${reembJanelaBadge(r)}</span></div>`:''}
+    <div class="reemb-det-sec">
+      <div class="reemb-det-sec-head"><span class="reemb-sec-title">Dados do caso</span></div>
+      <div class="reemb-det-grid">
+        <div><span class="reemb-det-lbl">Solicitação</span><span class="reemb-det-val">${r.data_solicitacao?fmtDataBR(r.data_solicitacao):'—'}</span></div>
+        <div><span class="reemb-det-lbl">Responsável</span><span class="reemb-det-val">${escHtml(r.responsavel||'—')}</span></div>
+        <div><span class="reemb-det-lbl">Closer</span><span class="reemb-det-val">${escHtml(r.closer||'—')}</span></div>
+        <div><span class="reemb-det-lbl">Estrategista</span><span class="reemb-det-val">${escHtml(r.estrategista||'—')}</span></div>
+        <div><span class="reemb-det-lbl">Motivo</span><span class="reemb-det-val">${escHtml(r.motivo||'—')}</span></div>
+        <div><span class="reemb-det-lbl">Contrato</span><span class="reemb-det-val">${r.contrato_url?`<a href="${escHtml(r.contrato_url)}" target="_blank" rel="noopener" style="color:var(--coral);">abrir contrato ↗</a>`:'—'}</span></div>
+        <div><span class="reemb-det-lbl">Data da compra</span><span class="reemb-det-val">${r.data_compra?fmtDataBR(r.data_compra):'—'}</span></div>
+        <div><span class="reemb-det-lbl">Forma do reembolso</span><span class="reemb-det-val">${escHtml(r.forma_reembolso||'—')}</span></div>
+        <div><span class="reemb-det-lbl">Valor retido</span><span class="reemb-det-val">${Number(r.valor_retido)>0?fmtBRL(r.valor_retido):'—'}</span></div>
+        ${(r.data_compra&&r.data_solicitacao)?`<div><span class="reemb-det-lbl">Janela arrependimento</span><span class="reemb-det-val">${reembJanelaBadge(r)}</span></div>`:''}
+      </div>
+      ${r.observacoes?`<div style="font-size:12px;color:var(--text);background:var(--cream);border:1px solid #E2DACA;border-radius:8px;padding:10px 12px;margin-top:14px;white-space:pre-wrap;">${escHtml(r.observacoes)}</div>`:''}
     </div>
-    ${r.observacoes?`<div style="font-size:12px;color:var(--text);background:#fff;border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px;white-space:pre-wrap;">${escHtml(r.observacoes)}</div>`:''}
 
     <div class="reemb-det-sec">
-      <div class="reemb-det-sec-head"><span>Status do caso</span></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <div class="reemb-det-sec-head"><span class="reemb-sec-title">Status do caso</span></div>
+      <div class="reemb-seg">
         ${['em_aberto','negociando','resolvido'].map(s=>`<button class="reemb-status-btn ${r.status===s?'active':''}" onclick="mudarStatusReemb('${id}','${s}')">${REEMB_STATUS_LABEL[s]}</button>`).join('')}
       </div>
     </div>
 
     <div class="reemb-det-sec">
-      <div class="reemb-det-sec-head"><span>Acompanhamento interno</span></div>
+      <div class="reemb-det-sec-head"><span class="reemb-sec-title">Acompanhamento interno</span></div>
       <div class="reemb-acomp-grid">
         ${campoSelectReemb(id,'status_reembolso',STATUS_REEMB,r.status_reembolso||'pendente','Status do reembolso')}
         ${campoSelectReemb(id,'status_baixa',STATUS_BAIXA,r.status_baixa||'pendente','Baixa no sistema interno de entrega')}
@@ -6079,7 +6114,7 @@ function renderReembDetalhe(id){
     </div>
 
     <div class="reemb-det-sec">
-      <div class="reemb-det-sec-head"><span>Parcelas do reembolso</span><span style="color:var(--muted);font-weight:400;">${fmtBRL(reembPago(r))} de ${fmtBRL(reembPrevisto(r))}</span></div>
+      <div class="reemb-det-sec-head"><span class="reemb-sec-title">Parcelas do reembolso</span><span><b style="color:var(--text);font-weight:600;">${fmtBRL(reembPago(r))}</b> de ${fmtBRL(reembPrevisto(r))}</span></div>
       ${parcelasHTML}
       <div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;">
         <input type="number" id="np-valor-${id}" placeholder="Valor R$" step="0.01" min="0" class="reemb-inline-input" style="width:120px;">
@@ -6089,7 +6124,7 @@ function renderReembDetalhe(id){
     </div>
 
     <div class="reemb-det-sec">
-      <div class="reemb-det-sec-head"><span>Atualizações</span></div>
+      <div class="reemb-det-sec-head"><span class="reemb-sec-title">Atualizações</span><span>${atualizacoes.length}</span></div>
       ${timelineHTML}
       <div style="margin-top:10px;">
         <textarea id="nt-texto-${id}" class="reemb-inline-input" style="width:100%;min-height:60px;resize:vertical;" placeholder="Escreva uma atualização sobre o andamento..."></textarea>
@@ -6099,8 +6134,8 @@ function renderReembDetalhe(id){
       </div>
     </div>
 
-    <div style="display:flex;justify-content:space-between;margin-top:14px;">
-      <button class="reemb-mini-btn" onclick="excluirReemb('${id}')" style="color:var(--coral);">🗑 Excluir caso</button>
+    <div class="reemb-det-foot">
+      <button class="reemb-mini-btn" onclick="excluirReemb('${id}')">🗑 Excluir caso</button>
       <button class="reemb-mini-btn-coral" onclick="abrirFormReemb('${id}')">✎ Editar dados do caso</button>
     </div>`;
 }
@@ -6158,7 +6193,7 @@ function campoSelectReemb(id,campo,mapa,valor,label){
   const cls=REEMB_BADGE[valor]||'s-pendente';
   const opts=Object.keys(mapa).map(k=>`<option value="${k}" ${valor===k?'selected':''}>${mapa[k]}</option>`).join('');
   return `<div class="reemb-acomp-field">
-    <label>${label} <span class="status-badge ${cls}" style="margin-left:4px;">${mapa[valor]||valor}</span></label>
+    <label><span>${label}</span><span class="status-badge ${cls}">${mapa[valor]||valor}</span></label>
     <select class="reemb-inline-input" onchange="atualizarCampoReemb('${id}','${campo}',this.value)">${opts}</select>
   </div>`;
 }
