@@ -1478,8 +1478,9 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       </div>
       <div id="pgtoWrap" style="overflow-x:auto;"></div>
       <button type="button" class="btn-add-pgto" onclick="adicionarPgtoRow()">+ Adicionar pagamento</button>
-      <div class="pgto-recorrencia">
-        <span class="pgto-rec-title">⟳ Gerar recorrência / parcelas</span>
+      <div class="pgto-recorrencia" id="pgtoRecBox">
+        <span class="pgto-rec-title" onclick="toggleRecorrencia()" style="cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:6px;"><span id="pgtoRecArrow" style="display:inline-block;transition:transform .15s;">▸</span> ⟳ Gerar recorrência / parcelas</span>
+        <div id="pgtoRecBody" style="display:none;">
         <div class="pgto-rec-grid">
           <div><label>Qtd</label><input type="number" id="recQtd" min="1" max="60" value="6"></div>
           <div><label>Valor (R$)</label><input type="number" id="recValor" min="0" step="0.01" placeholder="10000"></div>
@@ -1493,6 +1494,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
           <button type="button" class="btn-add-pgto" style="align-self:end;" onclick="gerarRecorrenciaPgto()">Gerar</button>
         </div>
         <p class="pgto-rec-hint">Cria uma parcela por mês, no mesmo dia do 1º vencimento. Ex.: 6 parcelas de 10.000, dia 05 → 05/07, 05/08... Elas já caem no calendário de Cobranças.</p>
+        </div>
       </div>
       <div class="pgto-totals">
         <div class="pgto-total-item"><span class="pgto-total-label">Total bruto:</span><span class="pgto-total-val" id="pgtoTotalBruto">R$ 0,00</span></div>
@@ -2670,6 +2672,7 @@ function abrirFormVenda(){
   document.getElementById('vfId').value='';
   document.getElementById('vfComissao').value='0';
   document.getElementById('pgtoWrap').innerHTML='';
+  fecharRecorrencia();
   adicionarPgtoRow(new Date().toISOString().split('T')[0],'PIX','','','','pendente');
   document.getElementById('vfProduto').value='';
   document.getElementById('vfData').value=new Date().toISOString().split('T')[0];
@@ -2694,6 +2697,7 @@ function editarVenda(v){
   document.getElementById('vfId').value=v.id;
   document.getElementById('vfComissao').value=v.base_comissao||0;
   document.getElementById('pgtoWrap').innerHTML='';
+  fecharRecorrencia();
   carregarPgtosNoForm(v);
   document.getElementById('vfProduto').value=v.produto||'';
   document.getElementById('vfData').value=v.data_venda?v.data_venda.split('T')[0]:'';
@@ -5287,6 +5291,20 @@ function atualizarTotaisPgto(){
   document.getElementById('pgtoTotalBruto').textContent=fmtBRL(bruto);
   document.getElementById('pgtoTotalLiquido').textContent=fmtBRL(liquido);
   document.getElementById('pgtoTotalRestante').textContent=fmtBRL(restante);
+}
+
+function toggleRecorrencia(){
+  const body=document.getElementById('pgtoRecBody');
+  const arrow=document.getElementById('pgtoRecArrow');
+  const aberto=body.style.display!=='none';
+  body.style.display=aberto?'none':'block';
+  arrow.style.transform=aberto?'':'rotate(90deg)';
+}
+function fecharRecorrencia(){
+  const body=document.getElementById('pgtoRecBody');
+  const arrow=document.getElementById('pgtoRecArrow');
+  if(body) body.style.display='none';
+  if(arrow) arrow.style.transform='';
 }
 
 function gerarRecorrenciaPgto(){
