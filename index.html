@@ -2739,9 +2739,11 @@ async function salvarVenda(){
   const totalLiquido=pagamentos.reduce((s,p)=>s+p.valor_liquido,0);
   const totalRestante=pagamentos.filter(p=>p.status==='pendente').reduce((s,p)=>s+p.valor_bruto,0);
   const primeiroGateway=pagamentos.find(p=>p.gateway)?.gateway||null;
-  const temParcelado=pagamentos.some(p=>p.metodo==='Cartão'&&(p.parcelas||1)>1);
+  const maxCartaoParcelas=Math.max(1,...pagamentos.filter(p=>p.metodo==='Cartão').map(p=>p.parcelas||1));
+  const temParcelado=maxCartaoParcelas>1;
   const formaPagamento=(pagamentos.length>1||temParcelado)?'parcelado':'a_vista';
-  const totalParcelas=pagamentos.length>1?pagamentos.length:(pagamentos[0]?.parcelas||1);
+  // Se há cartão parcelado (ex.: 12x), o nº de parcelas do cartão prevalece sobre o nº de linhas.
+  const totalParcelas=maxCartaoParcelas>1?maxCartaoParcelas:(pagamentos.length>1?pagamentos.length:(pagamentos[0]?.parcelas||1));
   // A venda "sai" na data do 1º pagamento (entrada), não no dia do cadastro
   const dataVenda=pagamentos.length?[...pagamentos.map(p=>p.data_prevista)].sort()[0]:data;
 
