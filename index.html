@@ -15,6 +15,18 @@
 }
 html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream); color:var(--text); font-size:14px; line-height:1.5; }
 
+/* CRITÉRIOS — explica como cada número é calculado ao passar o mouse */
+.hint { border-bottom:1px dotted currentColor; cursor:help; }
+#hintBubble {
+  position:fixed; z-index:9999; max-width:290px; opacity:0; visibility:hidden;
+  background:var(--text); color:var(--cream); font-size:11.5px; font-weight:400;
+  line-height:1.5; letter-spacing:0; text-transform:none; text-align:left;
+  padding:9px 11px; border-radius:8px; box-shadow:0 8px 24px rgba(42,61,48,0.22);
+  pointer-events:none; transition:opacity .12s ease;
+}
+#hintBubble.on { opacity:1; visibility:visible; }
+#hintBubble b { color:#fff; font-weight:600; }
+
 /* LOGIN */
 #login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--green); }
 .login-box { background:var(--cream); border-radius:16px; padding:48px 40px; width:100%; max-width:400px; }
@@ -874,7 +886,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
             <p class="snap-sub" id="snap-vendas-sub">carregando...</p>
           </div>
           <div class="snap-card">
-            <p class="snap-label">Recebido no mês</p>
+            <p class="snap-label"><span class="hint" tabindex="0" data-hint="fatBruto">Recebido no mês</span></p>
             <p class="snap-value" id="snap-bruto">—</p>
             <p class="snap-sub" id="snap-bruto-sub">pagamentos recebidos</p>
           </div>
@@ -1020,14 +1032,14 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       </div>
       <div id="dash-admin-view">
         <div class="metrics">
-          <div class="mcard"><p class="mcard-label" id="lbl-fat-bruto">Recebido no mês (bruto)</p><p class="mcard-value" id="dash-fat-bruto">—</p><p class="mcard-meta" id="dash-fat-bruto-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-bruto" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-bruto">0%</span></div></div>
-          <div class="mcard"><p class="mcard-label" id="lbl-fat-liq">Recebido no mês (líquido)</p><p class="mcard-value" id="dash-fat-liq">—</p><p class="mcard-meta">Meta: R$ 1.000.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-liq" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-liq">0%</span></div></div>
+          <div class="mcard"><p class="mcard-label hint" id="lbl-fat-bruto" tabindex="0" data-hint="fatBruto" style="display:inline-block;">Recebido no mês (bruto)</p><p class="mcard-value" id="dash-fat-bruto">—</p><p class="mcard-meta" id="dash-fat-bruto-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-bruto" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-bruto">0%</span></div></div>
+          <div class="mcard"><p class="mcard-label hint" id="lbl-fat-liq" tabindex="0" data-hint="fatLiquido" style="display:inline-block;">Recebido no mês (líquido)</p><p class="mcard-value" id="dash-fat-liq">—</p><p class="mcard-meta">Meta: R$ 1.000.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-liq" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-liq">0%</span></div></div>
           <div class="mcard"><p class="mcard-label">Total de vendas</p><p class="mcard-value big" id="dash-total-vendas">—</p><p class="mcard-meta">exceto canceladas e reembolsadas</p></div>
-          <div class="mcard"><p class="mcard-label">Reembolsos (abatido)</p><p class="mcard-value coral" id="dash-reembolsos">—</p><p class="mcard-meta">no mês</p></div>
-          <div class="mcard"><p class="mcard-label">A receber</p><p class="mcard-value coral" id="dash-a-receber">—</p><p class="mcard-meta">valor restante pendente</p></div>
+          <div class="mcard"><p class="mcard-label"><span class="hint" tabindex="0" data-hint="reembolso">Reembolsos (abatido)</span></p><p class="mcard-value coral" id="dash-reembolsos">—</p><p class="mcard-meta">no mês</p></div>
+          <div class="mcard"><p class="mcard-label"><span class="hint" tabindex="0" data-hint="aReceber">A receber</span></p><p class="mcard-value coral" id="dash-a-receber">—</p><p class="mcard-meta">valor restante pendente</p></div>
         </div>
         <div class="charts-row">
-          <div class="chart-card fat-card"><p class="chart-title">Faturamento por dia</p><div style="position:relative;height:200px;"><canvas id="fatChart"></canvas></div><div class="chart-legend"><div class="cli"><div class="cli-line" style="background:rgba(61,92,74,0.2);height:8px;border-radius:2px;"></div>Fat. bruto</div><div class="cli"><div class="cli-line" style="background:#3D5C4A;"></div>Fat. líquido</div></div><div class="fat-resumo" id="fatResumo"></div></div>
+          <div class="chart-card fat-card"><p class="chart-title">Faturamento por dia</p><div style="position:relative;height:200px;"><canvas id="fatChart"></canvas></div><div class="chart-legend"><div class="cli"><div class="cli-line" style="background:rgba(61,92,74,0.2);height:8px;border-radius:2px;"></div><span class="hint" tabindex="0" data-hint="fatBruto">Fat. bruto</span></div><div class="cli"><div class="cli-line" style="background:#3D5C4A;"></div><span class="hint" tabindex="0" data-hint="fatLiquido">Fat. líquido</span></div></div><div class="fat-resumo" id="fatResumo"></div></div>
           <div class="chart-card pie-wrap">
             <p class="chart-title" style="align-self:flex-start;">Vendas por origem</p>
             <canvas id="pieChart" width="160" height="160" style="max-width:160px;"></canvas>
@@ -1115,7 +1127,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       </div>
       <div class="vendas-table-wrap">
         <table class="vendas-table vt-full">
-          <thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Closer</th><th>Gateway</th><th>Pagamento</th><th>Valor bruto</th><th>Líquido recebido</th><th>A receber</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Closer</th><th>Gateway</th><th>Pagamento</th><th><span class="hint" tabindex="0" data-hint="bruto">Valor bruto</span></th><th><span class="hint" tabindex="0" data-hint="liquido">Líquido recebido</span></th><th><span class="hint" tabindex="0" data-hint="aReceber">A receber</span></th><th>Status</th><th></th></tr></thead>
           <tbody id="vendasTbody"></tbody>
         </table>
       </div>
@@ -1474,7 +1486,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
     <div class="vf-section">
       <p class="vf-section-title">Cronograma de pagamentos</p>
       <div class="pgto-row pgto-row-header" style="margin-bottom:4px;">
-        <span>Data prevista</span><span>Método</span><span>Parcelas</span><span>Gateway</span><span>Bruto (R$)</span><span>Líquido (R$)</span><span>Status</span><span></span>
+        <span>Data prevista</span><span>Método</span><span>Parcelas</span><span>Gateway</span><span class="hint" tabindex="0" data-hint="parcBruto">Bruto (R$)</span><span class="hint" tabindex="0" data-hint="parcLiquido">Líquido (R$)</span><span>Status</span><span></span>
       </div>
       <div id="pgtoWrap" style="overflow-x:auto;"></div>
       <button type="button" class="btn-add-pgto" onclick="adicionarPgtoRow()">+ Adicionar pagamento</button>
@@ -1497,9 +1509,9 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
         </div>
       </div>
       <div class="pgto-totals">
-        <div class="pgto-total-item"><span class="pgto-total-label">Total bruto:</span><span class="pgto-total-val" id="pgtoTotalBruto">R$ 0,00</span></div>
-        <div class="pgto-total-item"><span class="pgto-total-label" title="Soma só das parcelas marcadas como recebidas">Líquido recebido:</span><span class="pgto-total-val" id="pgtoTotalLiquido">R$ 0,00</span></div>
-        <div class="pgto-total-item"><span class="pgto-total-label">A receber:</span><span class="pgto-total-val" id="pgtoTotalRestante" style="color:var(--coral);">R$ 0,00</span></div>
+        <div class="pgto-total-item"><span class="pgto-total-label hint" tabindex="0" data-hint="bruto">Total bruto:</span><span class="pgto-total-val" id="pgtoTotalBruto">R$ 0,00</span></div>
+        <div class="pgto-total-item"><span class="pgto-total-label hint" tabindex="0" data-hint="liquido">Líquido recebido:</span><span class="pgto-total-val" id="pgtoTotalLiquido">R$ 0,00</span></div>
+        <div class="pgto-total-item"><span class="pgto-total-label hint" tabindex="0" data-hint="aReceber">A receber:</span><span class="pgto-total-val" id="pgtoTotalRestante" style="color:var(--coral);">R$ 0,00</span></div>
       </div>
       <div style="margin-top:14px;max-width:220px;">
         <div class="vf-field"><label>Base de comissão (R$)</label><input type="number" id="vfComissao" step="0.01" min="0" value="0"></div>
@@ -2007,6 +2019,45 @@ const fmtBRL=v=>v==null?'—':'R$ '+Number(v).toLocaleString('pt-BR',{minimumFr
 const fmtDataBR=iso=>{if(!iso)return'—';const[y,m,d]=iso.split('T')[0].split('-');return d+'/'+m+'/'+y;};
 const MESES_NOMES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
+// ── CRITÉRIOS (tooltips) ──
+// Textos únicos: se a regra de cálculo mudar, muda aqui e vale na Central inteira.
+const CRITERIOS={
+  bruto:'<b>Bruto</b> = valor cheio negociado com o cliente, antes das taxas do gateway. É o número do contrato, independente do que já foi pago.',
+  liquido:'<b>Líquido</b> = bruto − taxas, contando só o que o cliente <b>já pagou</b> (parcelas marcadas como recebidas). Parcela pendente não entra aqui — entra em "A receber".',
+  aReceber:'<b>A receber</b> = soma das parcelas ainda pendentes, pelo valor bruto. Some daqui e entra no líquido quando a parcela é marcada como recebida.',
+  fatBruto:'Soma do <b>bruto</b> das parcelas recebidas com data de recebimento dentro do período, menos os reembolsos. Segue o dinheiro que entrou, não a data da venda.',
+  fatLiquido:'Soma do <b>líquido</b> das parcelas recebidas no período (já sem as taxas), menos os reembolsos. É o que de fato sobrou no caixa.',
+  reembolso:'Reembolso integral já efetivado conta o valor total do caso; parcial ou em andamento conta só as parcelas de devolução já pagas.',
+  parcBruto:'Valor cheio desta parcela, antes das taxas do gateway.',
+  parcLiquido:'Quanto sobra desta parcela depois das taxas. Só entra no líquido da venda quando o status vira "Recebido".'
+};
+// Bolha única reaproveitada — position:fixed pra não ser cortada por tabela com scroll.
+(function(){
+  let bubble;
+  const alvo=e=>e.target.closest?e.target.closest('[data-hint]'):null;
+  function mostrar(el){
+    const chave=el.getAttribute('data-hint');
+    const txt=CRITERIOS[chave]||chave;
+    if(!txt) return;
+    if(!bubble){ bubble=document.createElement('div'); bubble.id='hintBubble'; document.body.appendChild(bubble); }
+    bubble.innerHTML=txt;
+    bubble.classList.add('on');
+    const r=el.getBoundingClientRect(), b=bubble.getBoundingClientRect();
+    let left=r.left+r.width/2-b.width/2;
+    left=Math.max(8,Math.min(left,window.innerWidth-b.width-8));
+    // Acima do elemento; se não couber, joga pra baixo.
+    const top=r.top-b.height-8>=8?r.top-b.height-8:r.bottom+8;
+    bubble.style.left=left+'px';
+    bubble.style.top=top+'px';
+  }
+  function esconder(){ if(bubble) bubble.classList.remove('on'); }
+  document.addEventListener('mouseover',e=>{const el=alvo(e); if(el) mostrar(el);});
+  document.addEventListener('mouseout',e=>{if(alvo(e)) esconder();});
+  document.addEventListener('focusin',e=>{const el=alvo(e); if(el) mostrar(el);});
+  document.addEventListener('focusout',esconder);
+  document.addEventListener('scroll',esconder,true);
+})();
+
 // ── DASHBOARD MÊS ──
 let dashAno=new Date().getFullYear();
 let dashMes=new Date().getMonth(); // 0-indexed
@@ -2482,7 +2533,7 @@ async function carregarDashboard(){
     const sorted=Object.entries(ranking).sort((a,b)=>b[1].bruto-a[1].bruto);
     document.getElementById('rankingList').innerHTML=sorted.length===0
       ?'<p style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma venda no período.</p>'
-      :sorted.map((e,i)=>`<div class="ranking-row"><span class="rank-num">${i+1}</span><div class="rank-info"><p class="rank-name">${e[0]}</p><p class="rank-sub">${e[1].n} venda(s)</p></div><div class="rank-values"><p class="rank-bruto">${fmtBRL(e[1].bruto)}</p><p class="rank-liq">Liq. ${fmtBRL(e[1].liq)}</p></div></div>`).join('');
+      :sorted.map((e,i)=>`<div class="ranking-row"><span class="rank-num">${i+1}</span><div class="rank-info"><p class="rank-name">${e[0]}</p><p class="rank-sub">${e[1].n} venda(s)</p></div><div class="rank-values"><p class="rank-bruto hint" data-hint="bruto">${fmtBRL(e[1].bruto)}</p><p class="rank-liq hint" data-hint="liquido">Liq. ${fmtBRL(e[1].liq)}</p></div></div>`).join('');
 
     // Ranking de SDRs (vendas com SDR atribuído)
     const rankingSdr={};
@@ -2497,7 +2548,7 @@ async function carregarDashboard(){
     const sdrEl=document.getElementById('rankingSdrList');
     if(sdrEl) sdrEl.innerHTML=sortedSdr.length===0
       ?'<p style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma venda com SDR no período.</p>'
-      :sortedSdr.map((e,i)=>`<div class="ranking-row"><span class="rank-num">${i+1}</span><div class="rank-info"><p class="rank-name">${e[0]}</p><p class="rank-sub">${e[1].n} venda(s)</p></div><div class="rank-values"><p class="rank-bruto">${fmtBRL(e[1].bruto)}</p><p class="rank-liq">Liq. ${fmtBRL(e[1].liq)}</p></div></div>`).join('');
+      :sortedSdr.map((e,i)=>`<div class="ranking-row"><span class="rank-num">${i+1}</span><div class="rank-info"><p class="rank-name">${e[0]}</p><p class="rank-sub">${e[1].n} venda(s)</p></div><div class="rank-values"><p class="rank-bruto hint" data-hint="bruto">${fmtBRL(e[1].bruto)}</p><p class="rank-liq hint" data-hint="liquido">Liq. ${fmtBRL(e[1].liq)}</p></div></div>`).join('');
 
     const CORES=['#3D5C4A','#D4572A','#4E9E75','#B4B2A9','#7C3D8C','#1565C0','#C07A00','#0277BD'];
 
@@ -2822,8 +2873,8 @@ function abrirDetalheVenda(v){
       <div><span style="color:var(--muted);">Status:</span> <strong>${cap(v.status)}</strong></div>
       <div><span style="color:var(--muted);">Closer:</span> <strong>${v.closer||'—'}</strong></div>
       <div><span style="color:var(--muted);">Gateway:</span> <strong>${v.gateway||'—'}</strong></div>
-      <div><span style="color:var(--muted);">Valor bruto:</span> <strong>${fmtBRL(v.valor_bruto)}</strong></div>
-      <div><span style="color:var(--muted);">Líquido recebido:</span> <strong>${fmtBRL(v.valor_liquido)}</strong></div>
+      <div><span class="hint" tabindex="0" data-hint="bruto" style="color:var(--muted);">Valor bruto:</span> <strong>${fmtBRL(v.valor_bruto)}</strong></div>
+      <div><span class="hint" tabindex="0" data-hint="liquido" style="color:var(--muted);">Líquido recebido:</span> <strong>${fmtBRL(v.valor_liquido)}</strong></div>
       <div><span style="color:var(--muted);">A receber:</span> <strong style="color:var(--coral);">${Number(v.valor_restante||0)>0?fmtBRL(v.valor_restante):'—'}</strong></div>
       <div><span style="color:var(--muted);">Pagamento:</span> <strong>${v.forma_pagamento==='parcelado'&&v.parcelas?v.parcelas+'x':'À vista'}</strong></div>
       ${v.origem?`<div><span style="color:var(--muted);">Origem:</span> <strong>${v.origem}</strong></div>`:''}
@@ -4311,7 +4362,7 @@ async function carregarAnalises(){
               <th>Comparec.</th>
               <th>Liquidez</th>
               <th>Vendas</th>
-              <th>Fat. bruto</th>
+              <th><span class="hint" tabindex="0" data-hint="bruto">Fat. bruto</span></th>
             </tr>
           </thead>
           <tbody>${tabelaRows}${mediaRow}</tbody>
