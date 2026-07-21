@@ -2022,13 +2022,13 @@ const MESES_NOMES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho'
 // ── CRITÉRIOS (tooltips) ──
 // Textos únicos: se a regra de cálculo mudar, muda aqui e vale na Central inteira.
 const CRITERIOS={
-  bruto:'<b>Bruto</b> = valor cheio negociado com o cliente, antes das taxas do gateway. É o número do contrato, independente do que já foi pago.',
+  bruto:'<b>Bruto</b> = valor cheio que o cliente paga, já somando juros de parcelamento e demais acréscimos, e antes de descontar as taxas do gateway. Independe do que já foi pago.',
   liquido:'<b>Líquido</b> = bruto − taxas, contando só o que o cliente <b>já pagou</b> (parcelas marcadas como recebidas). Parcela pendente não entra aqui — entra em "A receber".',
   aReceber:'<b>A receber</b> = soma das parcelas ainda pendentes, pelo valor bruto. Some daqui e entra no líquido quando a parcela é marcada como recebida.',
   fatBruto:'Soma do <b>bruto</b> das parcelas recebidas com data de recebimento dentro do período, menos os reembolsos. Segue o dinheiro que entrou, não a data da venda.',
   fatLiquido:'Soma do <b>líquido</b> das parcelas recebidas no período (já sem as taxas), menos os reembolsos. É o que de fato sobrou no caixa.',
   reembolso:'Reembolso integral já efetivado conta o valor total do caso; parcial ou em andamento conta só as parcelas de devolução já pagas.',
-  parcBruto:'Valor cheio desta parcela, antes das taxas do gateway.',
+  parcBruto:'Valor cheio desta parcela, com os juros do parcelamento já embutidos, antes das taxas do gateway.',
   parcLiquido:'Quanto sobra desta parcela depois das taxas. Só entra no líquido da venda quando o status vira "Recebido".'
 };
 // Bolha única reaproveitada — position:fixed pra não ser cortada por tabela com scroll.
