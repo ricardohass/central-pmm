@@ -1115,7 +1115,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       </div>
       <div class="vendas-table-wrap">
         <table class="vendas-table vt-full">
-          <thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Closer</th><th>Gateway</th><th>Pagamento</th><th>Valor bruto</th><th>Valor líquido</th><th>A receber</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Closer</th><th>Gateway</th><th>Pagamento</th><th>Valor bruto</th><th>Líquido recebido</th><th>A receber</th><th>Status</th><th></th></tr></thead>
           <tbody id="vendasTbody"></tbody>
         </table>
       </div>
@@ -1498,7 +1498,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       </div>
       <div class="pgto-totals">
         <div class="pgto-total-item"><span class="pgto-total-label">Total bruto:</span><span class="pgto-total-val" id="pgtoTotalBruto">R$ 0,00</span></div>
-        <div class="pgto-total-item"><span class="pgto-total-label">Total líquido:</span><span class="pgto-total-val" id="pgtoTotalLiquido">R$ 0,00</span></div>
+        <div class="pgto-total-item"><span class="pgto-total-label" title="Soma só das parcelas marcadas como recebidas">Líquido recebido:</span><span class="pgto-total-val" id="pgtoTotalLiquido">R$ 0,00</span></div>
         <div class="pgto-total-item"><span class="pgto-total-label">A receber:</span><span class="pgto-total-val" id="pgtoTotalRestante" style="color:var(--coral);">R$ 0,00</span></div>
       </div>
       <div style="margin-top:14px;max-width:220px;">
@@ -2358,10 +2358,10 @@ function switchTab(tab,btn){
 function ajustarWonderPago(arr){
   (arr||[]).forEach(v=>{
     if(!((v.produto||'').includes('Wonder'))) return;
-    const b=Number(v.valor_bruto||0), l=Number(v.valor_liquido||0);
+    const b=Number(v.valor_bruto||0);
     const pago=Math.max(0,b-Number(v.valor_restante||0));
     v.valor_bruto=pago;
-    v.valor_liquido=b>0?l*(pago/b):0;
+    // valor_liquido já é só o recebido — não prorratear de novo, senão desconta duas vezes.
   });
 }
 async function carregarHomeSnapshot(){
@@ -2740,7 +2740,9 @@ async function salvarVenda(){
   })).filter(p=>p.valor_bruto>0||p.valor_liquido>0); // descarta linhas vazias (ex.: linha padrão sem valor)
 
   const totalBruto=pagamentos.reduce((s,p)=>s+p.valor_bruto,0);
-  const totalLiquido=pagamentos.reduce((s,p)=>s+p.valor_liquido,0);
+  // Líquido = só o dinheiro que JÁ entrou (parcelas marcadas como recebidas).
+  // Parcela pendente não vira líquido — vira "a receber".
+  const totalLiquido=pagamentos.filter(p=>p.status==='recebido').reduce((s,p)=>s+p.valor_liquido,0);
   const totalRestante=pagamentos.filter(p=>p.status==='pendente').reduce((s,p)=>s+p.valor_bruto,0);
   const primeiroGateway=pagamentos.find(p=>p.gateway)?.gateway||null;
   const maxCartaoParcelas=Math.max(1,...pagamentos.filter(p=>p.metodo==='Cartão').map(p=>p.parcelas||1));
@@ -2821,7 +2823,7 @@ function abrirDetalheVenda(v){
       <div><span style="color:var(--muted);">Closer:</span> <strong>${v.closer||'—'}</strong></div>
       <div><span style="color:var(--muted);">Gateway:</span> <strong>${v.gateway||'—'}</strong></div>
       <div><span style="color:var(--muted);">Valor bruto:</span> <strong>${fmtBRL(v.valor_bruto)}</strong></div>
-      <div><span style="color:var(--muted);">Valor líquido:</span> <strong>${fmtBRL(v.valor_liquido)}</strong></div>
+      <div><span style="color:var(--muted);">Líquido recebido:</span> <strong>${fmtBRL(v.valor_liquido)}</strong></div>
       <div><span style="color:var(--muted);">A receber:</span> <strong style="color:var(--coral);">${Number(v.valor_restante||0)>0?fmtBRL(v.valor_restante):'—'}</strong></div>
       <div><span style="color:var(--muted);">Pagamento:</span> <strong>${v.forma_pagamento==='parcelado'&&v.parcelas?v.parcelas+'x':'À vista'}</strong></div>
       ${v.origem?`<div><span style="color:var(--muted);">Origem:</span> <strong>${v.origem}</strong></div>`:''}
@@ -5177,7 +5179,7 @@ async function migrarVendasQuebradas(){
       pagamentos.sort((a,b)=>a.data_prevista.localeCompare(b.data_prevista));
 
       const totalBruto=pagamentos.reduce((s,p)=>s+p.valor_bruto,0);
-      const totalLiquido=pagamentos.reduce((s,p)=>s+p.valor_liquido,0);
+      const totalLiquido=pagamentos.filter(p=>p.status==='recebido').reduce((s,p)=>s+p.valor_liquido,0);
       const totalRestante=pagamentos.filter(p=>p.status==='pendente').reduce((s,p)=>s+p.valor_bruto,0);
 
       // Atualiza o registro principal
@@ -5285,7 +5287,8 @@ function atualizarTotaisPgto(){
     const b=parseFloat(r.querySelector('.pgto-bruto').value)||0;
     const l=parseFloat(r.querySelector('.pgto-liquido').value)||0;
     const s=r.querySelector('.pgto-status').value;
-    bruto+=b; liquido+=l;
+    bruto+=b;
+    if(s==='recebido') liquido+=l; // líquido = só o que já entrou
     if(s==='pendente') restante+=b;
   });
   document.getElementById('pgtoTotalBruto').textContent=fmtBRL(bruto);
@@ -5668,6 +5671,17 @@ function mostrarDetalheCalDia(dateStr){
   detail.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
+// Recalcula os totais da venda a partir das parcelas reais no banco.
+// Busca no Supabase (e não em todosPagamentos) porque o cache local só traz
+// as pendentes + as recebidas do mês corrente — somar por ali zeraria o líquido de meses anteriores.
+async function recalcTotaisVenda(vendaId){
+  const parcelas=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&select=valor_bruto,valor_liquido,status');
+  if(!parcelas.length) return;
+  const liquido=parcelas.filter(p=>p.status==='recebido').reduce((s,p)=>s+Number(p.valor_liquido||0),0);
+  const restante=parcelas.filter(p=>p.status==='pendente').reduce((s,p)=>s+Number(p.valor_bruto||0),0);
+  await supaFetch('vendas?id=eq.'+vendaId,{method:'PATCH',body:JSON.stringify({valor_liquido:liquido,valor_restante:restante})});
+}
+
 async function marcarRecebido(id,dateStr){
   const hoje=new Date().toISOString().split('T')[0];
   try{
@@ -5676,11 +5690,8 @@ async function marcarRecebido(id,dateStr){
     const p=todosPagamentos.find(x=>x.id===id);
     if(p){
       p.status='recebido'; p.data_recebimento=hoje;
-      // Atualiza valor_restante na venda
-      if(p.vendas?.id){
-        const restante=todosPagamentos.filter(x=>x.vendas?.id===p.vendas.id&&x.status==='pendente').reduce((s,x)=>s+Number(x.valor_bruto||0),0);
-        await supaFetch('vendas?id=eq.'+p.vendas.id,{method:'PATCH',body:JSON.stringify({valor_restante:restante})});
-      }
+      // Atualiza valor_restante e valor_liquido na venda (líquido = só o que já entrou)
+      if(p.vendas?.id) await recalcTotaisVenda(p.vendas.id);
     }
     renderCobrancas();
     mostrarDetalheCalDia(dateStr);
