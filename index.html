@@ -17,6 +17,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 
 /* CRITÉRIOS — explica como cada número é calculado ao passar o mouse */
 .hint { border-bottom:1px dotted currentColor; cursor:help; }
+.chk-contrato { width:15px; height:15px; accent-color:var(--green); cursor:pointer; vertical-align:middle; }
 #hintBubble {
   position:fixed; z-index:9999; max-width:290px; opacity:0; visibility:hidden;
   background:var(--text); color:var(--cream); font-size:11.5px; font-weight:400;
@@ -1127,7 +1128,7 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
       </div>
       <div class="vendas-table-wrap">
         <table class="vendas-table vt-full">
-          <thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Closer</th><th>Gateway</th><th>Pagamento</th><th><span class="hint" tabindex="0" data-hint="bruto">Valor bruto</span></th><th><span class="hint" tabindex="0" data-hint="liquido">Líquido recebido</span></th><th><span class="hint" tabindex="0" data-hint="aReceber">A receber</span></th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Cliente</th><th>Closer</th><th>Gateway</th><th><span class="hint" tabindex="0" data-hint="contrato">Contrato</span></th><th><span class="hint" tabindex="0" data-hint="bruto">Valor bruto</span></th><th><span class="hint" tabindex="0" data-hint="liquido">Líquido recebido</span></th><th><span class="hint" tabindex="0" data-hint="aReceber">A receber</span></th><th>Status</th><th></th></tr></thead>
           <tbody id="vendasTbody"></tbody>
         </table>
       </div>
@@ -2027,6 +2028,7 @@ const CRITERIOS={
   aReceber:'<b>A receber</b> = soma das parcelas ainda pendentes, pelo valor bruto. Some daqui e entra no líquido quando a parcela é marcada como recebida.',
   fatBruto:'Soma do <b>bruto</b> das parcelas recebidas com data de recebimento dentro do período, menos os reembolsos. Segue o dinheiro que entrou, não a data da venda.',
   fatLiquido:'Soma do <b>líquido</b> das parcelas recebidas no período (já sem as taxas), menos os reembolsos. É o que de fato sobrou no caixa.',
+  contrato:'Marcação manual: <b>marque quando o contrato já tiver sido encaminhado</b> ao cliente. Serve só para acompanhar o que falta — não altera valor, status nem comissão.',
   reembolso:'Reembolso integral já efetivado conta o valor total do caso; parcial ou em andamento conta só as parcelas de devolução já pagas.',
   parcBruto:'Valor cheio desta parcela, com os juros do parcelamento já embutidos, antes das taxas do gateway.',
   parcLiquido:'Quanto sobra desta parcela depois das taxas. Só entra no líquido da venda quando o status vira "Recebido".'
@@ -2638,7 +2640,7 @@ let todasVendas=[];
 let reembParcialVendas=new Set(); // venda_ids com reembolso (parcial) — só p/ marcação visual
 async function carregarVendas(){
   const tbody=document.getElementById('vendasTbody');
-  tbody.innerHTML='<tr><td colspan="11" class="empty-state">Carregando...</td></tr>';
+  tbody.innerHTML='<tr><td colspan="10" class="empty-state">Carregando...</td></tr>';
   try{
     const [vendas,reembs]=await Promise.all([
       supaFetch('vendas?order=data_venda.desc,created_at.desc&select=*'),
@@ -2651,7 +2653,7 @@ async function carregarVendas(){
       if(r.status_reembolso==='reembolsado'||pago>0) reembParcialVendas.add(r.venda_id);
     });
     filtrarVendas();
-  }catch(e){tbody.innerHTML='<tr><td colspan="11" class="empty-state">Erro ao carregar vendas.</td></tr>';}
+  }catch(e){tbody.innerHTML='<tr><td colspan="10" class="empty-state">Erro ao carregar vendas.</td></tr>';}
 }
 
 // Busca ignorando acentos: "Marcio" acha "Márcio" e vice-versa
@@ -2682,22 +2684,20 @@ function filtrarVendas(){
 
   document.getElementById('vendasCount').textContent=filtradas.length+' venda(s)';
   const tbody=document.getElementById('vendasTbody');
-  if(filtradas.length===0){tbody.innerHTML='<tr><td colspan="11" class="empty-state">Nenhuma venda encontrada.</td></tr>';return;}
+  if(filtradas.length===0){tbody.innerHTML='<tr><td colspan="10" class="empty-state">Nenhuma venda encontrada.</td></tr>';return;}
 
   tbody.innerHTML=filtradas.map(v=>{
     const ehWonder=(v.produto||'').includes('Wonder')&&Number(v.parcelas||0)>1;
     const meses=Number(v.parcelas||0);
     const mesTag='<span style="color:var(--muted);font-size:11px;">/mês</span>';
-    const pagLabel=ehWonder?`${meses} meses`:(v.forma_pagamento==='parcelado'&&v.parcelas?`${v.parcelas}x`:'À vista');
     const brutoCell=ehWonder?fmtBRL(v.valor_bruto/meses)+mesTag:fmtBRL(v.valor_bruto);
     const liqCell=ehWonder?fmtBRL(v.valor_liquido/meses)+mesTag:fmtBRL(v.valor_liquido);
     return`<tr>
       <td style="white-space:nowrap">${fmtDataBR(v.data_venda)}</td>
       <td>${v.nome_cliente||'—'}</td>
-      <td>${v.origem||'—'}</td>
       <td>${v.closer||'—'}</td>
       <td>${v.gateway||'—'}</td>
-      <td style="white-space:nowrap">${pagLabel}</td>
+      <td style="text-align:center;">${checkContrato(v)}</td>
       <td style="font-weight:500;white-space:nowrap">${brutoCell}</td>
       <td style="white-space:nowrap">${liqCell}</td>
       <td>${Number(v.valor_restante||0)>0?fmtBRL(v.valor_restante):'—'}</td>
@@ -2865,6 +2865,30 @@ function removerLinkPgto(btn){
   btn.parentElement.remove();
 }
 
+// ── CONTRATO ENCAMINHADO ──
+// Marcação manual só para acompanhar o que já foi enviado ao cliente.
+function checkContrato(v){
+  return `<input type="checkbox" class="chk-contrato" ${v.contrato_enviado?'checked':''}
+    onchange="toggleContratoEnviado('${v.id}',this.checked,this)"
+    title="${v.contrato_enviado?'Contrato encaminhado':'Contrato ainda não encaminhado'}">`;
+}
+async function toggleContratoEnviado(id,checked,el){
+  const v=todasVendas.find(x=>x.id===id);
+  if(v) v.contrato_enviado=checked; // otimista: já reflete no card e na tabela
+  try{
+    await supaFetch('vendas?id=eq.'+id,{method:'PATCH',body:JSON.stringify({contrato_enviado:checked})});
+    // Mantém tabela e card de detalhe em sincronia quando os dois estão abertos
+    document.querySelectorAll('.chk-contrato[onchange*="'+id+'"]').forEach(c=>{c.checked=checked;});
+  }catch(e){
+    if(v) v.contrato_enviado=!checked;
+    if(el) el.checked=!checked;
+    const falta=(e.message||'').includes('contrato_enviado');
+    pmmAlert(falta
+      ? 'A coluna contrato_enviado ainda não existe no Supabase. Rode no SQL editor:\n\nalter table vendas add column contrato_enviado boolean not null default false;'
+      : 'Erro ao salvar: '+e.message,'❌','Erro');
+  }
+}
+
 function abrirDetalheVenda(v){
   document.getElementById('mdvTitle').textContent=v.nome_cliente||'Venda sem nome';
   document.getElementById('mdvContent').innerHTML=`
@@ -2878,6 +2902,9 @@ function abrirDetalheVenda(v){
       <div><span style="color:var(--muted);">A receber:</span> <strong style="color:var(--coral);">${Number(v.valor_restante||0)>0?fmtBRL(v.valor_restante):'—'}</strong></div>
       <div><span style="color:var(--muted);">Pagamento:</span> <strong>${v.forma_pagamento==='parcelado'&&v.parcelas?v.parcelas+'x':'À vista'}</strong></div>
       ${v.origem?`<div><span style="color:var(--muted);">Origem:</span> <strong>${v.origem}</strong></div>`:''}
+      <div style="grid-column:1/-1;display:flex;align-items:center;gap:7px;padding-top:2px;">
+        ${checkContrato(v)}<span class="hint" tabindex="0" data-hint="contrato" style="color:var(--muted);">Contrato encaminhado</span>
+      </div>
       ${v.sdr?`<div><span style="color:var(--muted);">SDR:</span> <strong>${v.sdr}</strong></div>`:''}
       ${v.observacoes?`<div style="grid-column:1/-1;"><span style="color:var(--muted);">Obs:</span> ${v.observacoes}</div>`:''}
     </div>`;
