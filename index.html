@@ -2257,8 +2257,13 @@ const PERM_DEFAULT={
   closer:['performance','analises','metas','links','depoimentos','acessos','faq'],
   sdr:['performance','cobrancas','acessos','faq'],
   social_seller:['performance','acessos','faq'],
-  operacional:['cobrancas','reembolsos'],
+  operacional:['vendas','cobrancas','reembolsos'],
 };
+// Liberações novas precisam alcançar quem já tem permissões salvas no navegador —
+// o merge abaixo só propaga telas novas para admin. Cada migração roda uma vez por navegador.
+const PERM_MIGRACOES=[
+  {id:'2026-07-vendas-operacional', funcao:'operacional', telas:['vendas']},
+];
 function getPerms(){
   const s=localStorage.getItem('pmm_perms');
   if(!s) return JSON.parse(JSON.stringify(PERM_DEFAULT));
@@ -2273,7 +2278,23 @@ function getPerms(){
       });
     }
   });
+  aplicarMigracoesPerm(merged);
   return merged;
+}
+// Aplica as liberações pendentes em cima do que já estava salvo, sem desfazer
+// ajustes manuais feitos na tela de Permissões.
+function aplicarMigracoesPerm(perms){
+  let feitas=[];
+  try{ feitas=JSON.parse(localStorage.getItem('pmm_perms_migr')||'[]'); }catch(e){ feitas=[]; }
+  let mudou=false;
+  PERM_MIGRACOES.forEach(m=>{
+    if(feitas.includes(m.id)) return;
+    if(!perms[m.funcao]) perms[m.funcao]=[];
+    m.telas.forEach(t=>{ if(!perms[m.funcao].includes(t)){ perms[m.funcao].push(t); mudou=true; } });
+    feitas.push(m.id);
+  });
+  if(mudou) savePerms(perms);
+  localStorage.setItem('pmm_perms_migr',JSON.stringify(feitas));
 }
 function savePerms(p){localStorage.setItem('pmm_perms',JSON.stringify(p));}
 
@@ -2330,6 +2351,9 @@ function iniciarApp(){
   // Mostrar botão de migração só para admin
   const btnMigrar=document.getElementById('btnMigrarVendas');
   if(btnMigrar) btnMigrar.style.display=currentUser.funcao==='admin'?'':'none';
+  // Vendas: quem não é admin consulta e marca contrato, mas não cadastra nem exclui
+  const btnNovaVenda=document.querySelector('.btn-nova-venda');
+  if(btnNovaVenda) btnNovaVenda.style.display=currentUser.funcao==='admin'?'':'none';
   // Ocultar botão novo registro de performance para closers
   const btnNovoPerf=document.querySelector('.perf-controls .btn-novo');
   if(btnNovoPerf) btnNovoPerf.style.display=currentUser.funcao==='admin'?'':'none';
@@ -2739,7 +2763,7 @@ function filtrarVendas(){
       <td style="white-space:nowrap">
         ${(()=>{const lp=v.links_pagamento?(Array.isArray(v.links_pagamento)?v.links_pagamento:JSON.parse(v.links_pagamento||'[]')):[];return lp.length>0?`<span title="${lp.length} comprovante(s)" style="color:var(--green);font-size:13px;margin-right:4px;">📎</span>`:''})()}
         <button class="btn-edit" onclick='abrirDetalheVenda(${JSON.stringify(v).replace(/'/g,"\'")})'  title="Ver detalhes">&#9998;</button>
-        <button class="btn-del" onclick="excluirVenda('${v.id}')" title="Excluir">&#10005;</button>
+        ${currentUser&&currentUser.funcao==='admin'?`<button class="btn-del" onclick="excluirVenda('${v.id}')" title="Excluir">&#10005;</button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -2969,7 +2993,9 @@ function abrirDetalheVenda(v){
   } else {
     mdvLinks.innerHTML=links.map((l,i)=>`<a href="${l}" target="_blank" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--coral);text-decoration:none;padding:6px 0;border-bottom:0.5px solid var(--border);">📎 Comprovante ${links.length>1?i+1:''}</a>`).join('');
   }
-  document.getElementById('mdvEditBtn').onclick=()=>{fecharDetalheVenda();editarVenda(v);};
+  const btnEdit=document.getElementById('mdvEditBtn');
+  btnEdit.style.display=(currentUser&&currentUser.funcao==='admin')?'':'none';
+  btnEdit.onclick=()=>{fecharDetalheVenda();editarVenda(v);};
   document.getElementById('modalDetalheVenda').classList.add('open');
 }
 
