@@ -2265,6 +2265,8 @@ const PERM_DEFAULT={
 // o merge abaixo só propaga telas novas para admin. Cada migração roda uma vez por navegador.
 const PERM_MIGRACOES=[
   {id:'2026-07-vendas-operacional', funcao:'operacional', telas:['vendas']},
+  {id:'2026-07-acessos-sdr', funcao:'sdr', telas:['acessos']},
+  {id:'2026-07-acessos-social', funcao:'social_seller', telas:['acessos']},
 ];
 function getPerms(){
   const s=localStorage.getItem('pmm_perms');
