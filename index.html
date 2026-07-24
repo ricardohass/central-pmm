@@ -298,37 +298,29 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
    sem "pular" de largura conforme o conteúdo de cada página de resultados.
    Cabeçalho e célula compartilham a mesma regra de alinhamento (th+td no mesmo
    seletor), então os dois nunca saem de sincronia. */
-.vt-full { table-layout:fixed; min-width:1100px; }
-.vt-full th, .vt-full td { padding:11px 14px; vertical-align:middle; }
-.vt-full th { vertical-align:bottom; }
+.vt-full { table-layout:fixed; min-width:1240px; }
+/* PADRÃO ÚNICO: tudo alinhado à esquerda, na mesma linha do nome da coluna.
+   Nenhuma coluna centraliza ou alinha à direita — nem checkbox, nem ações. */
+.vt-full th, .vt-full td { padding:11px 14px; text-align:left; vertical-align:middle; white-space:nowrap; }
 .vt-full th:first-child, .vt-full td:first-child { padding-left:18px; }
 .vt-full th:last-child,  .vt-full td:last-child  { padding-right:18px; }
 /* larguras — com table-layout:fixed quem manda é a primeira linha (o thead).
    Em % para a sobra de tela ser dividida entre todas as colunas: se uma só
-   fosse "auto", ela ficaria gigante e abriria um vão no meio da tabela. */
+   fosse "auto", ela ficaria gigante e abriria um vão no meio da tabela.
+   As duas de marcação são largas o bastante para o título caber em 1 linha. */
 .vt-full th:nth-child(1){ width:9%;  }  /* Data */
-.vt-full th:nth-child(2){ width:21%; }  /* Cliente */
-.vt-full th:nth-child(3){ width:11%; }  /* Closer */
+.vt-full th:nth-child(2){ width:13%; }  /* Cliente */
+.vt-full th:nth-child(3){ width:12%; }  /* Closer */
 .vt-full th:nth-child(4){ width:10%; }  /* Gateway */
-.vt-full th:nth-child(5){ width:9%;  }  /* Infos ao jurídico */
-.vt-full th:nth-child(6){ width:9%;  }  /* Contrato assinado */
-.vt-full th:nth-child(7){ width:11%; }  /* SDR */
-.vt-full th:nth-child(8){ width:13%; }  /* Status */
-.vt-full th:nth-child(9){ width:7%;  }  /* Ações */
-/* colunas de marcação: título e checkbox centralizados juntos */
-.vt-full th:nth-child(5), .vt-full td:nth-child(5),
-.vt-full th:nth-child(6), .vt-full td:nth-child(6) { text-align:center; }
-/* título comprido dessas duas pode quebrar em 2 linhas em vez de esticar a coluna */
-.vt-full th:nth-child(5), .vt-full th:nth-child(6) { white-space:normal; line-height:1.35; }
-/* ações encostam na borda direita */
-.vt-full th:nth-child(9), .vt-full td:nth-child(9) { text-align:right; }
-/* só os campos de texto livre quebram linha; datas e badges ficam em 1 linha */
+.vt-full th:nth-child(5){ width:12%; }  /* Infos ao jurídico */
+.vt-full th:nth-child(6){ width:12%; }  /* Contrato assinado */
+.vt-full th:nth-child(7){ width:12%; }  /* SDR */
+.vt-full th:nth-child(8){ width:12%; }  /* Status */
+.vt-full th:nth-child(9){ width:8%;  }  /* Ações */
+/* nada quebra linha: nome comprido corta com reticências (o nome cheio fica no
+   title). Assim toda linha tem a mesma altura e a grade fica regular. */
 .vt-full td:nth-child(2), .vt-full td:nth-child(3),
-.vt-full td:nth-child(4), .vt-full td:nth-child(7),
-.vt-full td:nth-child(8) { white-space:normal; }
-.vt-full td:nth-child(8) .status-badge { display:inline-block; margin:1px 0; }
-/* truncar nome muito longo em vez de empurrar a linha para 3 alturas */
-.vt-full td:nth-child(2) { overflow:hidden; text-overflow:ellipsis; }
+.vt-full td:nth-child(4), .vt-full td:nth-child(7) { overflow:hidden; text-overflow:ellipsis; }
 /* Vendas usa a largura toda da tela (as outras páginas seguem limitadas a 1200px) */
 #page-vendas{max-width:none;}
 .vendas-table tr:last-child td { border-bottom:none; }
@@ -1196,7 +1188,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
       </div>
       <div class="vendas-table-wrap">
         <table class="vendas-table vt-full">
-          <thead><tr><th>Data</th><th>Cliente</th><th>Closer</th><th>Gateway</th><th><span class="hint" tabindex="0" data-hint="contrato">Infos ao<br>jurídico</span></th><th><span class="hint" tabindex="0" data-hint="contratoAssinado">Contrato<br>assinado</span></th><th>SDR</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Cliente</th><th>Closer</th><th>Gateway</th><th><span class="hint" tabindex="0" data-hint="contrato">Infos ao jurídico</span></th><th><span class="hint" tabindex="0" data-hint="contratoAssinado">Contrato assinado</span></th><th>SDR</th><th>Status</th><th></th></tr></thead>
           <tbody id="vendasTbody"></tbody>
         </table>
       </div>
@@ -2793,7 +2785,7 @@ function filtrarVendas(){
       <td>${checkContratoFlag(v,'contrato_enviado')}</td>
       <td>${checkContratoFlag(v,'contrato_assinado')}</td>
       <td>${v.sdr||'—'}</td>
-      <td><span class="status-badge s-${v.status||'confirmada'}">${v.status==='reembolso'?'Reembolsada':cap(v.status||'confirmada')}</span>${(v.status!=='reembolso'&&reembParcialVendas.has(v.id))?' <span class="status-badge reemb-badge" title="Reembolso parcial — a venda segue contando, abatido só o valor devolvido">↩ Reembolsada (parcial)</span>':''}</td>
+      <td><span class="status-badge s-${v.status||'confirmada'}">${v.status==='reembolso'?'Reembolsada':cap(v.status||'confirmada')}</span>${(v.status!=='reembolso'&&reembParcialVendas.has(v.id))?' <span class="status-badge reemb-badge" title="Reembolso parcial — a venda segue contando, abatido só o valor devolvido">↩ parcial</span>':''}</td>
       <td>
         ${(()=>{const lp=v.links_pagamento?(Array.isArray(v.links_pagamento)?v.links_pagamento:JSON.parse(v.links_pagamento||'[]')):[];return lp.length>0?`<span title="${lp.length} comprovante(s)" style="color:var(--green);font-size:13px;margin-right:4px;">📎</span>`:''})()}
         <button class="btn-edit" onclick='abrirDetalheVenda(${JSON.stringify(v).replace(/'/g,"\'")})'  title="Ver detalhes">&#9998;</button>
