@@ -4957,6 +4957,15 @@ function linhas35K(){
     : parcelamento;
 }
 
+// Programa de Aceleração 2M — produto separado do PMM
+// Parcelamento no PIX/boleto do Asaas (sem juros, valor total sobe por parcela).
+const OFERTA_2M = [
+  {cond:'À vista', sub:'PIX ou boleto',   parcela:10000,   total:10000,    gateway:'Asaas', url:'https://www.asaas.com/c/h467q1eeshwvyarz', copyId:'2m0'},
+  {cond:'2x',      sub:'PIX ou boleto',   parcela:5266.66, total:10533.33, gateway:'Asaas', url:'https://www.asaas.com/c/0h6hfyle8liymvvc', copyId:'2m1'},
+  {cond:'3x',      sub:'PIX ou boleto',   parcela:3616.67, total:10850,    gateway:'Asaas', url:'https://www.asaas.com/c/9cpryxufp2ij2e1u', copyId:'2m2'},
+  {cond:'4x',      sub:'PIX ou boleto',   parcela:2783.33, total:11133.33, gateway:'Asaas', url:'https://www.asaas.com/c/qvzfa2g4e88ob6jc', copyId:'2m3'},
+];
+
 // Wonder Prø — produto separado do PMM
 const OFERTA_WONDER = [
   {cond:'Cartão — recorrência', sub:'Cobrança mensal', parcela:10000, gateway:'Asaas',       url:'https://www.asaas.com/c/zmge8p7y8swax3gu', copyId:'wd0'},
@@ -5092,6 +5101,10 @@ async function carregarLinks(){
             ${backlogHTML}
           </div>
         </div>
+      </div>
+      <div class="lk-bloco">
+        ${produtoTituloHTML('Programa de Aceleração 2M')}
+        ${lkOfertaHTML('Oferta 10K',{rotulo:'À vista',valor:'R$ 10.000'},OFERTA_2M)}
       </div>
       <div>
         ${produtoTituloHTML('Wonder Prø')}
