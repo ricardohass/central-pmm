@@ -3336,14 +3336,21 @@ async function renderPerf(){
       const primeiroDia=anoMes+'-01';
       const ultimoDia=anoMes+'-'+new Date(perfAno,perfMes+1,0).getDate();
       const campo=_fc==='closer'?'closer':(_fc==='sdr'?'sdr':'social_seller');
-      const parc=await supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=valor_bruto,data_recebimento,metodo,vendas!inner(nome_cliente,data_venda)&vendas.'+campo+'=eq.'+encodeURIComponent(currentUser.nome)+'&order=data_recebimento.asc');
-      const baseTotal=parc.reduce((s,p)=>s+Number(p.valor_bruto||0),0);
+      const [parc,reembCasosCom]=await Promise.all([
+        supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=venda_id,valor_bruto,data_recebimento,metodo,vendas!inner(nome_cliente,data_venda,status)&vendas.'+campo+'=eq.'+encodeURIComponent(currentUser.nome)+'&order=data_recebimento.asc'),
+        supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status').catch(()=>[])
+      ]);
+      // Venda reembolsada não gera comissão: o valor recebido sai da base (mas a venda segue contando na conversão).
+      // Caso ainda em aberto/negociando também sai — se o cliente voltar atrás, o valor entra de novo sozinho.
+      const reembAbertoCom=new Set((reembCasosCom||[]).filter(c=>c.status!=='resolvido').map(c=>c.venda_id));
+      const foraDaBase=p=>(p.vendas&&p.vendas.status==='reembolso')||reembAbertoCom.has(p.venda_id);
+      const baseTotal=parc.filter(p=>!foraDaBase(p)).reduce((s,p)=>s+Number(p.valor_bruto||0),0);
       let pct,faixaLabel,subtitulo;
       if(_fc==='closer'){
         const faixa=cp!==null?getFaixa(cp):null;
         pct=faixa?faixa.pct:0;
         faixaLabel=faixa?faixa.nome+' ('+pct+'%)':'—';
-        subtitulo='tudo que entrou no mês, das minhas vendas';
+        subtitulo='tudo que entrou no mês, das minhas vendas, sem os reembolsos';
       } else {
         pct=0.5;
         faixaLabel='0,5%';
@@ -3357,13 +3364,15 @@ async function renderPerf(){
       const tbody=document.getElementById('minhasVendasTbody');
       tbody.innerHTML=parc.length===0
         ?'<tr><td colspan="5" class="empty-state">Nenhum valor recebido neste mês.</td></tr>'
-        :parc.map(p=>`<tr>
+        :parc.map(p=>{
+          const fora=foraDaBase(p);
+          return`<tr${fora?' style="opacity:.55;"':''}>
           <td>${fmtDataBR(p.data_recebimento)}</td>
-          <td>${p.vendas?.nome_cliente||'—'}</td>
-          <td>${fmtBRL(p.valor_bruto)}</td>
+          <td>${p.vendas?.nome_cliente||'—'}${fora?' <span class="status-badge s-reembolso" title="Reembolso — o valor não entra na base de comissão">↩ fora da base</span>':''}</td>
+          <td${fora?' style="text-decoration:line-through;"':''}>${fmtBRL(p.valor_bruto)}</td>
           <td>${p.metodo||'—'}</td>
           <td>${fmtDataBR(p.vendas?.data_venda)}</td>
-        </tr>`).join('');
+        </tr>`}).join('');
     }catch(e){console.error(e);}
   }
 }
