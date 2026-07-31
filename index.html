@@ -53,7 +53,24 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .topbar-user { font-size:12px; color:rgba(255,255,255,0.7); margin-right:12px; white-space:nowrap; }
 .logout-btn { font-size:12px; color:rgba(255,255,255,0.6); background:transparent; border:0.5px solid rgba(255,255,255,0.2); border-radius:6px; padding:5px 10px; cursor:pointer; white-space:nowrap; flex-shrink:0; }
 .logout-btn:hover { background:rgba(255,255,255,0.1); color:#fff; }
-.nav-tab { font-family:'Inter',sans-serif; font-size:13px; color:rgba(255,255,255,0.6); padding:7px 14px; border-radius:7px; cursor:pointer; border:none; background:transparent; transition:background .15s,color .15s; white-space:nowrap; flex-shrink:0; }
+/* 14 abas + logo + usuário: aperta a fonte e o padding conforme a tela encolhe,
+   pra caber tudo numa linha só sem scroll horizontal na topbar. */
+.nav-tab { font-family:'Inter',sans-serif; font-size:12px; color:rgba(255,255,255,0.6); padding:6px 10px; border-radius:7px; cursor:pointer; border:none; background:transparent; transition:background .15s,color .15s; white-space:nowrap; flex-shrink:0; }
+@media (max-width:1500px){
+  .topbar { padding:0 16px; }
+  .topbar-logo { margin-right:14px; font-size:15px; }
+  .nav-tab { font-size:11.5px; padding:6px 8px; }
+}
+@media (max-width:1320px){
+  .topbar-logo { margin-right:10px; font-size:14px; }
+  .nav-tab { font-size:11px; padding:5px 6px; }
+  .topbar-user { display:none; }
+  .topbar-spacer { min-width:8px; }
+}
+@media (max-width:1150px){
+  .nav-tab { font-size:10.5px; padding:5px 5px; letter-spacing:-.01em; }
+  .logout-btn { padding:4px 8px; font-size:11px; }
+}
 .nav-tab:hover { background:rgba(255,255,255,0.1); color:#fff; }
 .nav-tab.active { background:var(--coral); color:#fff; }
 
