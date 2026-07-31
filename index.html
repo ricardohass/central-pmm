@@ -916,6 +916,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
     <button class="nav-tab" id="tab-links"       onclick="sp('links',this)">Links de venda</button>
     <button class="nav-tab" id="tab-cobrancas"  onclick="sp('cobrancas',this)">Cobranças</button>
     <button class="nav-tab" id="tab-reembolsos" onclick="sp('reembolsos',this)">Reembolsos</button>
+    <button class="nav-tab" id="tab-comissionamento" onclick="sp('comissionamento',this)">Comissionamento</button>
     <button class="nav-tab" id="tab-faq"        onclick="sp('faq',this)">FAQ</button>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbarUser"></span>
@@ -1450,6 +1451,29 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
       <div id="reembolsosContent">
         <p class="empty-state">Abrindo...</p>
       </div>
+    </div>
+
+    <!-- COMISSIONAMENTO -->
+    <div id="page-comissionamento" class="page">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <p class="page-eyebrow">Fechamento · gestão</p>
+          <p class="page-title" style="margin-bottom:0;">Comissionamento</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <div class="section-tabs" style="margin:0;">
+            <button class="section-tab active" id="comTabMes" onclick="setComModo('mes')">Mês a mês</button>
+            <button class="section-tab" id="comTabAcum" onclick="setComModo('acumulado')">Acumulado</button>
+          </div>
+          <div id="comDateNav" style="display:flex;gap:6px;align-items:center;">
+            <button class="btn-edit" onclick="mudarComMes(-1)" title="Mês anterior">&#8249;</button>
+            <span id="comMesLabel" style="font-size:13px;font-weight:600;color:var(--green);min-width:120px;text-align:center;"></span>
+            <button class="btn-edit" onclick="mudarComMes(1)" title="Próximo mês">&#8250;</button>
+          </div>
+          <button class="btn-novo" onclick="exportarComissionamento()">Exportar CSV</button>
+        </div>
+      </div>
+      <div id="comissionamentoContent"><p class="empty-state">Abrindo...</p></div>
     </div>
 
     <!-- DEPOIMENTOS -->
@@ -2299,10 +2323,11 @@ const TODAS_TELAS=[
   {id:'links',nome:'Links de venda'},
   {id:'cobrancas',nome:'Cobranças'},
   {id:'reembolsos',nome:'Reembolsos'},
+  {id:'comissionamento',nome:'Comissionamento'},
   {id:'faq',nome:'FAQ'},
 ];
 const PERM_DEFAULT={
-  admin:['dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos','faq'],
+  admin:['dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos','comissionamento','faq'],
   closer:['performance','analises','metas','links','depoimentos','acessos','faq'],
   sdr:['performance','cobrancas','acessos','faq'],
   social_seller:['performance','acessos','faq'],
@@ -2314,6 +2339,7 @@ const PERM_MIGRACOES=[
   {id:'2026-07-vendas-operacional', funcao:'operacional', telas:['vendas']},
   {id:'2026-07-acessos-sdr', funcao:'sdr', telas:['acessos']},
   {id:'2026-07-acessos-social', funcao:'social_seller', telas:['acessos']},
+  {id:'2026-07-comissionamento-admin', funcao:'admin', telas:['comissionamento']},
 ];
 function getPerms(){
   const s=localStorage.getItem('pmm_perms');
@@ -2387,6 +2413,7 @@ const HOME_CARDS={
   links:{icon:'&#128279;',label:'Links de venda',sub:'Checkouts e pagamentos'},
   cobrancas:{icon:'&#128197;',label:'Cobranças',sub:'Calendário de cobranças'},
   reembolsos:{icon:'&#128184;',label:'Reembolsos',sub:'Cancelamentos e desistências'},
+  comissionamento:{icon:'&#128176;',label:'Comissionamento',sub:'Fechamento por closer'},
   faq:{icon:'&#10067;',label:'FAQ',sub:'Perguntas frequentes do PMM'},
 };
 
@@ -2427,7 +2454,7 @@ function aplicarPermissoes(){
   const perms=getPerms();
   const funcao=currentUser.funcao;
   const telasPermitidas=['home',...(perms[funcao]||[])];
-  ['home','dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos','faq'].forEach(p=>{
+  ['home','dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos','comissionamento','faq'].forEach(p=>{
     const tab=document.getElementById('tab-'+p);
     if(tab) tab.style.display=telasPermitidas.includes(p)?'':'none';
   });
@@ -2504,6 +2531,7 @@ function sp(name,btn){
   if(name==='links') carregarLinks();
   if(name==='cobrancas') carregarCobrancas();
   if(name==='reembolsos') carregarReembolsos();
+  if(name==='comissionamento') carregarComissionamento();
   if(name==='faq') renderFaq();
 }
 function switchTab(tab,btn){
@@ -6144,6 +6172,266 @@ function reembJanelaBadge(r){
     ? ['<span class="status-badge s-cancelada">Dentro dos 7 dias</span>', dias+'d · obrigatório']
     : ['<span class="status-badge s-confirmada">Fora dos 7 dias</span>', dias+'d · negociável'];
   return `<span class="reemb-janela">${badge}<span class="reemb-janela-meta">${meta}</span></span>`;
+}
+
+// ══════════════ COMISSIONAMENTO (admin) ══════════════
+// Fechamento do mês por closer. Mesma regra da aba Performance, só que pra todo mundo
+// de uma vez: base = o que entrou no mês (por data_recebimento), fora reembolso;
+// closer usa a faixa da conversão do próprio mês, SDR e social seller usam 0,5%.
+const COM_INICIO='2026-07';          // antes disso as contas antigas não são confiáveis
+let comModo='mes';
+let comAno=new Date().getFullYear(), comMes=new Date().getMonth();
+let _comUltimo=null;                 // guarda o que está na tela pra exportar
+
+function setComModo(m){
+  comModo=m;
+  document.getElementById('comTabMes').classList.toggle('active',m==='mes');
+  document.getElementById('comTabAcum').classList.toggle('active',m==='acumulado');
+  document.getElementById('comDateNav').style.display=m==='mes'?'flex':'none';
+  carregarComissionamento();
+}
+function mudarComMes(d){
+  comMes+=d;
+  if(comMes<0){comMes=11;comAno--;} else if(comMes>11){comMes=0;comAno++;}
+  carregarComissionamento();
+}
+function comAnoMes(){ return comAno+'-'+String(comMes+1).padStart(2,'0'); }
+
+// Levanta o que entrou num mês, já separando o que é reembolso e não comissiona.
+async function comDadosDoMes(anoMes){
+  const [ano,mes]=anoMes.split('-').map(Number);
+  const ultimo=anoMes+'-'+new Date(ano,mes,0).getDate();
+  const [parc,casos]=await Promise.all([
+    supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01'
+      +'&data_recebimento=lte.'+ultimo
+      +'&select=venda_id,valor_bruto,valor_comissao,data_recebimento,'
+      +'vendas!inner(nome_cliente,closer,sdr,social_seller,status,data_venda)'
+      +'&order=data_recebimento.asc'),
+    supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status').catch(()=>[]),
+  ]);
+  const abertos=new Set((casos||[]).filter(c=>c.status!=='resolvido').map(c=>c.venda_id));
+  const fora=p=>(p.vendas&&p.vendas.status==='reembolso')||abertos.has(p.venda_id);
+  return {parc,fora};
+}
+
+// Fecha um mês inteiro: base, faixa e comissão de cada closer, SDR e social seller.
+async function comFecharMes(anoMes){
+  const {parc,fora}=await comDadosDoMes(anoMes);
+  const closers={}, sdrs={}, socials={};
+  const pega=(mapa,nome)=>{ if(!mapa[nome]) mapa[nome]={base:0,pago:0,itens:[]}; return mapa[nome]; };
+
+  parc.forEach(p=>{
+    const v=p.vendas||{};
+    const val=baseComissaoParcela(p), bruto=Number(p.valor_bruto||0), f=fora(p);
+    const item={cliente:v.nome_cliente||'—',data:p.data_recebimento,pago:bruto,comissiona:f?0:val,reembolso:f};
+    if(v.closer){ const o=pega(closers,v.closer); o.itens.push(item); if(!f){o.base+=val;o.pago+=bruto;} }
+    if(v.sdr){ const o=pega(sdrs,v.sdr); o.itens.push(item); if(!f){o.base+=val;o.pago+=bruto;} }
+    if(v.social_seller){ const o=pega(socials,v.social_seller); o.itens.push(item); if(!f){o.base+=val;o.pago+=bruto;} }
+  });
+
+  // Faixa do closer vem da conversão do mês (vendas ÷ reuniões), igual à aba Performance
+  for(const nome of Object.keys(closers)){
+    const regs=await getCloserData(nome,anoMes);
+    const reun=regs.reduce((s,r)=>s+r.reun,0), vend=regs.reduce((s,r)=>s+r.vendas,0);
+    const conv=reun>0?(vend/reun*100):null;
+    const faixa=conv!==null?getFaixa(conv):null;
+    const o=closers[nome];
+    o.reunioes=reun; o.vendas=vend; o.conversao=conv;
+    o.faixa=faixa?faixa.nome:'—'; o.pct=faixa?faixa.pct:0;
+    o.comissao=o.base*o.pct/100;
+    o.semFunil=reun===0;
+  }
+  [sdrs,socials].forEach(mapa=>Object.values(mapa).forEach(o=>{o.pct=0.5;o.comissao=o.base*0.005;}));
+  return {anoMes,closers,sdrs,socials};
+}
+
+function comMesesAteHoje(){
+  const meses=[]; const [a0,m0]=COM_INICIO.split('-').map(Number);
+  let a=a0,m=m0; const hoje=new Date();
+  while(a<hoje.getFullYear()||(a===hoje.getFullYear()&&m<=hoje.getMonth()+1)){
+    meses.push(a+'-'+String(m).padStart(2,'0'));
+    m++; if(m>12){m=1;a++;}
+  }
+  return meses;
+}
+
+async function carregarComissionamento(){
+  const box=document.getElementById('comissionamentoContent');
+  if(!box) return;
+  const lbl=document.getElementById('comMesLabel');
+  if(lbl) lbl.textContent=MESES_NOMES[comMes]+' '+comAno;
+  box.innerHTML='<p class="empty-state">Calculando...</p>';
+  try{
+    if(comModo==='mes'){
+      const anoMes=comAnoMes();
+      if(anoMes<COM_INICIO){
+        box.innerHTML='<p class="empty-state">Histórico anterior a julho/2026 não é confiável — as contas antigas foram fechadas fora da Central.</p>';
+        _comUltimo=null; return;
+      }
+      const f=await comFecharMes(anoMes);
+      _comUltimo={tipo:'mes',dados:f};
+      box.innerHTML=comRenderMes(f);
+    } else {
+      const meses=comMesesAteHoje();
+      const fechados=[];
+      for(const m of meses) fechados.push(await comFecharMes(m));
+      _comUltimo={tipo:'acumulado',dados:fechados};
+      box.innerHTML=comRenderAcumulado(fechados);
+    }
+  }catch(e){
+    console.error(e);
+    box.innerHTML='<p class="empty-state">Não consegui carregar: '+escHtml(e.message||'erro')+'</p>';
+  }
+}
+
+function comRenderMes(f){
+  const nomes=Object.keys(f.closers).sort((a,b)=>f.closers[b].comissao-f.closers[a].comissao);
+  const totalBase=nomes.reduce((s,n)=>s+f.closers[n].base,0);
+  const totalCom=nomes.reduce((s,n)=>s+f.closers[n].comissao,0);
+  const apoio=[...Object.entries(f.sdrs).map(([n,o])=>[n,o,'SDR']),
+               ...Object.entries(f.socials).map(([n,o])=>[n,o,'Social seller'])]
+              .sort((a,b)=>b[1].comissao-a[1].comissao);
+  const totalApoio=apoio.reduce((s,x)=>s+x[1].comissao,0);
+
+  // Pendências: o que faz o número da tela não ser confiável
+  const pend=[];
+  nomes.forEach(n=>{ if(f.closers[n].semFunil) pend.push('<b>'+escHtml(n)+'</b> recebeu R$ '+fmtBRL(f.closers[n].base).replace('R$ ','')+' no mês mas não lançou nenhuma reunião no funil — sem conversão não dá pra definir a faixa, então está comissionando 0%.'); });
+
+  return `
+    ${pend.length?`<div class="cob-card" style="border-color:#E8C7C7;background:#FDF6F6;margin-bottom:16px;">
+      <div class="cob-card-label" style="color:#9C0006;">⚠ Pendências que travam o fechamento</div>
+      <ul style="margin:8px 0 0;padding-left:18px;font-size:12px;line-height:1.7;color:var(--text);">
+        ${pend.map(t=>'<li>'+t+'</li>').join('')}
+      </ul></div>`:''}
+    <div class="cal-summary">
+      <div class="cob-card"><div class="cob-card-label">Base total</div><div class="cob-card-value">${fmtBRL(totalBase)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">entrou no mês, sem reembolso</div></div>
+      <div class="cob-card"><div class="cob-card-label">Comissão dos closers</div><div class="cob-card-value coral">${fmtBRL(totalCom)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${nomes.length} closer(es)</div></div>
+      <div class="cob-card"><div class="cob-card-label">SDR e social seller</div><div class="cob-card-value">${fmtBRL(totalApoio)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">0,5% cada</div></div>
+      <div class="cob-card"><div class="cob-card-label">Total a pagar</div><div class="cob-card-value" style="color:var(--green);">${fmtBRL(totalCom+totalApoio)}</div></div>
+    </div>
+    ${nomes.length===0?'<p class="empty-state">Nenhum valor recebido neste mês.</p>':''}
+    ${nomes.map(n=>comBlocoPessoa(n,f.closers[n],'closer')).join('')}
+    ${apoio.length?`<p class="vf-section-title" style="margin:26px 0 10px;">SDR e social seller · 0,5%</p>
+      ${apoio.map(([n,o,papel])=>comBlocoPessoa(n,o,papel)).join('')}`:''}`;
+}
+
+function comBlocoPessoa(nome,o,papel){
+  const id='com-'+nome.replace(/[^a-zA-Z0-9]/g,'');
+  const sub=papel==='closer'
+    ? (o.semFunil?'<span style="color:#9C0006;">funil não lançado</span>'
+       :`${o.reunioes} reuniões · ${o.vendas} vendas · <b>${o.conversao.toFixed(2)}%</b> · ${escHtml(o.faixa)} (${o.pct}%)`)
+    : papel+' · 0,5%';
+  return `<div class="reemb-card" style="margin-bottom:10px;">
+    <div class="reemb-card-head" onclick="comToggle('${id}')">
+      <div class="reemb-avatar">${(nome||'?').trim().charAt(0).toUpperCase()}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span class="reemb-nome">${escHtml(nome)}</span>
+        </div>
+        <div class="reemb-meta">${sub}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div class="reemb-valor">${fmtBRL(o.comissao)}</div>
+        <div style="font-size:11px;color:var(--muted);">base ${fmtBRL(o.base)}</div>
+      </div>
+      <span class="reemb-caret">${o.itens.length} <i>▾</i></span>
+    </div>
+    <div id="${id}" style="display:none;padding:0 16px 14px 19px;">
+      <table class="perf-table" style="margin-top:6px;">
+        <thead><tr><th>Recebido em</th><th>Cliente</th><th><span class="hint" tabindex="0" data-hint="parcPago">Pago</span></th><th><span class="hint" tabindex="0" data-hint="parcComissiona">Comissiona</span></th></tr></thead>
+        <tbody>${o.itens.map(i=>`<tr${i.reembolso?' style="opacity:.55;"':''}>
+          <td>${fmtDataBR(i.data)}</td>
+          <td>${escHtml(i.cliente)}${i.reembolso?' <span class="status-badge s-reembolso">↩ fora da base</span>':''}</td>
+          <td style="color:var(--muted);">${fmtBRL(i.pago)}</td>
+          <td style="font-weight:600;">${fmtBRL(i.comissiona)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+function comToggle(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const abrindo=el.style.display==='none';
+  el.style.display=abrindo?'block':'none';
+  const card=el.closest('.reemb-card');
+  if(card) card.classList.toggle('is-open',abrindo);
+}
+
+function comRenderAcumulado(fechados){
+  // Soma mês a mês: a faixa muda de mês pra mês, então não dá pra somar a base e aplicar um % só.
+  const pessoas={};
+  const add=(nome,papel,mes,base,com)=>{
+    const k=nome+'|'+papel;
+    if(!pessoas[k]) pessoas[k]={nome,papel,base:0,comissao:0,meses:[]};
+    pessoas[k].base+=base; pessoas[k].comissao+=com;
+    pessoas[k].meses.push({mes,base,com});
+  };
+  fechados.forEach(f=>{
+    Object.entries(f.closers).forEach(([n,o])=>add(n,'Closer',f.anoMes,o.base,o.comissao));
+    Object.entries(f.sdrs).forEach(([n,o])=>add(n,'SDR',f.anoMes,o.base,o.comissao));
+    Object.entries(f.socials).forEach(([n,o])=>add(n,'Social seller',f.anoMes,o.base,o.comissao));
+  });
+  const lista=Object.values(pessoas).sort((a,b)=>b.comissao-a.comissao);
+  const totalCom=lista.reduce((s,p)=>s+p.comissao,0);
+  const totalBase=lista.filter(p=>p.papel==='Closer').reduce((s,p)=>s+p.base,0);
+  const de=fechados[0]?fechados[0].anoMes:'—', ate=fechados[fechados.length-1]?fechados[fechados.length-1].anoMes:'—';
+  const mesLbl=m=>{const[a,mm]=m.split('-');return MESES_NOMES[Number(mm)-1].slice(0,3)+'/'+a.slice(2);};
+
+  return `
+    <div class="cal-summary">
+      <div class="cob-card"><div class="cob-card-label">Período</div><div class="cob-card-value" style="font-size:18px;">${mesLbl(de)} → ${mesLbl(ate)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${fechados.length} meses</div></div>
+      <div class="cob-card"><div class="cob-card-label">Base dos closers</div><div class="cob-card-value">${fmtBRL(totalBase)}</div></div>
+      <div class="cob-card"><div class="cob-card-label">Comissão total</div><div class="cob-card-value coral">${fmtBRL(totalCom)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">closers + SDR + social</div></div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 14px;">Somado mês a mês, porque a faixa do closer muda conforme a conversão de cada mês — não dá pra somar a base e aplicar um percentual só.</p>
+    <div class="perf-table-wrap">
+      <table class="perf-table">
+        <thead><tr><th>Pessoa</th><th>Papel</th><th>Base acumulada</th><th>Comissão acumulada</th>${fechados.map(f=>'<th>'+mesLbl(f.anoMes)+'</th>').join('')}</tr></thead>
+        <tbody>${lista.map(p=>`<tr>
+          <td><b>${escHtml(p.nome)}</b></td>
+          <td>${p.papel}</td>
+          <td>${fmtBRL(p.base)}</td>
+          <td style="font-weight:600;color:var(--green);">${fmtBRL(p.comissao)}</td>
+          ${fechados.map(f=>{const m=p.meses.find(x=>x.mes===f.anoMes);
+            return '<td>'+(m&&m.com>0?fmtBRL(m.com):'—')+'</td>';}).join('')}
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+function exportarComissionamento(){
+  if(!_comUltimo){ pmmAlert('Nada pra exportar nesta tela.','⚠️','Exportar'); return; }
+  const linhas=[];
+  const num=v=>String(Number(v||0).toFixed(2)).replace('.',',');
+  if(_comUltimo.tipo==='mes'){
+    const f=_comUltimo.dados;
+    linhas.push(['Mês','Pessoa','Papel','Conversão','Faixa','%','Cliente','Recebido em','Pago pelo cliente','Comissiona']);
+    const dump=(mapa,papel)=>Object.entries(mapa).forEach(([n,o])=>o.itens.forEach(i=>
+      linhas.push([f.anoMes,n,papel,o.conversao!=null?o.conversao.toFixed(2)+'%':'',o.faixa||'',o.pct,
+        i.cliente,i.data,num(i.pago),num(i.comissiona)])));
+    dump(f.closers,'Closer'); dump(f.sdrs,'SDR'); dump(f.socials,'Social seller');
+    linhas.push([]);
+    linhas.push(['Mês','Pessoa','Papel','Base','Comissão']);
+    Object.entries(f.closers).forEach(([n,o])=>linhas.push([f.anoMes,n,'Closer',num(o.base),num(o.comissao)]));
+    Object.entries(f.sdrs).forEach(([n,o])=>linhas.push([f.anoMes,n,'SDR',num(o.base),num(o.comissao)]));
+    Object.entries(f.socials).forEach(([n,o])=>linhas.push([f.anoMes,n,'Social seller',num(o.base),num(o.comissao)]));
+  } else {
+    linhas.push(['Mês','Pessoa','Papel','Base','Comissão']);
+    _comUltimo.dados.forEach(f=>{
+      Object.entries(f.closers).forEach(([n,o])=>linhas.push([f.anoMes,n,'Closer',num(o.base),num(o.comissao)]));
+      Object.entries(f.sdrs).forEach(([n,o])=>linhas.push([f.anoMes,n,'SDR',num(o.base),num(o.comissao)]));
+      Object.entries(f.socials).forEach(([n,o])=>linhas.push([f.anoMes,n,'Social seller',num(o.base),num(o.comissao)]));
+    });
+  }
+  const csv='﻿'+linhas.map(l=>l.map(c=>{
+    const s=String(c==null?'':c);
+    return /[";\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+  }).join(';')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download='comissionamento-'+(_comUltimo.tipo==='mes'?_comUltimo.dados.anoMes:'acumulado')+'.csv';
+  a.click(); URL.revokeObjectURL(a.href);
 }
 
 async function carregarReembolsos(){
