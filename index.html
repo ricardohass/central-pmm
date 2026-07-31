@@ -1557,7 +1557,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
     <div class="vf-section">
       <p class="vf-section-title">Cronograma de pagamentos</p>
       <div class="pgto-row pgto-row-header" style="margin-bottom:4px;">
-        <span>Data prevista</span><span>Método</span><span>Parcelas</span><span>Gateway</span><span class="hint" tabindex="0" data-hint="parcBruto">Bruto (R$)</span><span class="hint" tabindex="0" data-hint="parcLiquido">Líquido (R$)</span><span>Status</span><span></span>
+        <span>Data prevista</span><span>Método</span><span>Parcelas</span><span>Gateway</span><span class="hint" tabindex="0" data-hint="parcPago">Pago (R$)</span><span class="hint" tabindex="0" data-hint="parcComissiona">Comissiona (R$)</span><span>Status</span><span></span>
       </div>
       <div id="pgtoWrap" style="overflow-x:auto;"></div>
       <button type="button" class="btn-add-pgto" onclick="adicionarPgtoRow()">+ Adicionar pagamento</button>
@@ -1581,12 +1581,14 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
       </div>
       <div class="pgto-totals">
         <div class="pgto-total-item"><span class="pgto-total-label hint" tabindex="0" data-hint="bruto">Total bruto:</span><span class="pgto-total-val" id="pgtoTotalBruto">R$ 0,00</span></div>
-        <div class="pgto-total-item"><span class="pgto-total-label hint" tabindex="0" data-hint="liquido">Líquido recebido:</span><span class="pgto-total-val" id="pgtoTotalLiquido">R$ 0,00</span></div>
+        <div class="pgto-total-item"><span class="pgto-total-label hint" tabindex="0" data-hint="parcComissiona">Total que comissiona:</span><span class="pgto-total-val" id="pgtoTotalComissao">R$ 0,00</span></div>
         <div class="pgto-total-item"><span class="pgto-total-label hint" tabindex="0" data-hint="aReceber">A receber:</span><span class="pgto-total-val" id="pgtoTotalRestante" style="color:var(--coral);">R$ 0,00</span></div>
       </div>
-      <div style="margin-top:14px;max-width:220px;">
-        <div class="vf-field"><label>Base de comissão (R$)</label><input type="number" id="vfComissao" step="0.01" min="0" value="0"></div>
+      <div style="margin-top:14px;display:flex;gap:14px;align-items:end;flex-wrap:wrap;">
+        <div class="vf-field" style="max-width:220px;margin:0;"><label><span class="hint" tabindex="0" data-hint="negociacao">Valor da negociação (R$)</span></label><input type="number" id="vfComissao" step="0.01" min="0" value="0" oninput="atualizarTotaisPgto()"></div>
+        <button type="button" class="btn-add-pgto" style="margin:0;" onclick="ajustarComissaoPelaNegociacao()">Ajustar comissão pela negociação</button>
       </div>
+      <p id="pgtoComissaoAviso" style="font-size:11px;line-height:1.5;margin:8px 0 0;"></p>
     </div>
 
     <div class="vf-section">
@@ -2109,6 +2111,7 @@ const CRITERIOS={
   reembVolta:'<b>Valor que volta pro cliente</b> = quanto a empresa devolve de fato. Não é o quanto o cliente pagou — no reembolso <b>parcial</b> é só a parte acordada com o jurídico. É esse valor que as parcelas do reembolso têm que somar, e é ele que aparece em "A reembolsar".',
   parcBruto:'Valor cheio desta parcela, com os juros do parcelamento já embutidos, antes das taxas do gateway.',
   parcPago:'Quanto o cliente desembolsou nesta parcela, com os juros do parcelamento embutidos. É o que entra no faturamento e no caixa.',
+  negociacao:'<b>Valor da negociação</b> = o preço fechado com o cliente, sem os juros do parcelamento. Serve de referência e alimenta o botão de ajuste: em venda quitada de uma vez, é ele que comissiona. Em venda paga mês a mês, quem comissiona é o valor cheio de cada parcela.',
   parcComissiona:'Quanto desta parcela entra na base de comissão. É a fatia do <b>valor da negociação</b> (o preço fechado, sem os juros do cartão) correspondente a esta parcela. Somando as parcelas da venda, dá exatamente o valor negociado. Em parcela antiga, de antes de agosto/2026, ainda vale o valor pago.',
   parcLiquido:'Quanto sobra desta parcela depois das taxas. Só entra no líquido da venda quando o status vira "Recebido".'
 };
@@ -2906,9 +2909,11 @@ async function salvarVenda(){
     parcelas:parseInt(r.querySelector('.pgto-parcelas').value)||1,
     gateway:r.querySelector('.pgto-gateway').value||null,
     valor_bruto:parseFloat(r.querySelector('.pgto-bruto').value)||0,
-    valor_liquido:parseFloat(r.querySelector('.pgto-liquido').value)||0,
+    valor_comissao:parseFloat(r.querySelector('.pgto-comissao').value)||0,
     status:r.querySelector('.pgto-status').value,
-  })).filter(p=>p.valor_bruto>0||p.valor_liquido>0); // descarta linhas vazias (ex.: linha padrão sem valor)
+  })).filter(p=>p.valor_bruto>0); // descarta linhas vazias (ex.: linha padrão sem valor)
+  // Líquido deixou de ser digitado: sai da taxa do gateway (só a Cispay cobra, 3%).
+  pagamentos.forEach(p=>{ p.valor_liquido=Math.round(p.valor_bruto*(1-taxaGateway(p.gateway))*100)/100; });
 
   const totalBruto=pagamentos.reduce((s,p)=>s+p.valor_bruto,0);
   // Líquido = só o dinheiro que JÁ entrou (parcelas marcadas como recebidas).
@@ -3115,6 +3120,9 @@ const CLOSERS_LIST=['Lígia Oliveira','Gabriel Rocha','Caroline Neiva','Gabriel 
 const AV_COLORS={'Lígia Oliveira':'#4E7260','Gabriel Rocha':'#D4572A','Caroline Neiva':'#854F0B','Gabriel Mor':'#3D5C4A','Janaina Xavier':'#7C5CBF','Amanda Duarte':'#1565C0','Bruno Martins':'#0F766E'};
 const INITIALS=n=>n.split(' ').map(w=>w[0]).slice(0,2).join('');
 
+// Taxa que o gateway desconta. Conferido na base: só a Cispay cobra, e cobra 3% cravado.
+const TAXA_GATEWAY={'Cispay':0.03};
+function taxaGateway(gw){ return TAXA_GATEWAY[gw]||0; }
 // Quanto desta parcela comissiona: o pedaço do valor negociado, sem os juros do parcelamento.
 // Parcela antiga não tem valor_comissao preenchido — nesses casos vale o valor pago, como sempre valeu.
 function baseComissaoParcela(p){
@@ -5399,6 +5407,7 @@ async function migrarVendasQuebradas(){
         gateway:r.gateway||null,
         valor_bruto:Number(r.valor_bruto||0),
         valor_liquido:Number(r.valor_liquido||0),
+        valor_comissao:Number(r.valor_bruto||0),
         status:detectStatus(r),
         data_recebimento:detectStatus(r)==='recebido'?(r.data_venda?r.data_venda.split('T')[0]:hoje):null,
       }));
@@ -5466,8 +5475,11 @@ async function migrarVendasQuebradas(){
 }
 
 // ── CRONOGRAMA DE PAGAMENTOS (form) ──
-function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,liquido,status,parcelas){
-  dataPrev=dataPrev||''; metodo=metodo||'PIX'; gateway=gateway||''; bruto=bruto||''; liquido=liquido||''; status=status||'pendente'; parcelas=parseInt(parcelas)||1;
+function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,comissao,status,parcelas){
+  dataPrev=dataPrev||''; metodo=metodo||'PIX'; gateway=gateway||''; bruto=bruto||''; status=status||'pendente'; parcelas=parseInt(parcelas)||1;
+  // Regra: parcela mensal comissiona o valor cheio. Só venda quitada de uma vez comissiona
+  // o valor da negociação (sem os juros do cartão) — aí ajustarComissaoPelaNegociacao reescreve.
+  comissao=(comissao===undefined||comissao===null||comissao==='')?bruto:comissao;
   const isCartao=metodo==='Cartão';
   const opsParcelas=[1,2,3,4,5,6,7,8,9,10,11,12,15,18,24].map(n=>`<option value="${n}"${n===parcelas?' selected':''}>${n===1?'À vista':n+'x'}</option>`).join('');
   const wrap=document.getElementById('pgtoWrap');
@@ -5491,8 +5503,8 @@ function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,liquido,status,parcelas)
       <option value="PIX BTG"${gateway==='PIX BTG'?' selected':''}>PIX BTG</option>
       <option value="Asaas"${gateway==='Asaas'?' selected':''}>Asaas</option>
     </select>
-    <input type="number" class="pgto-input pgto-bruto" step="0.01" min="0" value="${bruto}" placeholder="0,00" oninput="atualizarTotaisPgto()">
-    <input type="number" class="pgto-input pgto-liquido" step="0.01" min="0" value="${liquido}" placeholder="0,00" oninput="atualizarTotaisPgto()">
+    <input type="number" class="pgto-input pgto-bruto" step="0.01" min="0" value="${bruto}" placeholder="0,00" oninput="espelharComissao(this);atualizarTotaisPgto()">
+    <input type="number" class="pgto-input pgto-comissao" step="0.01" min="0" value="${comissao}" placeholder="0,00" oninput="this.dataset.manual='1';atualizarTotaisPgto()">
     <select class="pgto-select pgto-status" onchange="atualizarTotaisPgto()">
       <option value="pendente"${status==='pendente'?' selected':''}>Pendente</option>
       <option value="recebido"${status==='recebido'?' selected':''}>Recebido</option>
@@ -5523,19 +5535,58 @@ function removerPgtoRow(btn){
   atualizarTotaisPgto();
 }
 
+// Enquanto ninguém encostar na coluna de comissão, ela acompanha o valor pago —
+// que é a regra da venda mensal e de qualquer venda sem juros embutidos.
+function espelharComissao(inputBruto){
+  const row=inputBruto.closest('.pgto-row');
+  const alvo=row&&row.querySelector('.pgto-comissao');
+  if(alvo&&alvo.dataset.manual!=='1') alvo.value=inputBruto.value;
+}
+// Venda quitada de uma vez comissiona a negociação, não o valor com juros.
+// Distribui a negociação entre as parcelas, com a sobra do arredondamento na última.
+function ajustarComissaoPelaNegociacao(){
+  const neg=parseFloat(document.getElementById('vfComissao').value)||0;
+  const rows=[...document.querySelectorAll('#pgtoWrap .pgto-row')];
+  const total=rows.reduce((s,r)=>s+(parseFloat(r.querySelector('.pgto-bruto').value)||0),0);
+  if(neg<=0||total<=0){pmmAlert('Preencha o valor da negociação e os valores pagos antes de ajustar.','⚠️','Comissão');return;}
+  let acum=0;
+  rows.forEach((r,i)=>{
+    const el=r.querySelector('.pgto-comissao');
+    const val=i===rows.length-1?Math.round((neg-acum)*100)/100
+      :Math.round((parseFloat(r.querySelector('.pgto-bruto').value)||0)*(neg/total)*100)/100;
+    if(i<rows.length-1) acum+=val;
+    el.value=val;
+    el.dataset.manual='1';
+  });
+  atualizarTotaisPgto();
+}
 function atualizarTotaisPgto(){
-  let bruto=0,liquido=0,restante=0;
+  let bruto=0,comissao=0,restante=0;
   document.querySelectorAll('#pgtoWrap .pgto-row').forEach(r=>{
     const b=parseFloat(r.querySelector('.pgto-bruto').value)||0;
-    const l=parseFloat(r.querySelector('.pgto-liquido').value)||0;
+    const c=parseFloat(r.querySelector('.pgto-comissao').value)||0;
     const s=r.querySelector('.pgto-status').value;
-    bruto+=b;
-    if(s==='recebido') liquido+=l; // líquido = só o que já entrou
+    bruto+=b; comissao+=c;
     if(s==='pendente') restante+=b;
   });
   document.getElementById('pgtoTotalBruto').textContent=fmtBRL(bruto);
-  document.getElementById('pgtoTotalLiquido').textContent=fmtBRL(liquido);
+  document.getElementById('pgtoTotalComissao').textContent=fmtBRL(comissao);
   document.getElementById('pgtoTotalRestante').textContent=fmtBRL(restante);
+  // Confere a soma da coluna de comissão contra o valor da negociação
+  const neg=parseFloat(document.getElementById('vfComissao').value)||0;
+  const av=document.getElementById('pgtoComissaoAviso');
+  if(!av) return;
+  if(neg<=0||bruto<=0){ av.textContent=''; return; }
+  const dif=comissao-neg;
+  if(Math.abs(dif)<=0.02){
+    av.innerHTML='<span style="color:var(--green);">✓ a coluna de comissão fecha com o valor da negociação</span>';
+  } else if(Math.abs(comissao-bruto)<=0.02){
+    av.innerHTML='<span style="color:var(--muted);">Comissionando o valor cheio das parcelas — correto para venda paga mês a mês. '
+      +'Se esta venda foi quitada de uma vez, clique em "ajustar pela negociação" para tirar os juros.</span>';
+  } else {
+    av.innerHTML='<span style="color:#9C0006;">⚠️ a coluna de comissão soma '+fmtBRL(comissao)
+      +' e a negociação é '+fmtBRL(neg)+' — diferença de '+fmtBRL(Math.abs(dif))+'</span>';
+  }
 }
 
 function toggleRecorrencia(){
@@ -5585,13 +5636,14 @@ async function carregarPgtosNoForm(v){
     if(rows.length>0){
       // As parcelas (nº de vezes no cartão) ficam na venda, não em cada pagamento.
       // Com 1 linha de pagamento, usa v.parcelas; com várias, cada linha é 1x.
-      rows.forEach(p=>adicionarPgtoRow(p.data_prevista||'',p.metodo||'PIX',p.gateway||'',p.valor_bruto||'',p.valor_liquido||'',p.status||'pendente', p.parcelas || (rows.length===1 ? (v.parcelas||1) : 1)));
+      // Parcela antiga não tem valor_comissao: cai no valor pago, que é a regra da venda mensal.
+      rows.forEach(p=>adicionarPgtoRow(p.data_prevista||'',p.metodo||'PIX',p.gateway||'',p.valor_bruto||'',p.valor_comissao!=null?p.valor_comissao:(p.valor_bruto||''),p.status||'pendente', p.parcelas || (rows.length===1 ? (v.parcelas||1) : 1)));
     } else {
       // Legado: cria uma linha com os dados existentes da venda
       const d=v.data_venda?v.data_venda.split('T')[0]:new Date().toISOString().split('T')[0];
       const metodo=v.forma_pagamento==='parcelado'?'Cartão':'PIX';
       const st=Number(v.valor_restante||0)<=0?'recebido':'pendente';
-      adicionarPgtoRow(d,metodo,v.gateway||'',v.valor_bruto||'',v.valor_liquido||'',st,v.parcelas||1);
+      adicionarPgtoRow(d,metodo,v.gateway||'',v.valor_bruto||'',v.valor_bruto||'',st,v.parcelas||1);
     }
   }catch(e){
     adicionarPgtoRow(new Date().toISOString().split('T')[0],'PIX','','','','pendente');
