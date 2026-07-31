@@ -1626,8 +1626,8 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
         <div class="pgto-total-item"><span class="pgto-total-label hint" tabindex="0" data-hint="aReceber">A receber:</span><span class="pgto-total-val" id="pgtoTotalRestante" style="color:var(--coral);">R$ 0,00</span></div>
       </div>
       <div style="margin-top:14px;display:flex;gap:14px;align-items:end;flex-wrap:wrap;">
-        <div class="vf-field" style="max-width:220px;margin:0;"><label><span class="hint" tabindex="0" data-hint="negociacao">Valor da negociação (R$)</span></label><input type="number" id="vfComissao" step="0.01" min="0" value="0" oninput="atualizarTotaisPgto()"></div>
-        <button type="button" class="btn-add-pgto" style="margin:0;" onclick="ajustarComissaoPelaNegociacao()">Ajustar comissão pela negociação</button>
+        <div class="vf-field" style="max-width:220px;margin:0;"><label><span class="hint" tabindex="0" data-hint="negociacao">Valor da negociação (R$)</span></label><input type="number" id="vfComissao" step="0.01" min="0" value="0" oninput="comissaoAutomatica();atualizarTotaisPgto()"></div>
+        <button type="button" class="btn-add-pgto" style="margin:0;" onclick="ajustarComissaoPelaNegociacao()">Recalcular comissão pela regra</button>
       </div>
       <p id="pgtoComissaoAviso" style="font-size:11px;line-height:1.5;margin:8px 0 0;"></p>
     </div>
@@ -5545,7 +5545,7 @@ function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,comissao,status,parcelas
   const div=document.createElement('div');
   div.className='pgto-row';
   div.innerHTML=`
-    <input type="date" class="pgto-input pgto-data" value="${dataPrev}" oninput="atualizarTotaisPgto()">
+    <input type="date" class="pgto-input pgto-data" value="${dataPrev}" oninput="comissaoAutomatica();atualizarTotaisPgto()">
     <select class="pgto-select pgto-metodo" onchange="onPgtoMetodoChange(this);atualizarTotaisPgto()">
       <option value="PIX"${metodo==='PIX'?' selected':''}>PIX</option>
       <option value="Cartão"${metodo==='Cartão'?' selected':''}>Cartão</option>
@@ -5562,9 +5562,9 @@ function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,comissao,status,parcelas
       <option value="PIX BTG"${gateway==='PIX BTG'?' selected':''}>PIX BTG</option>
       <option value="Asaas"${gateway==='Asaas'?' selected':''}>Asaas</option>
     </select>
-    <input type="number" class="pgto-input pgto-bruto" step="0.01" min="0" value="${bruto}" placeholder="0,00" oninput="espelharComissao(this);atualizarTotaisPgto()">
+    <input type="number" class="pgto-input pgto-bruto" step="0.01" min="0" value="${bruto}" placeholder="0,00" oninput="comissaoAutomatica();atualizarTotaisPgto()">
     <input type="number" class="pgto-input pgto-comissao" step="0.01" min="0" value="${comissao}" placeholder="0,00" oninput="this.dataset.manual='1';atualizarTotaisPgto()">
-    <select class="pgto-select pgto-status" onchange="atualizarTotaisPgto()">
+    <select class="pgto-select pgto-status" onchange="comissaoAutomatica();atualizarTotaisPgto()">
       <option value="pendente"${status==='pendente'?' selected':''}>Pendente</option>
       <option value="recebido"${status==='recebido'?' selected':''}>Recebido</option>
     </select>
@@ -5594,30 +5594,47 @@ function removerPgtoRow(btn){
   atualizarTotaisPgto();
 }
 
-// Enquanto ninguém encostar na coluna de comissão, ela acompanha o valor pago —
-// que é a regra da venda mensal e de qualquer venda sem juros embutidos.
-function espelharComissao(inputBruto){
-  const row=inputBruto.closest('.pgto-row');
-  const alvo=row&&row.querySelector('.pgto-comissao');
-  if(alvo&&alvo.dataset.manual!=='1') alvo.value=inputBruto.value;
-}
-// Venda quitada de uma vez comissiona a negociação, não o valor com juros.
-// Distribui a negociação entre as parcelas, com a sobra do arredondamento na última.
-function ajustarComissaoPelaNegociacao(){
-  const neg=parseFloat(document.getElementById('vfComissao').value)||0;
+// A REGRA, decidida pelo cronograma de pagamentos da venda:
+//  · tudo cai no mesmo mês  -> comissiona o valor da NEGOCIAÇÃO (os juros do cartão saem fora)
+//  · pagamentos em mais de um mês -> cada mês comissiona CHEIO o que entrou nele
+// Roda sozinha enquanto ninguém digitar na coluna de comissão.
+function comissaoAutomatica(){
   const rows=[...document.querySelectorAll('#pgtoWrap .pgto-row')];
+  if(!rows.length) return;
+  if(rows.some(r=>r.querySelector('.pgto-comissao').dataset.manual==='1')) return; // respeita edição manual
+  aplicarRegraComissao(rows,false);
+}
+// Quitou inteira dentro de um mês só? Aí os juros saem. Se sobra parcela pendente, ou se o
+// cronograma atravessa meses, cada mês comissiona cheio o que entrou nele.
+function quitadaNoMes(rows){
+  const meses=new Set(rows.map(r=>(r.querySelector('.pgto-data').value||'').slice(0,7)).filter(Boolean));
+  const todasRecebidas=rows.every(r=>r.querySelector('.pgto-status').value==='recebido');
+  return meses.size===1&&todasRecebidas;
+}
+function aplicarRegraComissao(rows,marcarManual){
+  const neg=parseFloat(document.getElementById('vfComissao').value)||0;
   const total=rows.reduce((s,r)=>s+(parseFloat(r.querySelector('.pgto-bruto').value)||0),0);
-  if(neg<=0||total<=0){pmmAlert('Preencha o valor da negociação e os valores pagos antes de ajustar.','⚠️','Comissão');return;}
+  const mesmoMes=quitadaNoMes(rows);
   let acum=0;
   rows.forEach((r,i)=>{
     const el=r.querySelector('.pgto-comissao');
-    const val=i===rows.length-1?Math.round((neg-acum)*100)/100
-      :Math.round((parseFloat(r.querySelector('.pgto-bruto').value)||0)*(neg/total)*100)/100;
-    if(i<rows.length-1) acum+=val;
-    el.value=val;
-    el.dataset.manual='1';
+    const bruto=parseFloat(r.querySelector('.pgto-bruto').value)||0;
+    let val=bruto;
+    if(mesmoMes&&neg>0&&total>0){
+      val=i===rows.length-1?Math.round((neg-acum)*100)/100:Math.round(bruto*(neg/total)*100)/100;
+      if(i<rows.length-1) acum+=val;
+    }
+    el.value=val||'';
+    if(marcarManual) el.dataset.manual='1';
   });
   atualizarTotaisPgto();
+}
+// Botão: força o recálculo pela regra, jogando fora qualquer ajuste manual.
+function ajustarComissaoPelaNegociacao(){
+  const rows=[...document.querySelectorAll('#pgtoWrap .pgto-row')];
+  if(!rows.length) return;
+  rows.forEach(r=>{ delete r.querySelector('.pgto-comissao').dataset.manual; });
+  aplicarRegraComissao(rows,false);
 }
 function atualizarTotaisPgto(){
   let bruto=0,comissao=0,restante=0;
@@ -5635,16 +5652,21 @@ function atualizarTotaisPgto(){
   const neg=parseFloat(document.getElementById('vfComissao').value)||0;
   const av=document.getElementById('pgtoComissaoAviso');
   if(!av) return;
-  if(neg<=0||bruto<=0){ av.textContent=''; return; }
-  const dif=comissao-neg;
-  if(Math.abs(dif)<=0.02){
-    av.innerHTML='<span style="color:var(--green);">✓ a coluna de comissão fecha com o valor da negociação</span>';
-  } else if(Math.abs(comissao-bruto)<=0.02){
-    av.innerHTML='<span style="color:var(--muted);">Comissionando o valor cheio das parcelas — correto para venda paga mês a mês. '
-      +'Se esta venda foi quitada de uma vez, clique em "ajustar pela negociação" para tirar os juros.</span>';
+  const rows=[...document.querySelectorAll('#pgtoWrap .pgto-row')];
+  const meses=new Set(rows.map(r=>(r.querySelector('.pgto-data').value||'').slice(0,7)).filter(Boolean));
+  if(bruto<=0){ av.textContent=''; return; }
+  if(quitadaNoMes(rows)&&neg<=0){
+    av.innerHTML='<span style="color:#9C0006;">⚠️ a venda quita inteira em '+[...meses][0].split('-').reverse().join('/')
+      +', então a comissão sai do valor da negociação — mas ele está vazio. Sem preencher, os juros do '
+      +'parcelamento entram na comissão do closer.</span>';
+  } else if(quitadaNoMes(rows)){
+    av.innerHTML='<span style="color:var(--green);">✓ quita inteira em '+[...meses][0].split('-').reverse().join('/')
+      +' — comissiona o valor da negociação ('+fmtBRL(neg)+')'
+      +(bruto-neg>0.01?', sem os '+fmtBRL(bruto-neg)+' de juros':'')+'.</span>';
   } else {
-    av.innerHTML='<span style="color:#9C0006;">⚠️ a coluna de comissão soma '+fmtBRL(comissao)
-      +' e a negociação é '+fmtBRL(neg)+' — diferença de '+fmtBRL(Math.abs(dif))+'</span>';
+    av.innerHTML='<span style="color:var(--muted);">'
+      +(meses.size>1?'Pagamentos em '+meses.size+' meses diferentes':'Ainda tem parcela pendente')
+      +' — cada mês comissiona cheio o que entrou nele. Total que comissiona: '+fmtBRL(comissao)+'.</span>';
   }
 }
 
