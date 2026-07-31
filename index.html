@@ -6218,22 +6218,25 @@ function comAnoMes(){ return comAno+'-'+String(comMes+1).padStart(2,'0'); }
 async function comDadosDoMes(anoMes){
   const [ano,mes]=anoMes.split('-').map(Number);
   const ultimo=anoMes+'-'+new Date(ano,mes,0).getDate();
-  const [parc,casos]=await Promise.all([
+  const [parc,casos,usuarios]=await Promise.all([
     supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01'
       +'&data_recebimento=lte.'+ultimo
       +'&select=venda_id,valor_bruto,valor_comissao,data_recebimento,'
       +'vendas!inner(nome_cliente,closer,sdr,social_seller,status,data_venda)'
       +'&order=data_recebimento.asc'),
     supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status').catch(()=>[]),
+    supaFetch('usuarios?select=nome,funcao').catch(()=>[]),
   ]);
+  // Gestor vende de vez em quando e não roda funil — aparece com as vendas, sem conversão nem faixa.
+  const gestores=new Set((usuarios||[]).filter(u=>u.funcao==='admin').map(u=>u.nome));
   const abertos=new Set((casos||[]).filter(c=>c.status!=='resolvido').map(c=>c.venda_id));
   const fora=p=>(p.vendas&&p.vendas.status==='reembolso')||abertos.has(p.venda_id);
-  return {parc,fora};
+  return {parc,fora,gestores};
 }
 
 // Fecha um mês inteiro: base, faixa e comissão de cada closer, SDR e social seller.
 async function comFecharMes(anoMes){
-  const {parc,fora}=await comDadosDoMes(anoMes);
+  const {parc,fora,gestores}=await comDadosDoMes(anoMes);
   const closers={}, sdrs={}, socials={};
   const pega=(mapa,nome)=>{ if(!mapa[nome]) mapa[nome]={base:0,pago:0,itens:[]}; return mapa[nome]; };
 
@@ -6248,11 +6251,16 @@ async function comFecharMes(anoMes){
 
   // Faixa do closer vem da conversão do mês (vendas ÷ reuniões), igual à aba Performance
   for(const nome of Object.keys(closers)){
+    const o=closers[nome];
+    if(gestores.has(nome)){
+      // Gestor não tem funil nem faixa: a venda dele fica registrada, mas não gera comissão.
+      o.gestor=true; o.pct=0; o.comissao=0; o.faixa='—'; o.conversao=null; o.semFunil=false;
+      continue;
+    }
     const regs=await getCloserData(nome,anoMes);
     const reun=regs.reduce((s,r)=>s+r.reun,0), vend=regs.reduce((s,r)=>s+r.vendas,0);
     const conv=reun>0?(vend/reun*100):null;
     const faixa=conv!==null?getFaixa(conv):null;
-    const o=closers[nome];
     o.reunioes=reun; o.vendas=vend; o.conversao=conv;
     o.faixa=faixa?faixa.nome:'—'; o.pct=faixa?faixa.pct:0;
     o.comissao=o.base*o.pct/100;
@@ -6303,8 +6311,9 @@ async function carregarComissionamento(){
 
 function comRenderMes(f){
   const nomes=Object.keys(f.closers).sort((a,b)=>f.closers[b].comissao-f.closers[a].comissao);
-  const totalBase=nomes.reduce((s,n)=>s+f.closers[n].base,0);
-  const totalCom=nomes.reduce((s,n)=>s+f.closers[n].comissao,0);
+  const soCloser=nomes.filter(n=>!f.closers[n].gestor);
+  const totalBase=soCloser.reduce((s,n)=>s+f.closers[n].base,0);
+  const totalCom=soCloser.reduce((s,n)=>s+f.closers[n].comissao,0);
   const apoio=[...Object.entries(f.sdrs).map(([n,o])=>[n,o,'SDR']),
                ...Object.entries(f.socials).map(([n,o])=>[n,o,'Social seller'])]
               .sort((a,b)=>b[1].comissao-a[1].comissao);
@@ -6312,7 +6321,7 @@ function comRenderMes(f){
 
   // Pendências: o que faz o número da tela não ser confiável
   const pend=[];
-  nomes.forEach(n=>{ if(f.closers[n].semFunil) pend.push('<b>'+escHtml(n)+'</b> recebeu R$ '+fmtBRL(f.closers[n].base).replace('R$ ','')+' no mês mas não lançou nenhuma reunião no funil — sem conversão não dá pra definir a faixa, então está comissionando 0%.'); });
+  nomes.forEach(n=>{ if(f.closers[n].semFunil&&!f.closers[n].gestor) pend.push('<b>'+escHtml(n)+'</b> recebeu '+fmtBRL(f.closers[n].base)+' no mês mas não lançou nenhuma reunião no funil — sem conversão não dá pra definir a faixa, então está comissionando 0%.'); });
 
   return `
     ${pend.length?`<div class="cob-card" style="border-color:#E8C7C7;background:#FDF6F6;margin-bottom:16px;">
@@ -6322,7 +6331,7 @@ function comRenderMes(f){
       </ul></div>`:''}
     <div class="cal-summary">
       <div class="cob-card"><div class="cob-card-label">Base total</div><div class="cob-card-value">${fmtBRL(totalBase)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">entrou no mês, sem reembolso</div></div>
-      <div class="cob-card"><div class="cob-card-label">Comissão dos closers</div><div class="cob-card-value coral">${fmtBRL(totalCom)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${nomes.length} closer(es)</div></div>
+      <div class="cob-card"><div class="cob-card-label">Comissão dos closers</div><div class="cob-card-value coral">${fmtBRL(totalCom)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${soCloser.length} closer(es)${nomes.length>soCloser.length?' · gestor fora da conta':''}</div></div>
       <div class="cob-card"><div class="cob-card-label">SDR e social seller</div><div class="cob-card-value">${fmtBRL(totalApoio)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">0,5% cada</div></div>
       <div class="cob-card"><div class="cob-card-label">Total a pagar</div><div class="cob-card-value" style="color:var(--green);">${fmtBRL(totalCom+totalApoio)}</div></div>
     </div>
@@ -6334,10 +6343,10 @@ function comRenderMes(f){
 
 function comBlocoPessoa(nome,o,papel){
   const id='com-'+nome.replace(/[^a-zA-Z0-9]/g,'');
-  const sub=papel==='closer'
-    ? (o.semFunil?'<span style="color:#9C0006;">funil não lançado</span>'
-       :`${o.reunioes} reuniões · ${o.vendas} vendas · <b>${o.conversao.toFixed(2)}%</b> · ${escHtml(o.faixa)} (${o.pct}%)`)
-    : papel+' · 0,5%';
+  const sub=papel!=='closer'?papel+' · 0,5%'
+    : o.gestor?'Gestor · vende eventualmente, não roda funil — sem conversão e sem comissão'
+    : o.semFunil?'<span style="color:#9C0006;">funil não lançado</span>'
+    : `${o.reunioes} reuniões · ${o.vendas} vendas · <b>${o.conversao.toFixed(2)}%</b> · ${escHtml(o.faixa)} (${o.pct}%)`;
   return `<div class="reemb-card" style="margin-bottom:10px;">
     <div class="reemb-card-head" onclick="comToggle('${id}')">
       <div class="reemb-avatar">${(nome||'?').trim().charAt(0).toUpperCase()}</div>
@@ -6348,8 +6357,8 @@ function comBlocoPessoa(nome,o,papel){
         <div class="reemb-meta">${sub}</div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
-        <div class="reemb-valor">${fmtBRL(o.comissao)}</div>
-        <div style="font-size:11px;color:var(--muted);">base ${fmtBRL(o.base)}</div>
+        <div class="reemb-valor">${o.gestor?'—':fmtBRL(o.comissao)}</div>
+        <div style="font-size:11px;color:var(--muted);">${o.gestor?'entrou':'base'} ${fmtBRL(o.base)}</div>
       </div>
       <span class="reemb-caret">${o.itens.length} <i>▾</i></span>
     </div>
