@@ -3004,8 +3004,22 @@ async function salvarVenda(){
     }
     // Salva cronograma na tabela pagamentos_venda
     if(vendaId&&pagamentos.length>0){
-      if(id) await supaFetch('pagamentos_venda?venda_id=eq.'+id,{method:'DELETE',headers:{'Prefer':''}});
-      const inserts=pagamentos.map(p=>({...p,venda_id:vendaId,data_recebimento:p.status==='recebido'?p.data_prevista:null}));
+      // Editar uma venda apaga e recria as parcelas. A data em que o dinheiro entrou de fato é
+      // marcada em Cobranças e não existe neste formulário — sem resgatar antes, ela voltava
+      // pra data prevista. Parcela prevista pro fim de um mês e recebida no começo do outro
+      // mudava de mês, e a comissão ia junto.
+      const recebidoAntes={};
+      if(id){
+        try{
+          const antigas=await supaFetch('pagamentos_venda?venda_id=eq.'+id+'&select=data_prevista,valor_bruto,data_recebimento');
+          antigas.forEach(a=>{ if(a.data_recebimento) recebidoAntes[(a.data_prevista||'')+'|'+Number(a.valor_bruto||0).toFixed(2)]=a.data_recebimento; });
+        }catch(e){ console.warn('não consegui preservar data_recebimento:',e.message); }
+        await supaFetch('pagamentos_venda?venda_id=eq.'+id,{method:'DELETE',headers:{'Prefer':''}});
+      }
+      const inserts=pagamentos.map(p=>({...p,venda_id:vendaId,
+        data_recebimento:p.status==='recebido'
+          ?(recebidoAntes[(p.data_prevista||'')+'|'+Number(p.valor_bruto||0).toFixed(2)]||p.data_prevista)
+          :null}));
       try{
         await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(inserts)});
       }catch(e2){
