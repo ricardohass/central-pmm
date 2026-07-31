@@ -719,7 +719,9 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .reemb-janela { display:inline-flex; flex-direction:column; align-items:flex-start; gap:4px; }
 .reemb-janela-meta { font-size:11px; font-weight:400; color:var(--muted); white-space:nowrap; }
 .reemb-parc { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid #EFEAE0; flex-wrap:wrap; }
-.reemb-parc:first-of-type { border-top:none; padding-top:0; }
+/* Primeira parcela vem logo depois do cabeçalho, que já tem borda embaixo — sem isso ficam
+   duas réguas coladas. Não dá pra usar :first-of-type: o primeiro div da seção é o cabeçalho. */
+.reemb-det-sec-head + .reemb-parc { border-top:none; padding-top:0; }
 .reemb-parc-valor { font-size:13px; font-weight:600; color:var(--text); min-width:90px; }
 /* ══ Botões: primário (verde) > secundário (coral outline) > terciário (texto) ══ */
 .reemb-seg { display:inline-flex; gap:3px; background:var(--cream2); border:1px solid #E2DACA; border-radius:10px; padding:3px; flex-wrap:wrap; }
