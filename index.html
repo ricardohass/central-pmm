@@ -3029,6 +3029,9 @@ async function salvarVenda(){
           await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(sem)});
         } else throw e2;
       }
+      // Palavra final sobre a comissão é sempre a mesma função, olhando a data de recebimento
+      // real de cada parcela. Assim o formulário e o ✓ Recebido das Cobranças não divergem.
+      await recalcComissaoVenda(vendaId);
     }
     fecharFormVenda();carregarVendas();
   }catch(e){pmmAlert('Erro ao salvar venda: '+e.message,'❌','Erro');}
@@ -6050,11 +6053,40 @@ function mostrarDetalheCalDia(dateStr){
 // Busca no Supabase (e não em todosPagamentos) porque o cache local só traz
 // as pendentes + as recebidas do mês corrente — somar por ali zeraria o líquido de meses anteriores.
 async function recalcTotaisVenda(vendaId){
-  const parcelas=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&select=valor_bruto,valor_liquido,status');
+  const parcelas=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&select=id,valor_bruto,valor_liquido,valor_comissao,status,data_prevista,data_recebimento&order=data_prevista.asc,id.asc');
   if(!parcelas.length) return;
   const liquido=parcelas.filter(p=>p.status==='recebido').reduce((s,p)=>s+Number(p.valor_liquido||0),0);
   const restante=parcelas.filter(p=>p.status==='pendente').reduce((s,p)=>s+Number(p.valor_bruto||0),0);
   await supaFetch('vendas?id=eq.'+vendaId,{method:'PATCH',body:JSON.stringify({valor_liquido:liquido,valor_restante:restante})});
+  await recalcComissaoVenda(vendaId,parcelas);
+}
+
+// A comissão segue o dinheiro que entrou de fato, então ela é refeita sempre que uma parcela
+// muda de status ou de data — venha a mudança do formulário de venda ou do ✓ Recebido das
+// Cobranças. É a mesma regra do formulário, só que decidida pela data de RECEBIMENTO:
+//   · venda quitada inteira dentro de um mês -> reparte o valor da negociação (juros ficam fora)
+//   · qualquer outro caso -> cada parcela comissiona cheio o que entrou nela
+async function recalcComissaoVenda(vendaId,parcelas){
+  try{
+    if(!parcelas) parcelas=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&select=id,valor_bruto,valor_comissao,status,data_prevista,data_recebimento&order=data_prevista.asc,id.asc');
+    if(!parcelas.length) return;
+    const v=(await supaFetch('vendas?id=eq.'+vendaId+'&select=base_comissao'))[0];
+    const neg=Number((v&&v.base_comissao)||0);
+    const total=parcelas.reduce((s,p)=>s+Number(p.valor_bruto||0),0);
+    const meses=new Set(parcelas.map(p=>((p.status==='recebido'?p.data_recebimento:p.data_prevista)||'').slice(0,7)).filter(Boolean));
+    const quitada=meses.size===1&&parcelas.every(p=>p.status==='recebido');
+    let acum=0;
+    for(let i=0;i<parcelas.length;i++){
+      const p=parcelas[i], bruto=Number(p.valor_bruto||0);
+      let val=bruto;
+      if(quitada&&neg>0&&total>0){
+        val=i===parcelas.length-1?Math.round((neg-acum)*100)/100:Math.round(bruto*(neg/total)*100)/100;
+        if(i<parcelas.length-1) acum+=val;
+      }
+      if(Math.abs(Number(p.valor_comissao||0)-val)>0.005||p.valor_comissao==null)
+        await supaFetch('pagamentos_venda?id=eq.'+p.id,{method:'PATCH',body:JSON.stringify({valor_comissao:val})});
+    }
+  }catch(e){ console.warn('recalc comissão da venda:',e.message); }
 }
 
 async function marcarRecebido(id,dateStr){
@@ -6080,6 +6112,8 @@ async function atualizarDataRecebimento(id,novaData,dateStr){
     await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify({data_recebimento:novaData})});
     const p=todosPagamentos.find(x=>x.id===id);
     if(p) p.data_recebimento=novaData;
+    // Mudar a data pode fazer a venda deixar de quitar dentro de um mês só — refaz a comissão.
+    if(p&&p.vendas?.id) await recalcComissaoVenda(p.vendas.id);
   }catch(e){pmmAlert('Erro ao atualizar data de recebimento: '+e.message,'❌','Erro');}
 }
 
@@ -6093,6 +6127,7 @@ async function atualizarDataPagamento(id,novaData,dateStrOriginal){
     if(p&&p.vendas?.id){
       const restante=todosPagamentos.filter(x=>x.vendas?.id===p.vendas.id&&x.status==='pendente').reduce((s,x)=>s+Number(x.valor_bruto||0),0);
       await supaFetch('vendas?id=eq.'+p.vendas.id,{method:'PATCH',body:JSON.stringify({valor_restante:restante})});
+      await recalcComissaoVenda(p.vendas.id);
     }
     renderCobrancas();
     // Abre o detalhe no novo dia
