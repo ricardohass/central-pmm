@@ -2101,6 +2101,9 @@ const CRITERIOS={
   contrato:'Marcação manual: <b>marque quando as informações do cliente já tiverem sido enviadas ao jurídico</b> para elaboração do contrato. Serve só para acompanhar o que falta — não altera valor, status nem comissão.',
   contratoAssinado:'Marcação manual: <b>marque quando o cliente já tiver assinado o contrato</b>. Serve só para acompanhar o que falta — não altera valor, status nem comissão.',
   reembolso:'Reembolso integral já efetivado conta o valor total do caso; parcial ou em andamento conta só as parcelas de devolução já pagas.',
+  reembAReembolsar:'<b>A reembolsar</b> = quanto a empresa se comprometeu a devolver, somando todos os casos. Não é o quanto o cliente pagou: em <b>reembolso parcial já concluído</b> entra só o valor acordado com o jurídico, e a parte retida fica de fora porque não é dívida. Caso revertido ou não necessário entra como zero.',
+  reembPendente:'<b>Pendente</b> = "A reembolsar" menos o que já foi devolvido. É o que ainda tem que sair do caixa. Reembolso parcial concluído fica zerado aqui, mesmo que o cliente tenha pago mais do que recebeu de volta.',
+  reembRetido:'<b>Valor retido</b> = a parte que o cliente pagou e a empresa fica, por acordo jurídico (multa, taxa ou negociação). Não é dívida e não entra em "A reembolsar" nem em "Pendente".',
   parcBruto:'Valor cheio desta parcela, com os juros do parcelamento já embutidos, antes das taxas do gateway.',
   parcLiquido:'Quanto sobra desta parcela depois das taxas. Só entra no líquido da venda quando o status vira "Recebido".'
 };
@@ -6017,9 +6020,38 @@ const REEMB_BADGE={
 function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function reembDataRef(r){return (r.data_solicitacao||r.created_at||'').split('T')[0];}
 function reembPago(r){return (r.reembolsos_pagamentos||[]).filter(p=>p.status==='pago').reduce((s,p)=>s+Number(p.valor||0),0);}
+// Quanto ainda é compromisso da empresa devolver. NÃO é o quanto o cliente pagou.
+// Caso encerrado no financeiro não deixa saldo devedor:
+//  · parcial reembolsado -> o acordo foi devolver só uma parte; o resto fica retido e não é dívida
+//  · revertido / não necessário -> o cliente não recebe nada de volta
 function reembPrevisto(r){
   const somaParc=(r.reembolsos_pagamentos||[]).reduce((s,p)=>s+Number(p.valor||0),0);
+  const sr=r.status_reembolso||'pendente';
+  if(sr==='revertido'||sr==='nao_necessario') return reembPago(r);
+  if(sr==='reembolsado'&&r.modalidade==='parcial') return reembPago(r);
   return Number(r.valor_total||0)||somaParc;
+}
+function reembParcialQuitado(r){
+  return r.modalidade==='parcial'&&r.status_reembolso==='reembolsado';
+}
+// O que o cliente pagou = o que voltou pra ele + o que a empresa reteve por acordo.
+function reembPagoPeloCliente(r){
+  return reembPrevisto(r)+Number(r.valor_retido||0);
+}
+// Resumo do bloco de parcelas. Em reembolso parcial concluído o "X de Y" sozinho dá a entender
+// que ainda falta devolver — por isso o texto diz explicitamente que o acordo foi cumprido.
+function reembResumoValores(r){
+  const pago=reembPago(r), previsto=reembPrevisto(r), retido=Number(r.valor_retido||0);
+  const quitado=previsto>0&&pago>=previsto-0.01;
+  let html='<b style="color:var(--text);font-weight:600;">'+fmtBRL(pago)+'</b> de '+fmtBRL(previsto);
+  if(quitado) html+=' <span class="status-badge s-confirmada">'+(reembParcialQuitado(r)?'✓ acordo cumprido':'✓ quitado')+'</span>';
+  if(reembParcialQuitado(r)&&retido>0){
+    html+='<div style="font-size:11px;color:var(--muted);font-weight:400;margin-top:4px;line-height:1.5;">'
+      +'Reembolso <b>parcial</b>: cliente pagou '+fmtBRL(reembPagoPeloCliente(r))+' e, por acordo, recebeu '
+      +fmtBRL(previsto)+' de volta.<br>Os <span class="hint" tabindex="0" data-hint="reembRetido">'
+      +fmtBRL(retido)+' retidos</span> não são dívida — não há mais nada a devolver.</div>';
+  }
+  return html;
 }
 function reembProxVenc(r){
   const pend=(r.reembolsos_pagamentos||[]).filter(p=>p.status==='pendente'&&p.data_prevista)
@@ -6124,6 +6156,7 @@ function renderReembolsos(){
   const desist=casos.filter(r=>r.tipo==='desistencia').length;
   const aReembolsar=casos.reduce((s,r)=>s+reembPrevisto(r),0);
   const pago=casos.reduce((s,r)=>s+reembPago(r),0);
+  const retidoTotal=casos.reduce((s,r)=>s+Number(r.valor_retido||0),0);
   // análise interna
   const reembFeitos=casos.filter(r=>r.status_reembolso==='reembolsado').length;
   const reembReverts=casos.filter(r=>r.status_reembolso==='revertido'||r.status_reembolso==='nao_necessario').length;
@@ -6137,8 +6170,8 @@ function renderReembolsos(){
       <div class="cob-card"><div class="cob-card-label">Em aberto</div><div class="cob-card-value amber">${emAberto}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">não resolvidos</div></div>
       <div class="cob-card"><div class="cob-card-label">Cancelamentos</div><div class="cob-card-value coral">${cancel}</div></div>
       <div class="cob-card"><div class="cob-card-label">Desistências</div><div class="cob-card-value" style="color:#C07A00;">${desist}</div></div>
-      <div class="cob-card"><div class="cob-card-label">A reembolsar</div><div class="cob-card-value">${fmtBRL(aReembolsar)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${fmtBRL(pago)} pago</div></div>
-      <div class="cob-card"><div class="cob-card-label">Pendente</div><div class="cob-card-value coral">${fmtBRL(aReembolsar-pago)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">a pagar</div></div>
+      <div class="cob-card"><div class="cob-card-label"><span class="hint" tabindex="0" data-hint="reembAReembolsar">A reembolsar</span></div><div class="cob-card-value">${fmtBRL(aReembolsar)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${fmtBRL(pago)} já devolvido${retidoTotal>0?' · '+fmtBRL(retidoTotal)+' retido':''}</div></div>
+      <div class="cob-card"><div class="cob-card-label"><span class="hint" tabindex="0" data-hint="reembPendente">Pendente</span></div><div class="cob-card-value coral">${fmtBRL(aReembolsar-pago)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">ainda falta devolver</div></div>
     </div>
     <div class="reemb-viz">
       <div class="reemb-viz-card">
@@ -6325,9 +6358,12 @@ function renderReembCard(r){
     +' · Aberto por '+escHtml(r.aberto_por||'—')
     +(r.estrategista?' · Estrategista: '+escHtml(r.estrategista):'')
     +(r.closer?' · Closer: <strong>'+escHtml(r.closer)+'</strong>':'');
+  const quitado=previsto>0&&pago>=previsto-0.01;
+  const parcial=reembParcialQuitado(r);
   let venc;
   if(prox) venc='vence '+fmtDataBR(prox);
-  else if(previsto>0&&pago>=previsto) venc='quitado';
+  else if(quitado&&parcial) venc='devolvido por completo';
+  else if(quitado) venc='quitado';
   else venc='sem vencimento';
   return `<div class="reemb-card tipo-${escHtml(r.tipo||'')}">
     <div class="reemb-card-head" onclick="toggleReembDetalhe('${r.id}')">
@@ -6337,6 +6373,7 @@ function renderReembCard(r){
           <span class="reemb-nome">${escHtml(r.nome_cliente||'Sem nome')}</span>
           <span class="status-badge ${tipoBadge}">${REEMB_TIPO_LABEL[r.tipo]||r.tipo}</span>
           <span class="status-badge ${statusBadge}">${REEMB_STATUS_LABEL[r.status]||r.status}</span>
+          ${parcial?`<span class="status-badge s-reembolso" title="Reembolso parcial: por acordo, só uma parte do que o cliente pagou foi devolvida">Parcial · concluído</span>`:''}
         </div>
         <div class="reemb-meta">${sub}</div>
       </div>
@@ -6417,7 +6454,7 @@ function renderReembDetalhe(id){
         <div><span class="reemb-det-lbl">Contrato</span><span class="reemb-det-val">${r.contrato_url?`<a href="${escHtml(r.contrato_url)}" target="_blank" rel="noopener" style="color:var(--coral);">abrir contrato ↗</a>`:'—'}</span></div>
         <div><span class="reemb-det-lbl">Data da compra</span><span class="reemb-det-val">${r.data_compra?fmtDataBR(r.data_compra):'—'}</span></div>
         <div><span class="reemb-det-lbl">Forma do reembolso</span><span class="reemb-det-val">${escHtml(r.forma_reembolso||'—')}</span></div>
-        <div><span class="reemb-det-lbl">Valor retido</span><span class="reemb-det-val">${Number(r.valor_retido)>0?fmtBRL(r.valor_retido):'—'}</span></div>
+        <div><span class="reemb-det-lbl"><span class="hint" tabindex="0" data-hint="reembRetido">Valor retido</span></span><span class="reemb-det-val">${Number(r.valor_retido)>0?fmtBRL(r.valor_retido):'—'}</span></div>
         ${(r.data_compra&&r.data_solicitacao)?`<div><span class="reemb-det-lbl">Janela arrependimento</span><span class="reemb-det-val">${reembJanelaBadge(r)}</span></div>`:''}
       </div>
       ${r.observacoes?`<div style="font-size:12px;color:var(--text);background:var(--cream);border:1px solid #E2DACA;border-radius:8px;padding:10px 12px;margin-top:14px;white-space:pre-wrap;">${escHtml(r.observacoes)}</div>`:''}
@@ -6438,7 +6475,7 @@ function renderReembDetalhe(id){
     </div>
 
     <div class="reemb-det-sec">
-      <div class="reemb-det-sec-head"><span class="reemb-sec-title">Parcelas do reembolso</span><span><b style="color:var(--text);font-weight:600;">${fmtBRL(reembPago(r))}</b> de ${fmtBRL(reembPrevisto(r))}</span></div>
+      <div class="reemb-det-sec-head"><span class="reemb-sec-title">Parcelas do reembolso</span><span style="text-align:right;">${reembResumoValores(r)}</span></div>
       ${parcelasHTML}
       <div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;">
         <input type="number" id="np-valor-${id}" placeholder="Valor R$" step="0.01" min="0" class="reemb-inline-input" style="width:120px;">
