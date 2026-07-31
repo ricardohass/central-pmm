@@ -3182,6 +3182,49 @@ const CLOSERS_LIST=['Lígia Oliveira','Gabriel Rocha','Caroline Neiva','Gabriel 
 const AV_COLORS={'Lígia Oliveira':'#4E7260','Gabriel Rocha':'#D4572A','Caroline Neiva':'#854F0B','Gabriel Mor':'#3D5C4A','Janaina Xavier':'#7C5CBF','Amanda Duarte':'#1565C0','Bruno Martins':'#0F766E'};
 const INITIALS=n=>n.split(' ').map(w=>w[0]).slice(0,2).join('');
 
+// ── A REGRA DA COMISSÃO, num lugar só ──
+// Recebe as parcelas normalizadas ({valor,status,mes}) em ordem de vencimento e o valor
+// negociado. Devolve quanto cada parcela comissiona. Três casos:
+//
+//  1. QUITADA NO MÊS — tudo recebido dentro de um mês só.
+//     Comissiona o valor negociado, repartido entre as parcelas. Juros do cartão ficam fora.
+//
+//  2. MENSALIDADE — o acordo já foi fechado em parcelas recorrentes (3 ou mais de mesmo valor).
+//     Cada parcela comissiona cheia, do jeito que entrou. Ex.: Nayara, 6x de R$ 6.696,45.
+//
+//  3. ENTRADA + QUITAÇÃO — entrada agora, saldo depois, valores diferentes.
+//     A entrada comissiona cheia; a quitação comissiona o que falta pra fechar o negociado,
+//     porque o saldo é um valor do acordo que o cartão inchou. Ex.: Fabíola, R$ 5.000 de
+//     entrada + R$ 30.000 no cartão que o Cispay cobrou como R$ 36.000,10.
+function classificarPagamento(ps){
+  const meses=new Set(ps.map(p=>p.mes).filter(Boolean));
+  if(meses.size===1&&ps.every(p=>p.status==='recebido')) return 'quitada';
+  const contagem={};
+  ps.forEach(p=>{ const k=Number(p.valor||0).toFixed(2); contagem[k]=(contagem[k]||0)+1; });
+  if(Object.values(contagem).some(n=>n>=3)) return 'mensalidade';
+  return 'entrada_quitacao';
+}
+function calcularComissoes(ps,negociacao){
+  const neg=Number(negociacao||0);
+  const total=ps.reduce((s,p)=>s+Number(p.valor||0),0);
+  const tipo=classificarPagamento(ps);
+  if(tipo==='quitada'&&neg>0&&total>0){
+    let acum=0;
+    return ps.map((p,i)=>{
+      const v=i===ps.length-1?Math.round((neg-acum)*100)/100
+        :Math.round(Number(p.valor||0)*(neg/total)*100)/100;
+      if(i<ps.length-1) acum+=v;
+      return v;
+    });
+  }
+  if(tipo==='entrada_quitacao'&&neg>0&&ps.length>1){
+    const anteriores=ps.slice(0,-1).reduce((s,p)=>s+Number(p.valor||0),0);
+    const saldo=Math.round((neg-anteriores)*100)/100;
+    // Se o negociado não cobre as entradas, algo está errado no cadastro: comissiona cheio.
+    if(saldo>0) return ps.map((p,i)=>i===ps.length-1?saldo:Number(p.valor||0));
+  }
+  return ps.map(p=>Number(p.valor||0));   // mensalidade e fallback: valor cheio
+}
 // Taxa que o gateway desconta. Conferido na base: só a Cispay cobra, e cobra 3% cravado.
 const TAXA_GATEWAY={'Cispay':0.03};
 function taxaGateway(gw){ return TAXA_GATEWAY[gw]||0; }
@@ -5609,25 +5652,20 @@ function comissaoAutomatica(){
 }
 // Quitou inteira dentro de um mês só? Aí os juros saem. Se sobra parcela pendente, ou se o
 // cronograma atravessa meses, cada mês comissiona cheio o que entrou nele.
-function quitadaNoMes(rows){
-  const meses=new Set(rows.map(r=>(r.querySelector('.pgto-data').value||'').slice(0,7)).filter(Boolean));
-  const todasRecebidas=rows.every(r=>r.querySelector('.pgto-status').value==='recebido');
-  return meses.size===1&&todasRecebidas;
+function parcelasDoForm(rows){
+  return rows.map(r=>({
+    valor:parseFloat(r.querySelector('.pgto-bruto').value)||0,
+    status:r.querySelector('.pgto-status').value,
+    mes:(r.querySelector('.pgto-data').value||'').slice(0,7),
+  }));
 }
 function aplicarRegraComissao(rows,marcarManual){
   const neg=parseFloat(document.getElementById('vfComissao').value)||0;
-  const total=rows.reduce((s,r)=>s+(parseFloat(r.querySelector('.pgto-bruto').value)||0),0);
-  const mesmoMes=quitadaNoMes(rows);
-  let acum=0;
-  rows.forEach((r,i)=>{
+  const ordenadas=rows.slice().sort((a,b)=>(a.querySelector('.pgto-data').value||'').localeCompare(b.querySelector('.pgto-data').value||''));
+  const valores=calcularComissoes(parcelasDoForm(ordenadas),neg);
+  ordenadas.forEach((r,i)=>{
     const el=r.querySelector('.pgto-comissao');
-    const bruto=parseFloat(r.querySelector('.pgto-bruto').value)||0;
-    let val=bruto;
-    if(mesmoMes&&neg>0&&total>0){
-      val=i===rows.length-1?Math.round((neg-acum)*100)/100:Math.round(bruto*(neg/total)*100)/100;
-      if(i<rows.length-1) acum+=val;
-    }
-    el.value=val||'';
+    el.value=valores[i]||'';
     if(marcarManual) el.dataset.manual='1';
   });
   atualizarTotaisPgto();
@@ -5656,20 +5694,24 @@ function atualizarTotaisPgto(){
   const av=document.getElementById('pgtoComissaoAviso');
   if(!av) return;
   const rows=[...document.querySelectorAll('#pgtoWrap .pgto-row')];
-  const meses=new Set(rows.map(r=>(r.querySelector('.pgto-data').value||'').slice(0,7)).filter(Boolean));
   if(bruto<=0){ av.textContent=''; return; }
-  if(quitadaNoMes(rows)&&neg<=0){
-    av.innerHTML='<span style="color:#9C0006;">⚠️ a venda quita inteira em '+[...meses][0].split('-').reverse().join('/')
-      +', então a comissão sai do valor da negociação — mas ele está vazio. Sem preencher, os juros do '
+  const ps=parcelasDoForm(rows.slice().sort((a,b)=>(a.querySelector('.pgto-data').value||'').localeCompare(b.querySelector('.pgto-data').value||'')));
+  const tipo=classificarPagamento(ps);
+  const meses=[...new Set(ps.map(p=>p.mes).filter(Boolean))];
+  if(tipo!=='mensalidade'&&neg<=0){
+    av.innerHTML='<span style="color:#9C0006;">⚠️ falta o valor da negociação. Sem ele, os juros do '
       +'parcelamento entram na comissão do closer.</span>';
-  } else if(quitadaNoMes(rows)){
-    av.innerHTML='<span style="color:var(--green);">✓ quita inteira em '+[...meses][0].split('-').reverse().join('/')
-      +' — comissiona o valor da negociação ('+fmtBRL(neg)+')'
-      +(bruto-neg>0.01?', sem os '+fmtBRL(bruto-neg)+' de juros':'')+'.</span>';
+  } else if(tipo==='quitada'){
+    av.innerHTML='<span style="color:var(--green);">✓ <b>quita inteira em '
+      +(meses[0]||'').split('-').reverse().join('/')+'</b> — comissiona o valor da negociação ('
+      +fmtBRL(neg)+')'+(bruto-neg>0.01?', sem os '+fmtBRL(bruto-neg)+' de juros':'')+'.</span>';
+  } else if(tipo==='mensalidade'){
+    av.innerHTML='<span style="color:var(--muted);">Detectei <b>mensalidade</b> (parcelas recorrentes de '
+      +'mesmo valor) — cada mês comissiona cheio o que entrou nele. Total: '+fmtBRL(comissao)+'.</span>';
   } else {
-    av.innerHTML='<span style="color:var(--muted);">'
-      +(meses.size>1?'Pagamentos em '+meses.size+' meses diferentes':'Ainda tem parcela pendente')
-      +' — cada mês comissiona cheio o que entrou nele. Total que comissiona: '+fmtBRL(comissao)+'.</span>';
+    av.innerHTML='<span style="color:var(--muted);">Detectei <b>entrada + quitação</b> — a entrada comissiona '
+      +'cheia e a quitação fecha o valor negociado ('+fmtBRL(neg)+'), sem os juros do cartão. '
+      +'Total: '+fmtBRL(comissao)+'.</span>';
   }
 }
 
@@ -6072,18 +6114,14 @@ async function recalcComissaoVenda(vendaId,parcelas){
     if(!parcelas.length) return;
     const v=(await supaFetch('vendas?id=eq.'+vendaId+'&select=base_comissao'))[0];
     const neg=Number((v&&v.base_comissao)||0);
-    const total=parcelas.reduce((s,p)=>s+Number(p.valor_bruto||0),0);
-    const meses=new Set(parcelas.map(p=>((p.status==='recebido'?p.data_recebimento:p.data_prevista)||'').slice(0,7)).filter(Boolean));
-    const quitada=meses.size===1&&parcelas.every(p=>p.status==='recebido');
-    let acum=0;
+    // A data que vale é a do dinheiro que entrou; parcela pendente usa a prevista.
+    const norm=parcelas.map(p=>({
+      valor:Number(p.valor_bruto||0), status:p.status,
+      mes:((p.status==='recebido'?p.data_recebimento:p.data_prevista)||'').slice(0,7)}));
+    const valores=calcularComissoes(norm,neg);
     for(let i=0;i<parcelas.length;i++){
-      const p=parcelas[i], bruto=Number(p.valor_bruto||0);
-      let val=bruto;
-      if(quitada&&neg>0&&total>0){
-        val=i===parcelas.length-1?Math.round((neg-acum)*100)/100:Math.round(bruto*(neg/total)*100)/100;
-        if(i<parcelas.length-1) acum+=val;
-      }
-      if(Math.abs(Number(p.valor_comissao||0)-val)>0.005||p.valor_comissao==null)
+      const p=parcelas[i], val=valores[i];
+      if(p.valor_comissao==null||Math.abs(Number(p.valor_comissao||0)-val)>0.005)
         await supaFetch('pagamentos_venda?id=eq.'+p.id,{method:'PATCH',body:JSON.stringify({valor_comissao:val})});
     }
   }catch(e){ console.warn('recalc comissão da venda:',e.message); }
