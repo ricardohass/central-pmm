@@ -1751,8 +1751,8 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
             <option value="parcial">Parcial (devolve só uma parte)</option>
           </select>
         </div>
-        <div class="vf-field"><label>Valor total a reembolsar (R$)</label><input type="number" id="rfValor" min="0" step="0.01" value="0" oninput="recalcParcelasInfo();recalcRetido()"></div>
-        <div class="vf-field"><label>Valor retido — multa/taxa (R$)</label><input type="number" id="rfValorRetido" min="0" step="0.01" value="0" oninput="recalcRetido()"></div>
+        <div class="vf-field"><label><span class="hint" tabindex="0" data-hint="reembVolta">Valor que volta pro cliente (R$)</span></label><input type="number" id="rfValor" min="0" step="0.01" value="0" oninput="autoRetidoParcial();recalcParcelasInfo();recalcRetido()"></div>
+        <div class="vf-field"><label><span class="hint" tabindex="0" data-hint="reembRetido">Valor que a empresa retém (R$)</span></label><input type="number" id="rfValorRetido" min="0" step="0.01" value="0" oninput="recalcRetido()"></div>
         <div class="vf-field"><label>Forma do reembolso</label>
           <select id="rfForma">
             <option value="">Selecione</option>
@@ -2103,7 +2103,8 @@ const CRITERIOS={
   reembolso:'Reembolso integral já efetivado conta o valor total do caso; parcial ou em andamento conta só as parcelas de devolução já pagas.',
   reembAReembolsar:'<b>A reembolsar</b> = quanto a empresa se comprometeu a devolver, somando todos os casos. Não é o quanto o cliente pagou: em <b>reembolso parcial já concluído</b> entra só o valor acordado com o jurídico, e a parte retida fica de fora porque não é dívida. Caso revertido ou não necessário entra como zero.',
   reembPendente:'<b>Pendente</b> = "A reembolsar" menos o que já foi devolvido. É o que ainda tem que sair do caixa. Reembolso parcial concluído fica zerado aqui, mesmo que o cliente tenha pago mais do que recebeu de volta.',
-  reembRetido:'<b>Valor retido</b> = a parte que o cliente pagou e a empresa fica, por acordo jurídico (multa, taxa ou negociação). Não é dívida e não entra em "A reembolsar" nem em "Pendente".',
+  reembRetido:'<b>Valor retido</b> = a parte que o cliente pagou e a empresa fica, por acordo jurídico (multa, taxa ou negociação). Não é dívida e não entra em "A reembolsar" nem em "Pendente". No reembolso parcial ele é calculado sozinho: o que o cliente pagou menos o que volta pra ele.',
+  reembVolta:'<b>Valor que volta pro cliente</b> = quanto a empresa devolve de fato. Não é o quanto o cliente pagou — no reembolso <b>parcial</b> é só a parte acordada com o jurídico. É esse valor que as parcelas do reembolso têm que somar, e é ele que aparece em "A reembolsar".',
   parcBruto:'Valor cheio desta parcela, com os juros do parcelamento já embutidos, antes das taxas do gateway.',
   parcLiquido:'Quanto sobra desta parcela depois das taxas. Só entra no líquido da venda quando o status vira "Recebido".'
 };
@@ -6039,19 +6040,20 @@ function reembPagoPeloCliente(r){
   return reembPrevisto(r)+Number(r.valor_retido||0);
 }
 // Resumo do bloco de parcelas. Em reembolso parcial concluído o "X de Y" sozinho dá a entender
-// que ainda falta devolver — por isso o texto diz explicitamente que o acordo foi cumprido.
+// que ainda falta devolver — o selo resolve isso na linha, e o detalhe do acordo fica no balão.
 function reembResumoValores(r){
   const pago=reembPago(r), previsto=reembPrevisto(r), retido=Number(r.valor_retido||0);
   const quitado=previsto>0&&pago>=previsto-0.01;
-  let html='<b style="color:var(--text);font-weight:600;">'+fmtBRL(pago)+'</b> de '+fmtBRL(previsto);
-  if(quitado) html+=' <span class="status-badge s-confirmada">'+(reembParcialQuitado(r)?'✓ acordo cumprido':'✓ quitado')+'</span>';
-  if(reembParcialQuitado(r)&&retido>0){
-    html+='<div style="font-size:11px;color:var(--muted);font-weight:400;margin-top:4px;line-height:1.5;">'
-      +'Reembolso <b>parcial</b>: cliente pagou '+fmtBRL(reembPagoPeloCliente(r))+' e, por acordo, recebeu '
-      +fmtBRL(previsto)+' de volta.<br>Os <span class="hint" tabindex="0" data-hint="reembRetido">'
-      +fmtBRL(retido)+' retidos</span> não são dívida — não há mais nada a devolver.</div>';
+  const parcial=reembParcialQuitado(r);
+  let selo='';
+  if(quitado){
+    const dica=(parcial&&retido>0)
+      ?'Reembolso <b>parcial</b>: o cliente pagou '+fmtBRL(reembPagoPeloCliente(r))+' e, por acordo do jurídico, recebeu '+fmtBRL(previsto)+' de volta. Os '+fmtBRL(retido)+' retidos ficam com a empresa — não são dívida e não há mais nada a devolver.'
+      :'Todas as parcelas do reembolso já foram pagas. Não sobra saldo a devolver neste caso.';
+    selo=' <span class="status-badge s-confirmada" tabindex="0" style="cursor:help;" data-hint="'+dica+'">'
+      +(parcial?'✓ acordo cumprido':'✓ quitado')+'</span>';
   }
-  return html;
+  return '<b style="color:var(--text);font-weight:600;">'+fmtBRL(pago)+'</b> de '+fmtBRL(previsto)+selo;
 }
 function reembProxVenc(r){
   const pend=(r.reembolsos_pagamentos||[]).filter(p=>p.status==='pendente'&&p.data_prevista)
@@ -6636,7 +6638,7 @@ async function excluirReemb(id){
 // ── Formulário de caso ──
 async function loadVendasParaReemb(){
   try{
-    vendasParaReemb=await supaFetch('vendas?select=id,nome_cliente,data_venda,closer,produto,valor_bruto,valor_liquido&order=data_venda.desc&limit=2000');
+    vendasParaReemb=await supaFetch('vendas?select=id,nome_cliente,data_venda,closer,produto,valor_bruto,valor_liquido,pagamentos_venda(valor_bruto,status)&order=data_venda.desc&limit=2000');
   }catch(e){vendasParaReemb=[];}
 }
 // ── Combobox de busca de venda (nome / data / closer) ──
@@ -6706,36 +6708,64 @@ document.addEventListener('click',e=>{
   if(!box.contains(e.target)) panel.classList.remove('open');
 });
 let _rfVendaValor=0;
+// Num reembolso parcial só dá pra devolver ou reter o que o cliente REALMENTE pagou —
+// o valor cheio da venda não serve de base quando ela ficou pela metade.
+let _rfVendaPago=0;
+function vendaPagoPeloCliente(v){
+  return (v&&v.pagamentos_venda||[]).filter(p=>p.status==='recebido')
+    .reduce((s,p)=>s+Number(p.valor_bruto||0),0);
+}
 function aoVincularVenda(){
   const v=vendasParaReemb.find(x=>x.id===document.getElementById('rfVenda').value);
-  if(!v){ _rfVendaValor=0; recalcRetido(); return; }
+  if(!v){ _rfVendaValor=0; _rfVendaPago=0; recalcRetido(); return; }
   document.getElementById('rfCliente').value=v.nome_cliente||document.getElementById('rfCliente').value;
   if(v.closer){const cs=document.getElementById('rfCloser');for(let i=0;i<cs.options.length;i++){if(cs.options[i].value===v.closer){cs.selectedIndex=i;break;}}}
   _rfVendaValor=Number(v.valor_bruto||v.valor_liquido||0);
+  _rfVendaPago=vendaPagoPeloCliente(v);
   const valEl=document.getElementById('rfValor');
   if(!parseFloat(valEl.value)) valEl.value=(v.valor_liquido||v.valor_bruto||0);
   if(v.data_venda && !document.getElementById('rfDataCompra').value) document.getElementById('rfDataCompra').value=v.data_venda.split('T')[0];
   recalcParcelasInfo(); recalcRetido(); recalcJanelaArrep();
 }
+// Base do rateio devolve/retém: no parcial é o que o cliente pagou; no integral, a venda cheia.
+function baseReembForm(){
+  const mod=(document.getElementById('rfModalidade')||{}).value;
+  if(mod==='parcial') return _rfVendaPago>0?_rfVendaPago:_rfVendaValor;
+  return _rfVendaValor;
+}
 function recalcRetido(){
   const ref=document.getElementById('rfVendaRef'); if(!ref) return;
   const reemb=parseFloat(document.getElementById('rfValor').value)||0;
   const retido=parseFloat(document.getElementById('rfValorRetido').value)||0;
+  const parcial=(document.getElementById('rfModalidade')||{}).value==='parcial';
+  const base=baseReembForm();
   const partes=[];
   if(_rfVendaValor>0) partes.push('Venda: '+fmtBRL(_rfVendaValor));
-  partes.push('Reembolso: '+fmtBRL(reemb));
-  if(retido>0) partes.push('Retido: '+fmtBRL(retido));
-  if(_rfVendaValor>0 && (reemb+retido)>0 && Math.abs(_rfVendaValor-(reemb+retido))>0.01)
-    partes.push('⚠️ venda ≠ reembolso+retido');
+  if(_rfVendaPago>0) partes.push('Pago pelo cliente: '+fmtBRL(_rfVendaPago));
+  partes.push('Volta pro cliente: '+fmtBRL(reemb));
+  if(retido>0) partes.push('Fica com a empresa: '+fmtBRL(retido));
+  if(base>0 && (reemb+retido)>0 && Math.abs(base-(reemb+retido))>0.01)
+    partes.push('⚠️ devolver + reter não fecha com '+(parcial?'o que o cliente pagou':'o valor da venda'));
   ref.textContent=partes.join('  ·  ');
 }
+// Parcial: o que a empresa retém é o resto do que o cliente pagou — calcula sozinho enquanto digitam.
+function autoRetidoParcial(){
+  if((document.getElementById('rfModalidade')||{}).value!=='parcial') return;
+  const base=baseReembForm();
+  const devolve=parseFloat(document.getElementById('rfValor').value)||0;
+  if(!(base>0)||devolve<=0) return;
+  document.getElementById('rfValorRetido').value=Math.max(0,Math.round((base-devolve)*100)/100);
+}
 function aoMudarModalidade(){
+  const mod=document.getElementById('rfModalidade').value;
   // Integral: o reembolso devolve a venda toda — preenche o valor automático se houver venda vinculada
-  if(document.getElementById('rfModalidade').value==='integral' && _rfVendaValor>0){
+  if(mod==='integral' && _rfVendaValor>0){
     document.getElementById('rfValor').value=_rfVendaValor;
     document.getElementById('rfValorRetido').value=0;
-    recalcParcelasInfo(); recalcRetido();
+  } else if(mod==='parcial'){
+    autoRetidoParcial();
   }
+  recalcParcelasInfo(); recalcRetido();
 }
 function recalcJanelaArrep(){
   const el=document.getElementById('rfJanelaArrep'); if(!el) return;
@@ -6797,6 +6827,7 @@ async function abrirFormReemb(id){
     g('rfDataCompra').value=(r.data_compra||'').split('T')[0];
     const vv=vendasParaReemb.find(x=>x.id===r.venda_id);
     _rfVendaValor=vv?Number(vv.valor_bruto||vv.valor_liquido||0):0;
+    _rfVendaPago=vv?vendaPagoPeloCliente(vv):0;
     g('rfMotivo').value=r.motivo||'';
     g('rfObs').value=r.observacoes||'';
     g('rfStatusReemb').value=r.status_reembolso||'pendente';
@@ -6818,7 +6849,7 @@ async function abrirFormReemb(id){
     g('rfContrato').value=''; g('rfCloser').value=''; g('rfEstrategista').value='';
     g('rfResponsavel').value=''; g('rfValor').value=0; g('rfMotivo').value=''; g('rfObs').value='';
     g('rfValorRetido').value=0; g('rfForma').value=''; g('rfModalidade').value=''; g('rfDataCompra').value='';
-    _rfVendaValor=0;
+    _rfVendaValor=0; _rfVendaPago=0;
     g('rfStatusReemb').value='pendente'; g('rfStatusBaixa').value='pendente';
     g('rfStatusDistrato').value='pendente'; g('rfStatusNf').value='nao_aplicavel';
     if(parcSec) parcSec.style.display='';
