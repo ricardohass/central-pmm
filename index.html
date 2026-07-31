@@ -6240,13 +6240,33 @@ async function comFecharMes(anoMes){
   const closers={}, sdrs={}, socials={};
   const pega=(mapa,nome)=>{ if(!mapa[nome]) mapa[nome]={base:0,pago:0,itens:[]}; return mapa[nome]; };
 
+  // Mesma leitura do levantamento: venda FECHADA no mês vira uma linha só, somando tudo que
+  // entrou dela; parcela de venda de mês anterior vira uma linha por parcela. É por isso que
+  // o Jean aparece uma vez (3 repasses do Cispay da mesma venda) e o Cristiano aparece 3.
+  const itens=[];
+  const doMes={};
   parc.forEach(p=>{
     const v=p.vendas||{};
-    const val=baseComissaoParcela(p), bruto=Number(p.valor_bruto||0), f=fora(p);
-    const item={cliente:v.nome_cliente||'—',data:p.data_recebimento,pago:bruto,comissiona:f?0:val,reembolso:f};
-    if(v.closer){ const o=pega(closers,v.closer); o.itens.push(item); if(!f){o.base+=val;o.pago+=bruto;} }
-    if(v.sdr){ const o=pega(sdrs,v.sdr); o.itens.push(item); if(!f){o.base+=val;o.pago+=bruto;} }
-    if(v.social_seller){ const o=pega(socials,v.social_seller); o.itens.push(item); if(!f){o.base+=val;o.pago+=bruto;} }
+    const val=fora(p)?0:baseComissaoParcela(p), bruto=Number(p.valor_bruto||0);
+    const vendaDoMes=(v.data_venda||'').slice(0,7)===anoMes;
+    if(vendaDoMes){
+      const k=p.venda_id;
+      if(!doMes[k]){
+        doMes[k]={cliente:v.nome_cliente||'—',data:p.data_recebimento,pago:0,comissiona:0,
+                  reembolso:fora(p),closer:v.closer,sdr:v.sdr,social:v.social_seller};
+        itens.push(doMes[k]);
+      }
+      doMes[k].pago+=bruto; doMes[k].comissiona+=val;
+      if(p.data_recebimento<doMes[k].data) doMes[k].data=p.data_recebimento;
+    } else {
+      itens.push({cliente:v.nome_cliente||'—',data:p.data_recebimento,pago:bruto,comissiona:val,
+                  reembolso:fora(p),closer:v.closer,sdr:v.sdr,social:v.social_seller,parcela:true});
+    }
+  });
+  itens.sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+  itens.forEach(i=>{
+    const soma=(mapa,nome)=>{ if(!nome) return; const o=pega(mapa,nome); o.itens.push(i); o.base+=i.comissiona; o.pago+=i.reembolso?0:i.pago; };
+    soma(closers,i.closer); soma(sdrs,i.sdr); soma(socials,i.social);
   });
 
   // Faixa do closer vem da conversão do mês (vendas ÷ reuniões), igual à aba Performance
@@ -6367,7 +6387,7 @@ function comBlocoPessoa(nome,o,papel){
         <thead><tr><th>Recebido em</th><th>Cliente</th><th><span class="hint" tabindex="0" data-hint="parcPago">Pago</span></th><th><span class="hint" tabindex="0" data-hint="parcComissiona">Comissiona</span></th></tr></thead>
         <tbody>${o.itens.map(i=>`<tr${i.reembolso?' style="opacity:.55;"':''}>
           <td>${fmtDataBR(i.data)}</td>
-          <td>${escHtml(i.cliente)}${i.reembolso?' <span class="status-badge s-reembolso">↩ fora da base</span>':''}</td>
+          <td>${escHtml(i.cliente)}${i.reembolso?' <span class="status-badge s-reembolso">↩ fora da base</span>':''}${i.parcela?' <span style="font-size:11px;color:var(--muted);">· parcela de venda anterior</span>':''}</td>
           <td style="color:var(--muted);">${fmtBRL(i.pago)}</td>
           <td style="font-weight:600;">${fmtBRL(i.comissiona)}</td>
         </tr>`).join('')}</tbody>
