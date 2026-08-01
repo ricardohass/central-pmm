@@ -3247,6 +3247,23 @@ function convCls(r,v){if(r===0)return'conv-low';const p=(v/r)*100;return p>=25?'
 
 // Cache para evitar múltiplas chamadas ao banco na mesma sessão
 const _perfCache={};
+// Quantas vendas o closer fechou no mês, segundo a guia de Vendas — a fonte que manda.
+// Reembolso continua contando: o closer fechou a venda. Só cancelada fica fora.
+const _vendasMesCache={};
+async function getVendasDoMes(closer,anoMes){
+  if(!closer||!anoMes) return null;
+  const key=closer+'|'+anoMes;
+  if(_vendasMesCache[key]!=null) return _vendasMesCache[key];
+  try{
+    const [ano,mes]=anoMes.split('-').map(Number);
+    const ultimo=anoMes+'-'+new Date(ano,mes,0).getDate();
+    const rows=await supaFetch('vendas?closer=eq.'+encodeURIComponent(closer)
+      +'&data_venda=gte.'+anoMes+'-01&data_venda=lte.'+ultimo
+      +'&status=neq.cancelada&select=id');
+    _vendasMesCache[key]=rows.length;
+    return rows.length;
+  }catch(e){ return null; }
+}
 async function getCloserData(closer,anoMes){
   const key=closer+'|'+(anoMes||'all');
   if(_perfCache[key]) return _perfCache[key];
@@ -3403,10 +3420,17 @@ async function renderPerf(){
   const arr=isTodos?await getTodosDataByDate(anoMes):await getCloserData(closer,anoMes);
   const totA=arr.reduce((s,r)=>s+r.agend,0);
   const totR=arr.reduce((s,r)=>s+r.reun,0);
-  const totV=arr.reduce((s,r)=>s+r.vendas,0);
+  const lancadas=arr.reduce((s,r)=>s+r.vendas,0);
+  // Manda o número da guia de Vendas: lá o cadastro é feito pelo admin e não escapa,
+  // enquanto o lançamento diário do closer às vezes fica pra trás.
+  const reais=isTodos?null:await getVendasDoMes(closer,anoMes);
+  const totV=reais!=null?reais:lancadas;
   document.getElementById('tot-agend').textContent=totA;
   document.getElementById('tot-reun').textContent=totR;
-  document.getElementById('tot-vendas').textContent=totV;
+  const elTotV=document.getElementById('tot-vendas');
+  elTotV.textContent=totV;
+  elTotV.title=(reais!=null&&reais!==lancadas)
+    ?'Vem da guia de Vendas. No dia a dia foram lançadas '+lancadas+'.':'';
   const cp=totR>0?(totV/totR*100):null;
   // Card final: conversão geral do funil (vendas ÷ total de agendamentos)
   const convGeral=totA>0?(totV/totA*100):null;
@@ -3441,7 +3465,8 @@ async function renderPerf(){
       const regs=await getCloserData(c,perfAno+'-'+String(perfMes+1).padStart(2,'0'));
       const a=regs.reduce((s,r)=>s+r.agend,0);
       const rv=regs.reduce((s,r)=>s+r.reun,0);
-      const v=regs.reduce((s,r)=>s+r.vendas,0);
+      const reais2=await getVendasDoMes(c,perfAno+'-'+String(perfMes+1).padStart(2,'0'));
+      const v=reais2!=null?reais2:regs.reduce((s,r)=>s+r.vendas,0);
       const cp2=rv>0?(v/rv)*100:null;
       const faixa=cp2!==null?getFaixa(cp2):null;
       return`<tr><td>${i+1}</td><td><span class="avatar" style="background:${AV_COLORS[c]||'#888'}">${INITIALS(c)}</span>${c}</td><td>${a||'—'}</td><td>${rv||'—'}</td><td>${v||'—'}</td><td class="${convCls(rv,v)}">${fmtConv(rv,v)}</td><td>${faixa?`<span class="faixa-badge ${faixa.cls}">${faixa.nome} ${faixa.pct}%</span>`:'—'}</td></tr>`;
@@ -6387,7 +6412,10 @@ async function comFecharMes(anoMes){
       continue;
     }
     const regs=await getCloserData(nome,anoMes);
-    const reun=regs.reduce((s,r)=>s+r.reun,0), vend=regs.reduce((s,r)=>s+r.vendas,0);
+    const reun=regs.reduce((s,r)=>s+r.reun,0);
+    // Nº de vendas sempre pela guia de Vendas; do funil só aproveita as reuniões.
+    const reais=await getVendasDoMes(nome,anoMes);
+    const vend=reais!=null?reais:regs.reduce((s,r)=>s+r.vendas,0);
     const conv=reun>0?(vend/reun*100):null;
     const faixa=conv!==null?getFaixa(conv):null;
     o.reunioes=reun; o.vendas=vend; o.conversao=conv;
