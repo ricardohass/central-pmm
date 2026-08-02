@@ -5638,6 +5638,7 @@ function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,comissao,status,parcelas
     <select class="pgto-select pgto-status" onchange="comissaoAutomatica();atualizarTotaisPgto()">
       <option value="pendente"${status==='pendente'?' selected':''}>Pendente</option>
       <option value="recebido"${status==='recebido'?' selected':''}>Recebido</option>
+      <option value="cancelada"${status==='cancelada'?' selected':''}>Cancelada</option>
     </select>
     <button type="button" onclick="removerPgtoRow(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0;">✕</button>`;
   wrap.appendChild(div);
@@ -7145,19 +7146,35 @@ async function sincronizarVendaDoReembolso(r){
 
 // ── Status e atualizações ──
 async function mudarStatusReemb(id,s){
+  const caso=todosReembolsos.find(x=>x.id===id);
   if(s==='resolvido'){
     const ok=await pmmConfirm(
       'Marcar esse caso como resolvido?',
       '✅','Resolver caso',
-      'Se o cliente tiver parcelas futuras, elas serão excluídas e o processo não pode ser revertido.'
+      'As parcelas futuras do cliente serão canceladas: saem do calendário de cobranças e de todos os relatórios, mas o histórico da venda fica preservado.'
     );
     if(!ok) return;
   }
   try{
     await supaFetch('reembolsos?id=eq.'+id,{method:'PATCH',body:JSON.stringify({status:s,updated_at:new Date().toISOString()})});
-    const r=todosReembolsos.find(x=>x.id===id); if(r)r.status=s;
+    if(caso) caso.status=s;
+    if(s==='resolvido' && caso && caso.venda_id) await cancelarParcelasFuturas(caso.venda_id);
     refreshReembDetalhe(id);
   }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
+}
+
+// Resolver o caso encerra as cobranças que ainda não entraram. Antes elas só ficavam
+// escondidas na tela e seguiam 'pendente' no banco, virando carteira fantasma em
+// qualquer relatório lido direto da base. Cancelar preserva o histórico da venda.
+async function cancelarParcelasFuturas(vendaId){
+  try{
+    const pend=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&status=eq.pendente&select=id');
+    if(!pend.length) return;
+    await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&status=eq.pendente',
+      {method:'PATCH',body:JSON.stringify({status:'cancelada'})});
+    // sem parcela pendente, não há mais nada a receber nessa venda
+    await supaFetch('vendas?id=eq.'+vendaId,{method:'PATCH',body:JSON.stringify({valor_restante:0})});
+  }catch(e){ console.warn('cancelar parcelas do reembolso:',e.message); }
 }
 async function addAtualizacaoCaso(id){
   const ta=document.getElementById('nt-texto-'+id);
