@@ -5805,6 +5805,9 @@ async function carregarPgtosNoForm(v){
 let calMes=new Date().getMonth();
 let calAno=new Date().getFullYear();
 let todosPagamentos=[];
+let pagsPendentes=[];      // todas as pendentes (independem do mês exibido)
+let pagsRecebidosMes=[];   // recebidas do mês que está aberto no calendário
+let calReqSeq=0;           // descarta resposta antiga se trocar de mês rápido
 let todosReembPagamentos=[];
 // Vendas com processo de reembolso: congelado = caso em aberto (marca + fora dos totais);
 // oculto = caso resolvido (some as cobranças futuras). Derivado dos casos, sem coluna nova no banco.
@@ -5813,17 +5816,23 @@ let vendasReembOculto=new Set();
 function pagCongelado(p){ return p && p.categoria!=='reembolso' && p.status==='pendente' && vendasReembCongelado.has(p.venda_id); }
 function pagOculto(p){ return p && p.categoria!=='reembolso' && p.status==='pendente' && vendasReembOculto.has(p.venda_id); }
 
+// Recebidas do mês que está aberto no calendário — por data_recebimento (dinheiro que entrou
+// de fato). Antes isso vinha fixo do mês corrente, então voltar pra um mês passado mostrava o
+// calendário sem nenhuma cobrança recebida.
+function fetchRecebidosMes(ano,mes){
+  const anoMes=ano+'-'+String(mes+1).padStart(2,'0');
+  const ultimo=anoMes+'-'+String(new Date(ano,mes+1,0).getDate()).padStart(2,'0');
+  return supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01&data_recebimento=lte.'+ultimo+'&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc').catch(()=>[]);
+}
+
 async function carregarCobrancas(){
   const container=document.getElementById('cobrancasContent');
   if(!container) return;
   container.innerHTML='<p style="text-align:center;color:var(--muted);padding:40px;">Carregando cobranças...</p>';
   try{
-    const hoje=new Date();
-    const anoMes=hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
-    const ultimoDiaMes=anoMes+'-'+new Date(hoje.getFullYear(),hoje.getMonth()+1,0).getDate();
     const [pendentes,recebidosMes,reembPags,reembCasos]=await Promise.all([
       supaFetch('pagamentos_venda?status=eq.pendente&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
-      supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01&data_recebimento=lte.'+ultimoDiaMes+'&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
+      fetchRecebidosMes(calAno,calMes),
       supaFetch('reembolsos_pagamentos?select=*,reembolsos(nome_cliente,id,closer,responsavel,tipo)&order=data_prevista.asc').catch(()=>[]),
       supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status').catch(()=>[]),
     ]);
@@ -5836,7 +5845,9 @@ async function carregarCobrancas(){
       else vendasReembCongelado.add(c.venda_id);
     });
     vendasReembCongelado.forEach(id=>vendasReembOculto.delete(id));
-    todosPagamentos=[...pendentes,...recebidosMes];
+    pagsPendentes=pendentes;
+    pagsRecebidosMes=recebidosMes;
+    todosPagamentos=[...pagsPendentes,...pagsRecebidosMes];
     todosReembPagamentos=(reembPags||[]).filter(rp=>rp.data_prevista).map(rp=>({
       id:rp.id, categoria:'reembolso',
       data_prevista:rp.data_prevista, valor:Number(rp.valor||0),
@@ -5875,7 +5886,7 @@ function renderCobrancas(){
       <div class="cob-card"><div class="cob-card-label">Atrasado</div><div class="cob-card-value coral">${sumBRL(atrasados)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${atrasados.length} a receber</div></div>
       <div class="cob-card"><div class="cob-card-label">Vence hoje</div><div class="cob-card-value amber">${sumBRL(hojeArr)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${hojeArr.length} a receber</div></div>
       <div class="cob-card"><div class="cob-card-label">Próx. 7 dias</div><div class="cob-card-value">${sumBRL(prox7)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${prox7.length} a receber</div></div>
-      <div class="cob-card"><div class="cob-card-label">Recebido (mês)</div><div class="cob-card-value" style="color:#2E7D52;">${sumBRL(recMes)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${recMes.length} pagamento(s)</div></div>
+      <div class="cob-card"><div class="cob-card-label">Recebido (${MESES_NOMES[calMes].slice(0,3).toLowerCase()}/${String(calAno).slice(2)})</div><div class="cob-card-value" style="color:#2E7D52;">${sumBRL(recMes)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${recMes.length} pagamento(s) · segue o mês do calendário</div></div>
       <div class="cob-card" style="border-color:#C4B5FD;"><div class="cob-card-label" style="color:#6D28D9;">Reembolsos a pagar</div><div class="cob-card-value" style="color:#6D28D9;">${reembSum}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${reembPend.length} parcela(s) · saída</div></div>
       ${congeladas.length?`<div class="cob-card" style="border-color:#B9C6DC;"><div class="cob-card-label" style="color:#3F5FA8;">❄ Congeladas</div><div class="cob-card-value" style="color:#3F5FA8;">${sumBRL(congeladas)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${congeladas.length} parcela(s) · reembolso em curso</div></div>`:''}
     </div>
@@ -5913,12 +5924,19 @@ function atualizarCalLabel(){
   if(el) el.textContent=MESES_NOMES[calMes]+' '+calAno;
 }
 
-function mudarCalMes(delta){
+async function mudarCalMes(delta){
   calMes+=delta;
   if(calMes>11){calMes=0;calAno++;}
   if(calMes<0){calMes=11;calAno--;}
   atualizarCalLabel();
-  renderCalendario();
+  // Recarrega as recebidas do mês que passou a ser exibido
+  const seq=++calReqSeq;
+  const ano=calAno, mes=calMes;
+  const recebidos=await fetchRecebidosMes(ano,mes);
+  if(seq!==calReqSeq) return;   // já trocaram de mês de novo: ignora esta resposta
+  pagsRecebidosMes=recebidos;
+  todosPagamentos=[...pagsPendentes,...pagsRecebidosMes];
+  renderCobrancas();
 }
 
 function renderCalendario(){
