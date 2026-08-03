@@ -5138,6 +5138,16 @@ const OFERTA_WONDER = [
   {cond:'PIX (CNPJ)',           sub:'Cobrança mensal', parcela:10000, gateway:'BTG Pactual', chave:'65.412.647/0001-76',                     copyId:'wd1'},
 ];
 
+// Venda internacional — conta EUR na Wise (não é link de checkout, são dados de
+// transferência). Dentro da zona SEPA o cliente manda como transferência doméstica
+// pelo IBAN; fora da SEPA, transferência Swift usando o BIC.
+const OFERTA_WISE_EUR = [
+  {cond:'Titular',   sub:'Nome exato da conta',                      gateway:'Wise', chave:'LUIGI LORENZO CESAR',                                 copyId:'wise0'},
+  {cond:'IBAN',      sub:'Transferência doméstica na zona SEPA',     gateway:'Wise', chave:'BE97 9059 2994 3249',                                 copyId:'wise1'},
+  {cond:'Swift/BIC', sub:'Transferência internacional fora da SEPA', gateway:'Wise', chave:'TRWIBEB1XXX',                                         copyId:'wise2'},
+  {cond:'Banco',     sub:'Nome e endereço do banco',                 gateway:'Wise', chave:'Wise, Rue du Trône 100, 3rd floor, Brussels, 1050, Belgium', copyId:'wise3'},
+];
+
 // Backlog: linhas vindas do banco (links_vendas)
 function linhasBacklog(rows){
   const isAdmin=currentUser&&currentUser.funcao==='admin';
@@ -5272,9 +5282,13 @@ async function carregarLinks(){
         ${produtoTituloHTML('Programa de Aceleração 2M')}
         ${lkOfertaHTML('Oferta 10K',{rotulo:'À vista',valor:'R$ 10.000'},OFERTA_2M)}
       </div>
-      <div>
+      <div class="lk-bloco">
         ${produtoTituloHTML('Wonder Prø')}
         ${lkOfertaHTML('Oferta 10K',{rotulo:'Recorrência',valor:'R$ 10.000/mês'},OFERTA_WONDER)}
+      </div>
+      <div>
+        ${produtoTituloHTML('Vendas internacionais')}
+        ${lkOfertaHTML('Conta EUR — Wise',{rotulo:'Moeda',valor:'EUR (€)'},OFERTA_WISE_EUR)}
       </div>`;
   }catch(e){el.innerHTML='<p class="dep-empty">Erro ao carregar links.</p>';}
 }
