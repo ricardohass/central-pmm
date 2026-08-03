@@ -745,6 +745,10 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .reemb-status-btn { font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--muted); background:none; border:none; border-radius:7px; padding:7px 15px; cursor:pointer; transition:background .12s, color .12s; }
 .reemb-status-btn:hover { color:var(--text); }
 .reemb-status-btn.active { background:var(--green); color:#fff; box-shadow:0 1px 3px rgba(42,61,48,0.18); }
+.reemb-revert-btn { display:block; width:100%; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; color:#1F4B7C; background:#EEF3F8; border:1px solid #B9C6DC; border-radius:10px; padding:11px 14px; margin-top:12px; cursor:pointer; text-align:center; transition:background .12s, color .12s, border-color .12s; }
+.reemb-revert-btn:hover { background:#1F4B7C; border-color:#1F4B7C; color:#fff; }
+.reemb-revert-hint { font-size:11px; color:var(--muted); margin-top:5px; text-align:center; }
+.reemb-revert-aviso { margin-top:12px; font-size:12px; color:#1F4B7C; background:#EEF3F8; border:1px solid #B9C6DC; border-radius:10px; padding:10px 13px; }
 .reemb-mini-btn { font-family:'Inter',sans-serif; font-size:11px; color:var(--muted); background:none; border:none; cursor:pointer; border-radius:6px; padding:4px 6px; transition:color .12s, background .12s; }
 .reemb-mini-btn:hover { color:var(--coral); background:var(--cream); }
 .reemb-mini-btn-coral { font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--coral); background:#fff; border:1px solid var(--coral); border-radius:8px; padding:6px 13px; cursor:pointer; transition:background .12s, color .12s; }
@@ -3492,11 +3496,11 @@ async function renderPerf(){
       const campo=_fc==='closer'?'closer':(_fc==='sdr'?'sdr':'social_seller');
       const [parc,reembCasosCom]=await Promise.all([
         supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=venda_id,valor_bruto,valor_comissao,data_recebimento,metodo,vendas!inner(nome_cliente,data_venda,status)&vendas.'+campo+'=eq.'+encodeURIComponent(currentUser.nome)+'&order=data_recebimento.asc'),
-        supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status').catch(()=>[])
+        supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status,status_reembolso').catch(()=>[])
       ]);
       // Venda reembolsada não gera comissão: o valor recebido sai da base (mas a venda segue contando na conversão).
       // Caso ainda em aberto/negociando também sai — se o cliente voltar atrás, o valor entra de novo sozinho.
-      const reembAbertoCom=new Set((reembCasosCom||[]).filter(c=>c.status!=='resolvido').map(c=>c.venda_id));
+      const reembAbertoCom=new Set((reembCasosCom||[]).filter(c=>c.status!=='resolvido'&&!reembSemEfeito(c)).map(c=>c.venda_id));
       const foraDaBase=p=>(p.vendas&&p.vendas.status==='reembolso')||reembAbertoCom.has(p.venda_id);
       const baseTotal=parc.filter(p=>!foraDaBase(p)).reduce((s,p)=>s+baseComissaoParcela(p),0);
       let pct,faixaLabel,subtitulo;
@@ -5852,13 +5856,14 @@ async function carregarCobrancas(){
       supaFetch('pagamentos_venda?status=eq.pendente&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
       fetchRecebidosMes(calAno,calMes),
       supaFetch('reembolsos_pagamentos?select=*,reembolsos(nome_cliente,id,closer,responsavel,tipo)&order=data_prevista.asc').catch(()=>[]),
-      supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status').catch(()=>[]),
+      supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status,status_reembolso').catch(()=>[]),
     ]);
     // Monta os conjuntos de congelado (caso aberto) e oculto (caso resolvido). Aberto tem prioridade.
+    // Caso revertido fica de fora dos dois: a cobrança volta ao normal.
     vendasReembCongelado=new Set();
     vendasReembOculto=new Set();
     (reembCasos||[]).forEach(c=>{
-      if(!c.venda_id) return;
+      if(!c.venda_id||reembSemEfeito(c)) return;
       if(c.status==='resolvido') vendasReembOculto.add(c.venda_id);
       else vendasReembCongelado.add(c.venda_id);
     });
@@ -6297,6 +6302,10 @@ const REEMB_BADGE={
   nao_necessario:'reemb-badge-neutro', nao_aplicavel:'reemb-badge-neutro'
 };
 
+// Caso revertido (cliente voltou atrás) ou não necessário não pesa em nada: a venda
+// segue valendo por inteiro — não congela cobrança, não sai da base de comissão.
+function reembSemEfeito(c){ const s=c&&c.status_reembolso; return s==='revertido'||s==='nao_necessario'; }
+
 // escapa também as aspas: a função é usada dentro de atributos (title, href, class)
 function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function reembDataRef(r){return (r.data_solicitacao||r.created_at||'').split('T')[0];}
@@ -6394,12 +6403,12 @@ async function comDadosDoMes(anoMes){
       +'&select=venda_id,valor_bruto,valor_comissao,data_recebimento,'
       +'vendas!inner(nome_cliente,closer,sdr,social_seller,status,data_venda)'
       +'&order=data_recebimento.asc'),
-    supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status').catch(()=>[]),
+    supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status,status_reembolso').catch(()=>[]),
     supaFetch('usuarios?select=nome,funcao').catch(()=>[]),
   ]);
   // Gestor vende de vez em quando e não roda funil — aparece com as vendas, sem conversão nem faixa.
   const gestores=new Set((usuarios||[]).filter(u=>u.funcao==='admin').map(u=>u.nome));
-  const abertos=new Set((casos||[]).filter(c=>c.status!=='resolvido').map(c=>c.venda_id));
+  const abertos=new Set((casos||[]).filter(c=>c.status!=='resolvido'&&!reembSemEfeito(c)).map(c=>c.venda_id));
   const fora=p=>(p.vendas&&p.vendas.status==='reembolso')||abertos.has(p.venda_id);
   return {parc,fora,gestores};
 }
@@ -6948,6 +6957,7 @@ function renderReembCard(r){
           <span class="status-badge ${tipoBadge}">${REEMB_TIPO_LABEL[r.tipo]||r.tipo}</span>
           <span class="status-badge ${statusBadge}">${REEMB_STATUS_LABEL[r.status]||r.status}</span>
           ${parcial?`<span class="status-badge s-reembolso" title="Reembolso parcial: por acordo, só uma parte do que o cliente pagou foi devolvida">Parcial · concluído</span>`:''}
+          ${reembSemEfeito(r)?`<span class="status-badge s-reembolso" title="O cliente desistiu do reembolso — a venda voltou ao original e conta por inteiro">↩ ${r.status_reembolso==='revertido'?'Revertido':'Não foi necessário'}</span>`:''}
         </div>
         <div class="reemb-meta">${sub}</div>
       </div>
@@ -7039,6 +7049,10 @@ function renderReembDetalhe(id){
       <div class="reemb-seg">
         ${['em_aberto','negociando','resolvido'].map(s=>`<button class="reemb-status-btn ${r.status===s?'active':''}" onclick="mudarStatusReemb('${id}','${s}')">${REEMB_STATUS_LABEL[s]}</button>`).join('')}
       </div>
+      ${reembSemEfeito(r)
+        ? `<div class="reemb-revert-aviso">↩ Caso revertido — a venda voltou ao original: parcelas ativas, comissão e levantamento contando normal.</div>`
+        : `<button class="reemb-revert-btn" onclick="reverterCasoReembolso('${id}')">↩ Reverter caso — o cliente desistiu do reembolso</button>
+           <div class="reemb-revert-hint">Devolve a venda ao estado original: parcelas voltam a ser cobradas e o valor entra de novo na comissão.</div>`}
       <div class="reemb-acomp-sub">Acompanhamento interno</div>
       <div class="reemb-acomp-grid">
         ${campoSelectReemb(id,'status_reembolso',STATUS_REEMB,r.status_reembolso||'pendente','Status do financeiro')}
@@ -7137,7 +7151,12 @@ async function atualizarCampoReemb(id,campo,valor){
     const body={updated_at:new Date().toISOString()}; body[campo]=valor;
     await supaFetch('reembolsos?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
     const r=todosReembolsos.find(x=>x.id===id); if(r)r[campo]=valor;
-    if(campo==='status_reembolso' && r) await sincronizarVendaDoReembolso(r);
+    if(campo==='status_reembolso' && r){
+      await sincronizarVendaDoReembolso(r);
+      // Marcar como revertido/não necessário por aqui tem o mesmo efeito do botão de reverter:
+      // o cliente segue com a venda, então as parcelas canceladas voltam a ser cobradas.
+      if(reembSemEfeito(r) && r.venda_id) await reativarParcelasCanceladas(r.venda_id);
+    }
     refreshReembDetalhe(id);
   }catch(e){pmmAlert('Erro: '+e.message,'❌','Erro');}
 }
@@ -7192,6 +7211,53 @@ async function cancelarParcelasFuturas(vendaId){
     // sem parcela pendente, não há mais nada a receber nessa venda
     await supaFetch('vendas?id=eq.'+vendaId,{method:'PATCH',body:JSON.stringify({valor_restante:0})});
   }catch(e){ console.warn('cancelar parcelas do reembolso:',e.message); }
+}
+
+// ── Reverter: o cliente voltou atrás e não quer mais o reembolso ──
+// Um clique desfaz tudo que o caso tinha provocado na venda e devolve o estado original:
+//  · parcelas canceladas pelo caso voltam a ser pendentes (e valor_restante/comissão são refeitos)
+//  · as que só estavam congeladas descongelam sozinhas (o caso deixa de ter efeito)
+//  · as devoluções ainda não pagas somem do calendário de saída
+//  · a venda volta a 'confirmada' e o valor entra de novo na comissão e no levantamento
+async function reverterCasoReembolso(id){
+  const r=todosReembolsos.find(x=>x.id===id);
+  if(!r) return;
+  if(reembSemEfeito(r)){ pmmAlert('Este caso já está revertido — a venda está valendo por inteiro.','↩','Nada a fazer'); return; }
+  const jaPago=reembPago(r);
+  const ok=await pmmConfirm(
+    'Reverter este caso de reembolso?',
+    '↩','Reverter caso',
+    'O cliente desistiu do reembolso e a venda volta ao original: as parcelas voltam a ser cobradas, o valor entra de novo na comissão e no levantamento, e as devoluções ainda não pagas são apagadas.'
+    +(jaPago>0?' Atenção: '+fmtBRL(jaPago)+' já foram devolvidos e ficam no histórico do caso — ajuste na mão se o cliente devolveu esse valor.':''));
+  if(!ok) return;
+  try{
+    // 1) encerra o caso como revertido (some da fila de abertos e para de pesar em qualquer conta)
+    await supaFetch('reembolsos?id=eq.'+id,
+      {method:'PATCH',body:JSON.stringify({status:'resolvido',status_reembolso:'revertido',updated_at:new Date().toISOString()})});
+    r.status='resolvido'; r.status_reembolso='revertido';
+    // 2) apaga as devoluções que ainda não saíram do caixa
+    const aApagar=(r.reembolsos_pagamentos||[]).filter(p=>p.status!=='pago');
+    for(const p of aApagar) await supaFetch('reembolsos_pagamentos?id=eq.'+p.id,{method:'DELETE',headers:{'Prefer':''}});
+    r.reembolsos_pagamentos=(r.reembolsos_pagamentos||[]).filter(p=>p.status==='pago');
+    // 3) devolve a venda ao estado original
+    if(r.venda_id){
+      await reativarParcelasCanceladas(r.venda_id);
+      await sincronizarVendaDoReembolso(r);
+    }
+    refreshReembDetalhe(id);
+    pmmAlert('Caso revertido. A venda voltou ao estado original — confira a aba Cobranças.','✅','Reversão concluída');
+  }catch(e){pmmAlert('Erro ao reverter: '+e.message,'❌','Erro');}
+}
+
+// Espelho de cancelarParcelasFuturas: traz de volta o que o caso tinha cancelado e
+// refaz valor_restante, valor_liquido e comissão a partir das parcelas reais.
+async function reativarParcelasCanceladas(vendaId){
+  try{
+    const canc=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&status=eq.cancelada&select=id');
+    if(canc.length) await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&status=eq.cancelada',
+      {method:'PATCH',body:JSON.stringify({status:'pendente'})});
+    await recalcTotaisVenda(vendaId);
+  }catch(e){ console.warn('reativar parcelas do reembolso:',e.message); }
 }
 async function addAtualizacaoCaso(id){
   const ta=document.getElementById('nt-texto-'+id);
