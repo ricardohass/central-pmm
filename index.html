@@ -1187,6 +1187,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
             <option value="PIX Itaú">PIX Itaú</option>
             <option value="PIX BTG">PIX BTG</option>
             <option value="Asaas">Asaas</option>
+            <option value="Wise">Wise</option>
           </select>
           <select class="filtro-input" id="f-produto" onchange="filtrarVendas()">
             <option value="">Produto: todos</option>
@@ -1613,7 +1614,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
             <select id="recMetodo"><option value="PIX">PIX</option><option value="Cartão">Cartão</option><option value="Boleto">Boleto</option><option value="Outro">Outro</option></select>
           </div>
           <div><label>Gateway</label>
-            <select id="recGateway"><option value="">—</option><option>Hotmart</option><option>Hubla</option><option>Cispay</option><option>PIX Itaú</option><option>PIX BTG</option><option>Asaas</option></select>
+            <select id="recGateway"><option value="">—</option><option>Hotmart</option><option>Hubla</option><option>Cispay</option><option>PIX Itaú</option><option>PIX BTG</option><option>Asaas</option><option>Wise</option></select>
           </div>
           <button type="button" class="btn-add-pgto" style="align-self:end;" onclick="gerarRecorrenciaPgto()">Gerar</button>
         </div>
@@ -2048,6 +2049,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
         <option value="Itaú">Itaú</option>
         <option value="PIX Itaú">PIX Itaú</option>
         <option value="PIX BTG">PIX BTG</option>
+        <option value="Wise">Wise</option>
       </select>
     </div>
     <div class="modal-field"><label>URL do checkout *</label><input type="text" id="mlUrl" placeholder="https://..."></div>
@@ -5632,6 +5634,7 @@ function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,comissao,status,parcelas
       <option value="PIX Itaú"${gateway==='PIX Itaú'?' selected':''}>PIX Itaú</option>
       <option value="PIX BTG"${gateway==='PIX BTG'?' selected':''}>PIX BTG</option>
       <option value="Asaas"${gateway==='Asaas'?' selected':''}>Asaas</option>
+      <option value="Wise"${gateway==='Wise'?' selected':''}>Wise</option>
     </select>
     <input type="number" class="pgto-input pgto-bruto" step="0.01" min="0" value="${bruto}" placeholder="0,00" oninput="comissaoAutomatica();atualizarTotaisPgto()">
     <input type="number" class="pgto-input pgto-comissao" step="0.01" min="0" value="${comissao}" placeholder="0,00" oninput="this.dataset.manual='1';atualizarTotaisPgto()">
