@@ -673,12 +673,21 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .meta-modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
 
 /* CRONOGRAMA DE PAGAMENTOS (form) */
-.pgto-row { display:grid; grid-template-columns:140px 95px 68px 115px 100px 100px 88px 26px; gap:8px; align-items:center; padding:8px 0; border-bottom:0.5px solid var(--border); }
+/* Colunas fluidas (minmax(0,fr)) porque com larguras fixas a linha estourava a caixa do
+   formulário e nascia uma barra de rolagem só no corpo — o cabeçalho ficava parado e
+   desalinhava das linhas. Agora tudo cabe; a rolagem só existe em tela estreita, e aí
+   leva o cabeçalho junto porque ele mora dentro do mesmo contêiner. */
+.pgto-tabela { overflow-x:auto; }
+.pgto-row { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,0.92fr) minmax(0,0.76fr) minmax(0,1.02fr) minmax(0,0.95fr) minmax(0,1.12fr) minmax(0,1.03fr) 22px; gap:7px; align-items:center; padding:8px 0; border-bottom:0.5px solid var(--border); }
 .pgto-row:last-child { border-bottom:none; }
 .pgto-row-header > span { font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
-.pgto-input { font-family:'Inter',sans-serif; font-size:13px; color:var(--text); border:0.5px solid var(--border); border-radius:7px; background:var(--cream); padding:8px 9px; outline:none; width:100%; }
+.pgto-input { font-family:'Inter',sans-serif; font-size:13px; color:var(--text); border:0.5px solid var(--border); border-radius:7px; background:var(--cream); padding:8px 8px; outline:none; width:100%; min-width:0; }
 .pgto-input:focus { border-color:var(--coral); }
-.pgto-select { font-family:'Inter',sans-serif; font-size:13px; color:var(--text); border:0.5px solid var(--border); border-radius:7px; background:var(--cream); padding:8px 9px; outline:none; width:100%; cursor:pointer; }
+.pgto-select { font-family:'Inter',sans-serif; font-size:13px; color:var(--text); border:0.5px solid var(--border); border-radius:7px; background:var(--cream); padding:8px 8px; outline:none; width:100%; min-width:0; cursor:pointer; }
+.pgto-data { font-variant-numeric:tabular-nums; }
+.pgto-del { background:none; border:none; cursor:pointer; color:var(--muted); font-size:14px; line-height:1; padding:0; width:22px; height:22px; border-radius:6px; transition:color .12s, background .12s; }
+.pgto-del:hover { color:var(--coral); background:rgba(212,87,42,0.08); }
+@media (max-width:760px){ .pgto-row { min-width:660px; } }
 .pgto-totals { display:flex; gap:20px; padding:10px 0 0; font-size:12px; flex-wrap:wrap; }
 .pgto-total-item { display:flex; gap:6px; align-items:center; }
 .pgto-total-label { color:var(--muted); }
@@ -1602,10 +1611,12 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 
     <div class="vf-section">
       <p class="vf-section-title">Cronograma de pagamentos</p>
-      <div class="pgto-row pgto-row-header" style="margin-bottom:4px;">
-        <span>Data prevista</span><span>Método</span><span>Parcelas</span><span>Gateway</span><span class="hint" tabindex="0" data-hint="parcPago">Pago (R$)</span><span class="hint" tabindex="0" data-hint="parcComissiona">Comissiona (R$)</span><span>Status</span><span></span>
+      <div class="pgto-tabela">
+        <div class="pgto-row pgto-row-header" style="margin-bottom:4px;">
+          <span>Data prevista</span><span>Método</span><span>Parcelas</span><span>Gateway</span><span class="hint" tabindex="0" data-hint="parcPago">Pago (R$)</span><span class="hint" tabindex="0" data-hint="parcComissiona">Comissiona (R$)</span><span>Status</span><span></span>
+        </div>
+        <div id="pgtoWrap"></div>
       </div>
-      <div id="pgtoWrap" style="overflow-x:auto;"></div>
       <button type="button" class="btn-add-pgto" onclick="adicionarPgtoRow()">+ Adicionar pagamento</button>
       <div class="pgto-recorrencia" id="pgtoRecBox">
         <span class="pgto-rec-title" onclick="toggleRecorrencia()" style="cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:6px;"><span id="pgtoRecArrow" style="display:inline-block;transition:transform .15s;">▸</span> ⟳ Gerar recorrência / parcelas</span>
@@ -5661,7 +5672,7 @@ function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,comissao,status,parcelas
       <option value="recebido"${status==='recebido'?' selected':''}>Recebido</option>
       <option value="cancelada"${status==='cancelada'?' selected':''}>Cancelada</option>
     </select>
-    <button type="button" onclick="removerPgtoRow(this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0;line-height:1;flex-shrink:0;">✕</button>`;
+    <button type="button" class="pgto-del" onclick="removerPgtoRow(this)" title="Remover este pagamento">✕</button>`;
   wrap.appendChild(div);
   atualizarTotaisPgto();
 }
