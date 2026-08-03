@@ -745,10 +745,10 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .reemb-status-btn { font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--muted); background:none; border:none; border-radius:7px; padding:7px 15px; cursor:pointer; transition:background .12s, color .12s; }
 .reemb-status-btn:hover { color:var(--text); }
 .reemb-status-btn.active { background:var(--green); color:#fff; box-shadow:0 1px 3px rgba(42,61,48,0.18); }
-.reemb-revert-btn { display:block; width:100%; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; color:#1F4B7C; background:#EEF3F8; border:1px solid #B9C6DC; border-radius:10px; padding:11px 14px; margin-top:12px; cursor:pointer; text-align:center; transition:background .12s, color .12s, border-color .12s; }
+.reemb-status-linha { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.reemb-revert-btn { margin-left:auto; font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:#1F4B7C; background:#fff; border:1px solid #B9C6DC; border-radius:10px; padding:9px 15px; cursor:pointer; white-space:nowrap; transition:background .12s, color .12s, border-color .12s; }
 .reemb-revert-btn:hover { background:#1F4B7C; border-color:#1F4B7C; color:#fff; }
-.reemb-revert-hint { font-size:11px; color:var(--muted); margin-top:5px; text-align:center; }
-.reemb-revert-aviso { margin-top:12px; font-size:12px; color:#1F4B7C; background:#EEF3F8; border:1px solid #B9C6DC; border-radius:10px; padding:10px 13px; }
+.reemb-revert-aviso { margin-left:auto; font-size:12px; font-weight:500; color:#1F4B7C; background:#EEF3F8; border:1px solid #B9C6DC; border-radius:10px; padding:9px 15px; white-space:nowrap; }
 .reemb-mini-btn { font-family:'Inter',sans-serif; font-size:11px; color:var(--muted); background:none; border:none; cursor:pointer; border-radius:6px; padding:4px 6px; transition:color .12s, background .12s; }
 .reemb-mini-btn:hover { color:var(--coral); background:var(--cream); }
 .reemb-mini-btn-coral { font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--coral); background:#fff; border:1px solid var(--coral); border-radius:8px; padding:6px 13px; cursor:pointer; transition:background .12s, color .12s; }
@@ -7046,13 +7046,14 @@ function renderReembDetalhe(id){
 
     <div class="reemb-det-sec">
       <div class="reemb-det-sec-head"><span class="reemb-sec-title">Status do caso</span></div>
-      <div class="reemb-seg">
-        ${['em_aberto','negociando','resolvido'].map(s=>`<button class="reemb-status-btn ${r.status===s?'active':''}" onclick="mudarStatusReemb('${id}','${s}')">${REEMB_STATUS_LABEL[s]}</button>`).join('')}
+      <div class="reemb-status-linha">
+        <div class="reemb-seg">
+          ${['em_aberto','negociando','resolvido'].map(s=>`<button class="reemb-status-btn ${r.status===s?'active':''}" onclick="mudarStatusReemb('${id}','${s}')">${REEMB_STATUS_LABEL[s]}</button>`).join('')}
+        </div>
+        ${reembSemEfeito(r)
+          ? `<span class="reemb-revert-aviso" title="A venda voltou ao original: parcelas ativas, comissão e levantamento contando normal">↩ Caso revertido</span>`
+          : `<button class="reemb-revert-btn" onclick="reverterCasoReembolso('${id}')" title="O cliente desistiu do reembolso: as parcelas voltam a ser cobradas e o valor entra de novo na comissão">↩ Reverter caso</button>`}
       </div>
-      ${reembSemEfeito(r)
-        ? `<div class="reemb-revert-aviso">↩ Caso revertido — a venda voltou ao original: parcelas ativas, comissão e levantamento contando normal.</div>`
-        : `<button class="reemb-revert-btn" onclick="reverterCasoReembolso('${id}')">↩ Reverter caso — o cliente desistiu do reembolso</button>
-           <div class="reemb-revert-hint">Devolve a venda ao estado original: parcelas voltam a ser cobradas e o valor entra de novo na comissão.</div>`}
       <div class="reemb-acomp-sub">Acompanhamento interno</div>
       <div class="reemb-acomp-grid">
         ${campoSelectReemb(id,'status_reembolso',STATUS_REEMB,r.status_reembolso||'pendente','Status do financeiro')}
