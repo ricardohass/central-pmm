@@ -1191,6 +1191,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
             <option value="pendente">Pendente</option>
             <option value="cancelada">Cancelada</option>
             <option value="reembolso">Reembolso</option>
+            <option value="arrependimento">Arrependimento (7 dias)</option>
           </select>
           <select class="filtro-input" id="f-gateway" onchange="filtrarVendas()">
             <option value="">Gateway: todos</option>
@@ -1262,7 +1263,10 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
       </div>
       <!-- Seção exclusiva para closers: recebido no mês / comissão (topo) -->
       <div id="minhasVendasSection" style="display:none;">
-        <p class="chart-title" id="cvTitulo" style="margin-bottom:14px;">Recebido no mês <span style="font-weight:400;color:var(--muted);font-size:12px;">— base da minha comissão (tudo que entrou no mês, das minhas vendas)</span></p>
+        <!-- EIXO 1: o que define a faixa do mês — contratado, não recebido -->
+        <div class="calc-card" id="cvEixo1" style="display:none;margin-bottom:18px;"></div>
+        <!-- EIXO 2: o que entra em caixa e de fato vira pagamento -->
+        <p class="chart-title" id="cvTitulo" style="margin-bottom:14px;">Recebido no mês <span style="font-weight:400;color:var(--muted);font-size:12px;">— base da minha comissão</span></p>
         <div class="perf-totals" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px;">
           <div class="ptotal"><div class="ptotal-val" id="cv-vendas">—</div><div class="ptotal-label">Recebido no mês</div></div>
           <div class="ptotal"><div class="ptotal-val coral" id="cv-faixa">—</div><div class="ptotal-label">Faixa de comissão</div></div>
@@ -1271,7 +1275,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
         <p style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:20px;">* Valor <strong>previsto</strong> e sujeito a alteração. Ele é fechado apenas ao final do mês — ajustes de cálculo, correção de alguma venda lançada ou outras revisões podem mudar o total. Use este número como estimativa, não como valor definitivo.</p>
         <div class="perf-table-wrap" style="margin-bottom:32px;">
           <table class="perf-table">
-            <thead><tr><th>Recebido em</th><th>Cliente</th><th><span class="hint" tabindex="0" data-hint="parcPago">Pago pelo cliente</span></th><th><span class="hint" tabindex="0" data-hint="parcComissiona">Comissiona</span></th><th>Método</th><th>Venda em</th></tr></thead>
+            <thead><tr><th>Recebido em</th><th>Cliente</th><th><span class="hint" tabindex="0" data-hint="parcPago">Bruto recebido</span></th><th><span class="hint" tabindex="0" data-hint="pctTravado">%</span></th><th>Comissão</th><th>Método</th><th><span class="hint" tabindex="0" data-hint="competencia">Competência</span></th></tr></thead>
             <tbody id="minhasVendasTbody"></tbody>
           </table>
         </div>
@@ -1495,6 +1499,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
           <div class="section-tabs" style="margin:0;">
             <button class="section-tab active" id="comTabMes" onclick="setComModo('mes')">Mês a mês</button>
             <button class="section-tab" id="comTabAcum" onclick="setComModo('acumulado')">Acumulado</button>
+            <button class="section-tab" id="comTabMigr" onclick="setComModo('migracao')">Migração</button>
           </div>
           <div id="comDateNav" style="display:flex;gap:6px;align-items:center;">
             <button class="btn-edit" onclick="mudarComMes(-1)" title="Mês anterior">&#8249;</button>
@@ -1677,6 +1682,8 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
             <option value="pendente">Pendente</option>
             <option value="cancelada">Cancelada</option>
             <option value="reembolso">Reembolso</option>
+            <!-- Único status que remove a venda da base da faixa e força recálculo do mês -->
+            <option value="arrependimento">Arrependimento (7 dias · CDC)</option>
           </select>
         </div>
         <div class="vf-field vf-full"><label>Nome do cliente</label><input type="text" id="vfCliente" placeholder="Nome completo do cliente"></div>
@@ -2169,8 +2176,11 @@ const CRITERIOS={
   reembVolta:'<b>Valor que volta pro cliente</b> = quanto a empresa devolve de fato. Não é o quanto o cliente pagou — no reembolso <b>parcial</b> é só a parte acordada com o jurídico. É esse valor que as parcelas do reembolso têm que somar, e é ele que aparece em "A reembolsar".',
   parcBruto:'Valor cheio desta parcela, com os juros do parcelamento já embutidos, antes das taxas do gateway.',
   parcPago:'Quanto o cliente desembolsou nesta parcela, com os juros do parcelamento embutidos. É o que entra no faturamento e no caixa.',
-  negociacao:'<b>Valor da negociação</b> = o preço fechado com o cliente, sem os juros do parcelamento. Serve de referência e alimenta o botão de ajuste: em venda quitada de uma vez, é ele que comissiona. Em venda paga mês a mês, quem comissiona é o valor cheio de cada parcela.',
-  parcComissiona:'Quanto desta parcela entra na base de comissão. É a fatia do <b>valor da negociação</b> (o preço fechado, sem os juros do cartão) correspondente a esta parcela. Somando as parcelas da venda, dá exatamente o valor negociado. Em parcela antiga, de antes de agosto/2026, ainda vale o valor pago.',
+  negociacao:'<b>Valor da negociação</b> = o preço fechado com o cliente, sem os juros do parcelamento. Serve de referência para o financeiro. <b>Não é mais a base da comissão</b>: desde agosto/2026 o closer comissiona sobre o valor bruto que o cliente pagou.',
+  parcComissiona:'Quanto desta parcela entra na base de comissão. Desde <b>agosto/2026</b> é o <b>valor bruto</b>, do jeito que o cliente pagou — sem descontar juros do parcelamento, taxa de gateway ou antecipação. O desconto de taxa continua valendo no caixa e no faturamento líquido; muda só a base do closer.',
+  pctTravado:'Percentual <b>travado na venda</b>. Sai da faixa que o closer atingiu no mês de competência da venda e acompanha todas as parcelas dela até a quitação — mesmo virando o ano ou mudando a tabela de faixas. Enquanto o mês não fecha aparece como <b>prov.</b> (provisório, projetado pelo contratado até agora).',
+  competencia:'Mês em que a venda entra na apuração da faixa. É o mês do <b>primeiro pagamento</b> (a entrada), não o do fechamento nem o da assinatura do contrato. Venda fechada em 31/08 com entrada paga em 02/09 tem competência de setembro.',
+  faixaVolume:'A faixa vem do <b>valor contratado bruto</b> das vendas novas do mês, apurado individualmente por closer: até R$ 100.000,00 → 2% · de R$ 100.000,01 a R$ 199.999,99 → 3% · R$ 200.000,00 ou mais → 4%. Não existe faixa de time nem proporcional para quem entrou no meio do mês.',
   parcLiquido:'Quanto sobra desta parcela depois das taxas. Só entra no líquido da venda quando o status vira "Recebido".'
 };
 // Bolha única reaproveitada — position:fixed pra não ser cortada por tabela com scroll.
@@ -2971,9 +2981,12 @@ async function salvarVenda(){
     parcelas:parseInt(r.querySelector('.pgto-parcelas').value)||1,
     gateway:r.querySelector('.pgto-gateway').value||null,
     valor_bruto:parseFloat(r.querySelector('.pgto-bruto').value)||0,
-    valor_comissao:parseFloat(r.querySelector('.pgto-comissao').value)||0,
+    _baseLegado:parseFloat(r.querySelector('.pgto-comissao').value)||0,
     status:r.querySelector('.pgto-status').value,
   })).filter(p=>p.valor_bruto>0); // descarta linhas vazias (ex.: linha padrão sem valor)
+  // O campo sem juros virou referência do financeiro — não comissiona mais nada.
+  const _colB=await colBaseLegado();
+  pagamentos.forEach(p=>{ p[_colB]=p._baseLegado; delete p._baseLegado; });
   // Líquido deixou de ser digitado: sai da taxa do gateway (só a Cispay cobra, 3%).
   pagamentos.forEach(p=>{ p.valor_liquido=Math.round(p.valor_bruto*(1-taxaGateway(p.gateway))*100)/100; });
 
@@ -3019,36 +3032,43 @@ async function salvarVenda(){
       const result=await supaFetch('vendas',{method:'POST',body:JSON.stringify(body)});
       vendaId=Array.isArray(result)&&result[0]?result[0].id:null;
     }
-    // Salva cronograma na tabela pagamentos_venda
+    // Salva cronograma na tabela pagamentos_venda.
+    // Editar uma venda ATUALIZA as parcelas existentes, uma a uma, em vez de apagar tudo e
+    // recriar. Com percentual travado e comissão gravada por parcela, apagar destruiria o
+    // rastro a cada correção boba de cadastro — e o id da parcela é referência de ajuste.
     if(vendaId&&pagamentos.length>0){
-      // Editar uma venda apaga e recria as parcelas. A data em que o dinheiro entrou de fato é
-      // marcada em Cobranças e não existe neste formulário — sem resgatar antes, ela voltava
-      // pra data prevista. Parcela prevista pro fim de um mês e recebida no começo do outro
-      // mudava de mês, e a comissão ia junto.
-      const recebidoAntes={};
+      let antigas=[];
       if(id){
+        try{ antigas=await supaFetch('pagamentos_venda?venda_id=eq.'+id
+              +'&select=*&order=data_prevista.asc,id.asc'); }
+        catch(e){ console.warn('não consegui ler as parcelas atuais:',e.message); }
+      }
+      for(let i=0;i<pagamentos.length;i++){
+        const p=pagamentos[i], velha=antigas[i];
+        // A data em que o dinheiro entrou de fato é marcada em Cobranças e não existe neste
+        // formulário. Sem preservar, ela voltaria pra data prevista — e a competência junto.
+        const linha={...p, venda_id:vendaId, numero_parcela:i+1,
+          data_recebimento:p.status==='recebido'
+            ?((velha&&velha.data_recebimento)||p.data_prevista):null};
         try{
-          const antigas=await supaFetch('pagamentos_venda?venda_id=eq.'+id+'&select=data_prevista,valor_bruto,data_recebimento');
-          antigas.forEach(a=>{ if(a.data_recebimento) recebidoAntes[(a.data_prevista||'')+'|'+Number(a.valor_bruto||0).toFixed(2)]=a.data_recebimento; });
-        }catch(e){ console.warn('não consegui preservar data_recebimento:',e.message); }
-        await supaFetch('pagamentos_venda?venda_id=eq.'+id,{method:'DELETE',headers:{'Prefer':''}});
+          if(velha) await supaFetch('pagamentos_venda?id=eq.'+velha.id,
+            {method:'PATCH',body:JSON.stringify(linha)});
+          else await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify([linha])});
+        }catch(e2){
+          // Colunas que ainda não existem no banco (parcelas, numero_parcela) saem do corpo.
+          const m=/'([a-z_]+)' column/.exec(e2.message)||/column "?([a-z_]+)"?/.exec(e2.message);
+          if(m&&linha[m[1]]!==undefined){
+            delete linha[m[1]];
+            if(velha) await supaFetch('pagamentos_venda?id=eq.'+velha.id,{method:'PATCH',body:JSON.stringify(linha)});
+            else await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify([linha])});
+          } else throw e2;
+        }
       }
-      const inserts=pagamentos.map(p=>({...p,venda_id:vendaId,
-        data_recebimento:p.status==='recebido'
-          ?(recebidoAntes[(p.data_prevista||'')+'|'+Number(p.valor_bruto||0).toFixed(2)]||p.data_prevista)
-          :null}));
-      try{
-        await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(inserts)});
-      }catch(e2){
-        if(e2.message.includes('parcelas')){
-          // Coluna parcelas ainda não existe no Supabase — salva sem ela
-          const sem=inserts.map(({parcelas,...rest})=>rest);
-          await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify(sem)});
-        } else throw e2;
-      }
-      // Palavra final sobre a comissão é sempre a mesma função, olhando a data de recebimento
-      // real de cada parcela. Assim o formulário e o ✓ Recebido das Cobranças não divergem.
+      // Parcela que sobrou de uma versão anterior maior do cronograma sai.
+      for(let i=pagamentos.length;i<antigas.length;i++)
+        await supaFetch('pagamentos_venda?id=eq.'+antigas[i].id,{method:'DELETE',headers:{'Prefer':''}});
       await recalcComissaoVenda(vendaId);
+      await marcarCompetencia(vendaId);
     }
     fecharFormVenda();carregarVendas();
   }catch(e){pmmAlert('Erro ao salvar venda: '+e.message,'❌','Erro');}
@@ -3245,18 +3265,45 @@ function calcularComissoes(ps,negociacao){
 // Taxa que o gateway desconta. Conferido na base: só a Cispay cobra, e cobra 3% cravado.
 const TAXA_GATEWAY={'Cispay':0.03};
 function taxaGateway(gw){ return TAXA_GATEWAY[gw]||0; }
-// Quanto desta parcela comissiona: o pedaço do valor negociado, sem os juros do parcelamento.
-// Parcela antiga não tem valor_comissao preenchido — nesses casos vale o valor pago, como sempre valeu.
+// Quanto desta parcela comissiona: o valor BRUTO, do jeito que o cliente pagou.
+// A partir de agosto/2026 não se desconta mais nada da base do closer — nem juros de
+// parcelamento, nem taxa de gateway, nem antecipação. O campo antigo
+// (base_comissao_sem_juros) fica no banco só pra auditoria do histórico.
+// O desconto de taxa/split segue valendo no caixa e no faturamento líquido — muda
+// só a base da comissão.
 function baseComissaoParcela(p){
   if(!p) return 0;
-  return Number(p.valor_comissao!=null?p.valor_comissao:(p.valor_bruto||0));
+  return Number(p.valor_bruto||0);
 }
-function getFaixa(conv){
-  if(conv<15)return{nome:'Faixa Bronze',pct:2,cls:'faixa-bronze'};
-  if(conv<18)return{nome:'Faixa Prata',pct:2.5,cls:'faixa-prata'};
-  if(conv<23)return{nome:'Faixa Ouro',pct:3,cls:'faixa-ouro'};
-  if(conv<25)return{nome:'Faixa Diamante',pct:3.5,cls:'faixa-diamante'};
-  return{nome:'Faixa King',pct:4,cls:'faixa-king'};
+// A base sem juros virou legado e mudou de nome na migração v2. Descobrir em runtime qual
+// coluna existe evita que rodar o SQL antes ou depois do deploy quebre o cadastro de venda.
+let _colBase=null;
+async function colBaseLegado(){
+  if(_colBase) return _colBase;
+  try{ await supaFetch('pagamentos_venda?select=base_comissao_sem_juros&limit=1');
+       _colBase='base_comissao_sem_juros'; }
+  catch(e){ _colBase='valor_comissao'; }
+  return _colBase;
+}
+const leBaseLegado=p=>p==null?null:(p.base_comissao_sem_juros!=null?p.base_comissao_sem_juros
+  :(p.valor_comissao!=null?p.valor_comissao:null));
+// ── FAIXA: vem do VOLUME CONTRATADO BRUTO do mês, não mais da conversão ──
+// Vigente a partir de agosto/2026. Apuração individual por closer — não existe faixa
+// de time, nem proporcional pra quem entrou no meio do mês. Piso 2%, teto 4%.
+const FAIXAS=[
+  {min:200000,     nome:'Faixa 4%', pct:4, cls:'faixa-king'},
+  {min:100000.01,  nome:'Faixa 3%', pct:3, cls:'faixa-ouro'},
+  {min:0,          nome:'Faixa 2%', pct:2, cls:'faixa-bronze'},
+];
+function getFaixa(contratado){
+  const v=Number(contratado||0);
+  return FAIXAS.find(f=>v>=f.min)||FAIXAS[FAIXAS.length-1];
+}
+// Quanto falta pra próxima faixa. Devolve null quando já está no teto.
+function proximaFaixa(contratado){
+  const v=Number(contratado||0);
+  const acima=FAIXAS.filter(f=>f.min>v).sort((a,b)=>a.min-b.min)[0];
+  return acima?{faixa:acima,falta:Math.round((acima.min-v)*100)/100}:null;
 }
 
 function fmtConv(r,v){return r===0?'—':((v/r)*100).toFixed(1)+'%';}
@@ -3484,9 +3531,11 @@ async function renderPerf(){
       const rv=regs.reduce((s,r)=>s+r.reun,0);
       const reais2=await getVendasDoMes(c,perfAno+'-'+String(perfMes+1).padStart(2,'0'));
       const v=reais2!=null?reais2:regs.reduce((s,r)=>s+r.vendas,0);
-      const cp2=rv>0?(v/rv)*100:null;
-      const faixa=cp2!==null?getFaixa(cp2):null;
-      return`<tr><td>${i+1}</td><td><span class="avatar" style="background:${AV_COLORS[c]||'#888'}">${INITIALS(c)}</span>${c}</td><td>${a||'—'}</td><td>${rv||'—'}</td><td>${v||'—'}</td><td class="${convCls(rv,v)}">${fmtConv(rv,v)}</td><td>${faixa?`<span class="faixa-badge ${faixa.cls}">${faixa.nome} ${faixa.pct}%</span>`:'—'}</td></tr>`;
+      // A faixa não vem mais da conversão: vem do contratado bruto do mês.
+      const volMes=await comVolumeContratado(perfAno+'-'+String(perfMes+1).padStart(2,'0'));
+      const contratado=volMes[c]||0;
+      const faixa=contratado>0?getFaixa(contratado):null;
+      return`<tr><td>${i+1}</td><td><span class="avatar" style="background:${AV_COLORS[c]||'#888'}">${INITIALS(c)}</span>${c}</td><td>${a||'—'}</td><td>${rv||'—'}</td><td>${v||'—'}</td><td class="${convCls(rv,v)}">${fmtConv(rv,v)}</td><td>${faixa?`<span class="faixa-badge ${faixa.cls}">${faixa.nome}</span> <span style="font-size:11px;color:var(--muted);">${fmtBRL(contratado)}</span>`:'—'}</td></tr>`;
     }));
     ctbody.innerHTML=resumos.join('');
   }
@@ -3505,23 +3554,44 @@ async function renderPerf(){
       const primeiroDia=anoMes+'-01';
       const ultimoDia=anoMes+'-'+new Date(perfAno,perfMes+1,0).getDate();
       const campo=_fc==='closer'?'closer':(_fc==='sdr'?'sdr':'social_seller');
-      const [parc,reembCasosCom]=await Promise.all([
-        supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=venda_id,valor_bruto,valor_comissao,data_recebimento,metodo,vendas!inner(nome_cliente,data_venda,status)&vendas.'+campo+'=eq.'+encodeURIComponent(currentUser.nome)+'&order=data_recebimento.asc'),
-        supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status,status_reembolso').catch(()=>[])
+      const selVenda='vendas!inner(nome_cliente,data_venda,status,closer,percentual_travado,status_trava,origem_trava,mes_competencia)';
+      const urlParc=sel=>'pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia
+        +'&data_recebimento=lte.'+ultimoDia+'&select=venda_id,valor_bruto,data_recebimento,metodo,numero_parcela,'+sel
+        +'&vendas.'+campo+'=eq.'+encodeURIComponent(currentUser.nome)+'&order=data_recebimento.asc';
+      const [parc,reembCasosCom,fechMes]=await Promise.all([
+        supaFetch(urlParc(selVenda)).catch(()=>supaFetch(urlParc('vendas!inner(nome_cliente,data_venda,status,closer)'))),
+        supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status,status_reembolso').catch(()=>[]),
+        comStatusFechamento(anoMes),
       ]);
-      // Venda reembolsada não gera comissão: o valor recebido sai da base (mas a venda segue contando na conversão).
-      // Caso ainda em aberto/negociando também sai — se o cliente voltar atrás, o valor entra de novo sozinho.
+      // Reembolso só tira o valor da comissão enquanto o mês está aberto — depois de fechado
+      // a empresa absorve e o closer não devolve nada.
       const reembAbertoCom=new Set((reembCasosCom||[]).filter(c=>c.status!=='resolvido'&&!reembSemEfeito(c)).map(c=>c.venda_id));
-      const foraDaBase=p=>(p.vendas&&p.vendas.status==='reembolso')||reembAbertoCom.has(p.venda_id);
+      const foraDaBase=p=>!fechMes.fechado&&((p.vendas&&(p.vendas.status==='reembolso'||p.vendas.status==='arrependimento'))||reembAbertoCom.has(p.venda_id));
       const baseTotal=parc.filter(p=>!foraDaBase(p)).reduce((s,p)=>s+baseComissaoParcela(p),0);
-      let pct,faixaLabel,subtitulo;
+
+      // Cada parcela comissiona pelo percentual travado da SUA venda de origem.
+      const linhas=[];
+      let comissaoTotal=0;
+      for(const p of parc){
+        const fora=foraDaBase(p);
+        const info=_fc==='closer'
+          ? await comPctDaVenda(p.vendas||{})
+          : {pct:0.5,travado:true,origem:null,faixa:'0,5%'};
+        const base=fora?0:baseComissaoParcela(p);
+        const com=Math.round(base*info.pct)/100;
+        comissaoTotal+=com;
+        linhas.push({p,fora,info,base,com});
+      }
+
+      let faixaLabel,subtitulo,contratadoMes=0,prox=null;
       if(_fc==='closer'){
-        const faixa=cp!==null?getFaixa(cp):null;
-        pct=faixa?faixa.pct:0;
-        faixaLabel=faixa?faixa.nome+' ('+pct+'%)':'—';
-        subtitulo='tudo que entrou no mês, das minhas vendas, sem os reembolsos';
+        const vol=await comVolumeContratado(anoMes);
+        contratadoMes=vol[currentUser.nome]||0;
+        const faixa=getFaixa(contratadoMes);
+        prox=proximaFaixa(contratadoMes);
+        faixaLabel=faixa.nome+(fechMes.fechado?'':' · projetada');
+        subtitulo='cada recebimento comissiona pelo percentual travado da venda de origem';
       } else {
-        pct=0.5;
         faixaLabel='0,5%';
         subtitulo=(_fc==='sdr'?'0,5% de tudo que entrou nas vendas em que sou SDR':'0,5% de tudo que entrou nas vendas em que sou social seller');
       }
@@ -3529,22 +3599,38 @@ async function renderPerf(){
       if(tit) tit.innerHTML='Recebido no mês <span style="font-weight:400;color:var(--muted);font-size:12px;">— base da minha comissão ('+subtitulo+')</span>';
       document.getElementById('cv-vendas').textContent=fmtBRL(baseTotal);
       document.getElementById('cv-faixa').textContent=faixaLabel;
-      document.getElementById('cv-valor').textContent=fmtBRL((baseTotal*pct)/100);
+      document.getElementById('cv-valor').textContent=fmtBRL(comissaoTotal);
+
+      // Eixo 1 no painel do closer: o que ele contratou no mês e o que falta pra subir.
+      const eixo1=document.getElementById('cvEixo1');
+      if(eixo1){
+        eixo1.style.display=_fc==='closer'?'block':'none';
+        if(_fc==='closer') eixo1.innerHTML=
+          `<div style="display:flex;gap:22px;flex-wrap:wrap;align-items:center;">
+            <div><div class="ptotal-label">Contratado no mês</div><div style="font-size:19px;font-weight:600;">${fmtBRL(contratadoMes)}</div></div>
+            <div><div class="ptotal-label">Faixa ${fechMes.fechado?'aplicada':'projetada'}</div><div style="font-size:19px;font-weight:600;">${getFaixa(contratadoMes).pct}%</div></div>
+            <div style="flex:1;min-width:200px;"><div class="ptotal-label">${prox?'Falta pra '+prox.faixa.pct+'%':'Teto da tabela'}</div>
+              <div style="font-size:19px;font-weight:600;color:${prox?'var(--coral)':'var(--green)'};">${prox?fmtBRL(prox.falta):'—'}</div></div>
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin:10px 0 0;line-height:1.6;">
+            ${fechMes.fechado
+              ?'Mês fechado: este percentual está travado nas vendas deste mês e acompanha as parcelas até a quitação.'
+              :'Provisório até o fechamento do mês. A faixa sai do valor contratado bruto das vendas novas, não do que entrou em caixa.'}
+          </p>`;
+      }
+
       const tbody=document.getElementById('minhasVendasTbody');
-      tbody.innerHTML=parc.length===0
-        ?'<tr><td colspan="6" class="empty-state">Nenhum valor recebido neste mês.</td></tr>'
-        :parc.map(p=>{
-          const fora=foraDaBase(p);
-          const com=baseComissaoParcela(p);
-          const temJuros=!fora&&p.valor_comissao!=null&&Math.abs(com-Number(p.valor_bruto||0))>0.01;
-          return`<tr${fora?' style="opacity:.55;"':''}>
+      tbody.innerHTML=linhas.length===0
+        ?'<tr><td colspan="7" class="empty-state">Nenhum valor recebido neste mês.</td></tr>'
+        :linhas.map(({p,fora,info,base,com})=>`<tr${fora?' style="opacity:.55;"':''}>
           <td>${fmtDataBR(p.data_recebimento)}</td>
-          <td>${p.vendas?.nome_cliente||'—'}${fora?' <span class="status-badge s-reembolso" title="Reembolso — o valor não entra na base de comissão">↩ fora da base</span>':''}</td>
+          <td>${p.vendas?.nome_cliente||'—'}${fora?' <span class="status-badge s-reembolso" title="Reembolso — o valor não entra na base de comissão">↩ fora da base</span>':''}${p.numero_parcela?' <span style="font-size:11px;color:var(--muted);">· '+(p.numero_parcela===1?'entrada':p.numero_parcela+'ª parcela')+'</span>':''}</td>
           <td style="color:var(--muted);">${fmtBRL(p.valor_bruto)}</td>
-          <td${fora?' style="text-decoration:line-through;"':' style="font-weight:600;"'}>${fora?fmtBRL(0):fmtBRL(com)}${temJuros?' <span style="font-size:11px;color:var(--muted);font-weight:400;" title="A diferença são os juros do parcelamento, que não comissionam">(sem juros)</span>':''}</td>
+          <td>${info.pct}%${info.travado?'':' <span style="font-size:11px;color:#9A3412;">prov.</span>'}${info.origem==='MIGRACAO_RETROATIVA'?' <span style="font-size:11px;color:var(--muted);" title="Percentual atribuído na migração das vendas anteriores a agosto/2026">retro.</span>':''}</td>
+          <td${fora?' style="text-decoration:line-through;"':' style="font-weight:600;"'}>${fmtBRL(com)}</td>
           <td>${p.metodo||'—'}</td>
-          <td>${fmtDataBR(p.vendas?.data_venda)}</td>
-        </tr>`}).join('');
+          <td>${(p.vendas?.mes_competencia)||fmtDataBR(p.vendas?.data_venda)}</td>
+        </tr>`).join('');
     }catch(e){console.error(e);}
   }
 }
@@ -5561,6 +5647,7 @@ async function migrarVendasQuebradas(){
       };
 
       // Cria entradas de pagamento para registros existentes
+      const _colBaseImp=await colBaseLegado();
       const pagamentos=registros.map(r=>({
         venda_id:principal.id,
         data_prevista:r.data_venda?r.data_venda.split('T')[0]:hoje,
@@ -5568,7 +5655,7 @@ async function migrarVendasQuebradas(){
         gateway:r.gateway||null,
         valor_bruto:Number(r.valor_bruto||0),
         valor_liquido:Number(r.valor_liquido||0),
-        valor_comissao:Number(r.valor_bruto||0),
+        [_colBaseImp]:Number(r.valor_bruto||0),
         status:detectStatus(r),
         data_recebimento:detectStatus(r)==='recebido'?(r.data_venda?r.data_venda.split('T')[0]:hoje):null,
       }));
@@ -5820,8 +5907,8 @@ async function carregarPgtosNoForm(v){
     if(rows.length>0){
       // As parcelas (nº de vezes no cartão) ficam na venda, não em cada pagamento.
       // Com 1 linha de pagamento, usa v.parcelas; com várias, cada linha é 1x.
-      // Parcela antiga não tem valor_comissao: cai no valor pago, que é a regra da venda mensal.
-      rows.forEach(p=>adicionarPgtoRow(p.data_prevista||'',p.metodo||'PIX',p.gateway||'',p.valor_bruto||'',p.valor_comissao!=null?p.valor_comissao:(p.valor_bruto||''),p.status||'pendente', p.parcelas || (rows.length===1 ? (v.parcelas||1) : 1)));
+      // Parcela antiga não tem a base sem juros preenchida: cai no valor pago.
+      rows.forEach(p=>adicionarPgtoRow(p.data_prevista||'',p.metodo||'PIX',p.gateway||'',p.valor_bruto||'',leBaseLegado(p)!=null?leBaseLegado(p):(p.valor_bruto||''),p.status||'pendente', p.parcelas || (rows.length===1 ? (v.parcelas||1) : 1)));
     } else {
       // Legado: cria uma linha com os dados existentes da venda
       const d=v.data_venda?v.data_venda.split('T')[0]:new Date().toISOString().split('T')[0];
@@ -6172,7 +6259,7 @@ function mostrarDetalheCalDia(dateStr){
 // Busca no Supabase (e não em todosPagamentos) porque o cache local só traz
 // as pendentes + as recebidas do mês corrente — somar por ali zeraria o líquido de meses anteriores.
 async function recalcTotaisVenda(vendaId){
-  const parcelas=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&select=id,valor_bruto,valor_liquido,valor_comissao,status,data_prevista,data_recebimento&order=data_prevista.asc,id.asc');
+  const parcelas=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&select=*&order=data_prevista.asc,id.asc');
   if(!parcelas.length) return;
   const liquido=parcelas.filter(p=>p.status==='recebido').reduce((s,p)=>s+Number(p.valor_liquido||0),0);
   const restante=parcelas.filter(p=>p.status==='pendente').reduce((s,p)=>s+Number(p.valor_bruto||0),0);
@@ -6180,14 +6267,13 @@ async function recalcTotaisVenda(vendaId){
   await recalcComissaoVenda(vendaId,parcelas);
 }
 
-// A comissão segue o dinheiro que entrou de fato, então ela é refeita sempre que uma parcela
-// muda de status ou de data — venha a mudança do formulário de venda ou do ✓ Recebido das
-// Cobranças. É a mesma regra do formulário, só que decidida pela data de RECEBIMENTO:
-//   · venda quitada inteira dentro de um mês -> reparte o valor da negociação (juros ficam fora)
-//   · qualquer outro caso -> cada parcela comissiona cheio o que entrou nela
+// LEGADO. Mantém atualizado o valor "sem juros" de cada parcela — que era a base de comissão
+// até julho/2026 e hoje serve só de referência do financeiro e auditoria do histórico.
+// A comissão do closer NÃO sai mais daqui: sai do bruto × percentual travado da venda.
 async function recalcComissaoVenda(vendaId,parcelas){
   try{
-    if(!parcelas) parcelas=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&select=id,valor_bruto,valor_comissao,status,data_prevista,data_recebimento&order=data_prevista.asc,id.asc');
+    const col=await colBaseLegado();
+    if(!parcelas) parcelas=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&select=*&order=data_prevista.asc,id.asc');
     if(!parcelas.length) return;
     const v=(await supaFetch('vendas?id=eq.'+vendaId+'&select=base_comissao'))[0];
     const neg=Number((v&&v.base_comissao)||0);
@@ -6197,11 +6283,30 @@ async function recalcComissaoVenda(vendaId,parcelas){
       mes:((p.status==='recebido'?p.data_recebimento:p.data_prevista)||'').slice(0,7)}));
     const valores=calcularComissoes(norm,neg);
     for(let i=0;i<parcelas.length;i++){
-      const p=parcelas[i], val=valores[i];
-      if(p.valor_comissao==null||Math.abs(Number(p.valor_comissao||0)-val)>0.005)
-        await supaFetch('pagamentos_venda?id=eq.'+p.id,{method:'PATCH',body:JSON.stringify({valor_comissao:val})});
+      const p=parcelas[i], val=valores[i], atual=leBaseLegado(p);
+      if(atual==null||Math.abs(Number(atual||0)-val)>0.005)
+        await supaFetch('pagamentos_venda?id=eq.'+p.id,{method:'PATCH',body:JSON.stringify({[col]:val})});
     }
-  }catch(e){ console.warn('recalc comissão da venda:',e.message); }
+  }catch(e){ console.warn('recalc base legado da venda:',e.message); }
+}
+
+// A COMPETÊNCIA de uma venda é o mês do primeiro pagamento RECEBIDO — não o do fechamento
+// nem o da assinatura. Venda fechada em 31/08 com entrada paga em 02/09 é de setembro.
+// Só recalcula enquanto a venda não está travada: mês fechado não volta atrás.
+async function marcarCompetencia(vendaId){
+  try{
+    const [v]=await supaFetch('vendas?id=eq.'+vendaId+'&select=id,status_trava,data_venda');
+    if(v&&v.status_trava==='DEFINITIVO') return;
+    const ps=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId
+      +'&select=data_recebimento,data_prevista,status');
+    const recebidas=ps.filter(p=>p.data_recebimento).map(p=>p.data_recebimento).sort();
+    const primeira=recebidas[0]||ps.map(p=>p.data_prevista).filter(Boolean).sort()[0]
+      ||(v&&v.data_venda||'').slice(0,10);
+    if(!primeira) return;
+    await supaFetch('vendas?id=eq.'+vendaId,{method:'PATCH',body:JSON.stringify({
+      data_primeiro_pagamento:primeira, mes_competencia:primeira.slice(0,7)})});
+    _volCache[primeira.slice(0,7)]=null; delete _volCache[primeira.slice(0,7)];
+  }catch(e){ /* colunas da v2 ainda não existem — segue com data_venda como competência */ }
 }
 
 async function marcarRecebido(id,dateStr){
@@ -6213,7 +6318,9 @@ async function marcarRecebido(id,dateStr){
     if(p){
       p.status='recebido'; p.data_recebimento=hoje;
       // Atualiza valor_restante e valor_liquido na venda (líquido = só o que já entrou)
-      if(p.vendas?.id) await recalcTotaisVenda(p.vendas.id);
+      if(p.vendas?.id){ await recalcTotaisVenda(p.vendas.id);
+        // Se esta foi a entrada, é ela que define a competência da venda.
+        await marcarCompetencia(p.vendas.id); }
     }
     renderCobrancas();
     mostrarDetalheCalDia(dateStr);
@@ -6382,10 +6489,19 @@ function reembJanelaBadge(r){
 }
 
 // ══════════════ COMISSIONAMENTO (admin) ══════════════
-// Fechamento do mês por closer. Mesma regra da aba Performance, só que pra todo mundo
-// de uma vez: base = o que entrou no mês (por data_recebimento), fora reembolso;
-// closer usa a faixa da conversão do próprio mês, SDR e social seller usam 0,5%.
+// Regra vigente a partir de agosto/2026. Dois cálculos independentes:
+//
+//   EIXO 1 · FAIXA      contratado bruto das vendas NOVAS do mês (competência = data do
+//                       1º pagamento). Define o percentual, que TRAVA em cada venda.
+//                       Parcela de venda antiga não entra nesta base.
+//
+//   EIXO 2 · A PAGAR    bruto RECEBIDO no mês, de qualquer venda, cada uma multiplicada
+//                       pelo percentual travado da SUA venda de origem. Por isso duas
+//                       linhas do mesmo closer, no mesmo mês, podem ter % diferentes.
+//
+// SDR e social seller ficam fora disso: 0,5% fixo sobre o bruto recebido.
 const COM_INICIO='2026-07';          // antes disso as contas antigas não são confiáveis
+const COM_V2_INICIO='2026-08';       // a partir daqui vale a faixa por volume
 let comModo='mes';
 let comAno=new Date().getFullYear(), comMes=new Date().getMonth();
 let _comUltimo=null;                 // guarda o que está na tela pra exportar
@@ -6394,6 +6510,7 @@ function setComModo(m){
   comModo=m;
   document.getElementById('comTabMes').classList.toggle('active',m==='mes');
   document.getElementById('comTabAcum').classList.toggle('active',m==='acumulado');
+  const tm=document.getElementById('comTabMigr'); if(tm) tm.classList.toggle('active',m==='migracao');
   document.getElementById('comDateNav').style.display=m==='mes'?'flex':'none';
   carregarComissionamento();
 }
@@ -6404,83 +6521,374 @@ function mudarComMes(d){
 }
 function comAnoMes(){ return comAno+'-'+String(comMes+1).padStart(2,'0'); }
 
-// Levanta o que entrou num mês, já separando o que é reembolso e não comissiona.
-async function comDadosDoMes(anoMes){
-  const [ano,mes]=anoMes.split('-').map(Number);
-  const ultimo=anoMes+'-'+new Date(ano,mes,0).getDate();
-  const [parc,casos,usuarios]=await Promise.all([
-    supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01'
-      +'&data_recebimento=lte.'+ultimo
-      +'&select=venda_id,valor_bruto,valor_comissao,data_recebimento,'
-      +'vendas!inner(nome_cliente,closer,sdr,social_seller,status,data_venda)'
-      +'&order=data_recebimento.asc'),
-    supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status,status_reembolso').catch(()=>[]),
-    supaFetch('usuarios?select=nome,funcao').catch(()=>[]),
-  ]);
-  // Gestor vende de vez em quando e não roda funil — aparece com as vendas, sem conversão nem faixa.
-  const gestores=new Set((usuarios||[]).filter(u=>u.funcao==='admin').map(u=>u.nome));
-  const abertos=new Set((casos||[]).filter(c=>c.status!=='resolvido'&&!reembSemEfeito(c)).map(c=>c.venda_id));
-  const fora=p=>(p.vendas&&p.vendas.status==='reembolso')||abertos.has(p.venda_id);
-  return {parc,fora,gestores};
+const ultimoDiaDoMes=anoMes=>{const[a,m]=anoMes.split('-').map(Number);return anoMes+'-'+new Date(a,m,0).getDate();};
+
+// ── EIXO 1 · a base da faixa ──
+// Contratado BRUTO das vendas cuja competência é este mês. Competência = mês do primeiro
+// pagamento; como nenhuma venda entra na Central sem dinheiro recebido, toda venda tem uma.
+// Wonder entra pelo contratado (o ajuste que faz Wonder contar só o pago vale nos
+// dashboards, não aqui). Só arrependimento em 7 dias tira uma venda desta base.
+const _volCache={};
+async function comVolumeContratado(anoMes){
+  if(_volCache[anoMes]) return _volCache[anoMes];
+  // mes_competencia é texto 'YYYY-MM' e data_venda é data: cada um pede um filtro diferente.
+  // Comparar 'YYYY-MM' com 'YYYY-MM-01' devolveria zero linha, porque o prefixo é menor.
+  const campo=await comCampoCompetencia();
+  const filtro=campo==='mes_competencia'
+    ? 'mes_competencia=eq.'+anoMes
+    : 'data_venda=gte.'+anoMes+'-01&data_venda=lte.'+ultimoDiaDoMes(anoMes);
+  const rows=await supaFetch('vendas?'+filtro
+    +'&status=not.in.(cancelada,arrependimento)&select=id,closer,valor_bruto').catch(()=>[]);
+  const porCloser={};
+  (rows||[]).forEach(v=>{ if(!v.closer) return;
+    porCloser[v.closer]=(porCloser[v.closer]||0)+Number(v.valor_bruto||0); });
+  _volCache[anoMes]=porCloser;
+  return porCloser;
+}
+// mes_competencia só existe depois da migração v2 rodar. Enquanto não rodou, data_venda
+// já é a data do 1º pagamento (o formulário grava assim), então serve de competência.
+let _campoComp=null;
+async function comCampoCompetencia(){
+  if(_campoComp) return _campoComp;
+  try{ await supaFetch('vendas?select=mes_competencia&limit=1'); _campoComp='mes_competencia'; }
+  catch(e){ _campoComp='data_venda'; }
+  return _campoComp;
 }
 
-// Fecha um mês inteiro: base, faixa e comissão de cada closer, SDR e social seller.
-async function comFecharMes(anoMes){
-  const {parc,fora,gestores}=await comDadosDoMes(anoMes);
-  const closers={}, sdrs={}, socials={};
-  const pega=(mapa,nome)=>{ if(!mapa[nome]) mapa[nome]={base:0,pago:0,itens:[]}; return mapa[nome]; };
+// O percentual de uma venda: o travado, se já houver. Senão, o projetado pelo volume
+// contratado do mês de competência dela — provisório até o fechamento gravar.
+async function comPctDaVenda(v){
+  if(v.percentual_travado!=null){
+    const pct=Number(v.percentual_travado);
+    return {pct,travado:true,origem:v.origem_trava||'APURACAO_MENSAL',
+            faixa:(FAIXAS.find(f=>f.pct===pct)||{nome:pct+'%'}).nome};
+  }
+  const comp=(v.mes_competencia||v.data_venda||'').slice(0,7);
+  const vol=comp?await comVolumeContratado(comp):{};
+  const faixa=getFaixa(vol[v.closer]||0);
+  return {pct:faixa.pct,travado:false,origem:null,faixa:faixa.nome};
+}
 
-  // Mesma leitura do levantamento: venda FECHADA no mês vira uma linha só, somando tudo que
-  // entrou dela; parcela de venda de mês anterior vira uma linha por parcela. É por isso que
-  // o Jean aparece uma vez (3 repasses do Cispay da mesma venda) e o Cristiano aparece 3.
+// Um mês fechado não recalcula mais nada: o que foi apurado, foi.
+async function comStatusFechamento(anoMes){
+  try{
+    const rows=await supaFetch('fechamento_mensal?mes_competencia=eq.'+anoMes+'&select=*');
+    return {existe:(rows||[]).length>0,
+            fechado:(rows||[]).some(r=>r.status==='FECHADO'), linhas:rows||[]};
+  }catch(e){ return {existe:false,fechado:false,linhas:[]}; }
+}
+
+// ── ALERTAS QUE PRECEDEM O FECHAMENTO ──
+// (1) parcela com mais de 30 dias de atraso → encaminhar ao jurídico;
+// (2) venda cancelada/reembolsada dentro da janela de 7 dias do CDC → é arrependimento,
+//     e arrependimento é o único caso que remove a venda da base da faixa e força recálculo.
+let _alertasCache=null;
+async function comAlertas(){
+  if(_alertasCache) return _alertasCache;   // não dependem do mês: no acumulado, busca uma vez só
+  const hoje=new Date();
+  const limite=new Date(hoje.getTime()-30*864e5).toISOString().slice(0,10);
+  const campo=await comCampoCompetencia();
+  const [atrasadas,recentes]=await Promise.all([
+    supaFetch('pagamentos_venda?status=eq.pendente&data_prevista=lt.'+limite
+      +'&select=id,valor_bruto,data_prevista,vendas!inner(nome_cliente,closer,status)'
+      +'&vendas.status=not.in.(cancelada,arrependimento,reembolso)'
+      +'&order=data_prevista.asc').catch(()=>[]),
+    supaFetch('vendas?status=in.(cancelada,reembolso)&select=id,nome_cliente,closer,valor_bruto,data_venda'
+      +(campo==='mes_competencia'?',mes_competencia,data_primeiro_pagamento,data_cancelamento':'')
+      +'&order=data_venda.desc&limit=200').catch(()=>[]),
+  ]);
+  const dias=(a,b)=>Math.floor((new Date(b)-new Date(a))/864e5);
+  const janela7=(recentes||[]).map(v=>{
+    const pgto=v.data_primeiro_pagamento||(v.data_venda||'').slice(0,10);
+    const canc=v.data_cancelamento||null;
+    if(!pgto) return null;
+    // Sem data de cancelamento gravada, mede contra hoje: se a venda é recentíssima,
+    // ainda pode estar dentro da janela e vale conferir na mão.
+    const d=dias(pgto,canc||hoje.toISOString().slice(0,10));
+    return (d>=0&&d<=7)?{...v,pgto,canc,dias:d}:null;
+  }).filter(Boolean);
+  _alertasCache={
+    atrasadas:(atrasadas||[]).map(p=>({...p,dias:dias(p.data_prevista,hoje.toISOString().slice(0,10))})),
+    janela7};
+  return _alertasCache;
+}
+
+// Levanta o que entrou num mês, já separando o que é reembolso e não comissiona.
+async function comDadosDoMes(anoMes){
+  const ultimo=ultimoDiaDoMes(anoMes);
+  const [parc,casos,usuarios,fech]=await Promise.all([
+    supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01'
+      +'&data_recebimento=lte.'+ultimo
+      +'&select=venda_id,valor_bruto,data_recebimento,numero_parcela,'
+      +'vendas!inner(nome_cliente,closer,sdr,social_seller,status,data_venda,'
+      +'percentual_travado,status_trava,origem_trava,mes_competencia)'
+      +'&order=data_recebimento.asc').catch(()=>
+      // Antes da migração v2 as colunas de trava ainda não existem — segue sem elas.
+      supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01'
+        +'&data_recebimento=lte.'+ultimo
+        +'&select=venda_id,valor_bruto,data_recebimento,'
+        +'vendas!inner(nome_cliente,closer,sdr,social_seller,status,data_venda)'
+        +'&order=data_recebimento.asc')),
+    supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status,status_reembolso').catch(()=>[]),
+    supaFetch('usuarios?select=nome,funcao,status').catch(()=>[]),
+    comStatusFechamento(anoMes),
+  ]);
+  const inativos=new Set((usuarios||[]).filter(u=>u.status&&u.status!=='ativo').map(u=>u.nome));
+  const abertos=new Set((casos||[]).filter(c=>c.status!=='resolvido'&&!reembSemEfeito(c)).map(c=>c.venda_id));
+  // Reembolso/cancelamento só tira o valor da comissão enquanto o mês está ABERTO —
+  // ou seja, enquanto o closer ainda não recebeu. Depois de fechado a empresa absorve:
+  // não há desconto, nem saldo negativo, nem recálculo de faixa.
+  const fora=p=>!fech.fechado&&((p.vendas&&(p.vendas.status==='reembolso'||p.vendas.status==='arrependimento'))||abertos.has(p.venda_id));
+  return {parc,fora,inativos,fech};
+}
+
+// Fecha um mês inteiro: faixa (eixo 1), comissão (eixo 2) e ajustes de cada pessoa.
+async function comFecharMes(anoMes){
+  const {parc,fora,inativos,fech}=await comDadosDoMes(anoMes);
+  const [volume,ajustes,alertas]=await Promise.all([
+    comVolumeContratado(anoMes),
+    supaFetch('ajustes_manuais?mes_lancamento=eq.'+anoMes+'&select=*').catch(()=>[]),
+    comAlertas(),
+  ]);
+  const closers={}, sdrs={}, socials={};
+  const pega=(mapa,nome)=>{ if(!mapa[nome]) mapa[nome]={base:0,pago:0,comissao:0,itens:[],ajustes:[]}; return mapa[nome]; };
+
+  // Uma linha por parcela recebida. Venda fechada no próprio mês agrupa as parcelas dela
+  // numa linha só (o Jean com 3 repasses do Cispay da mesma venda continua aparecendo uma
+  // vez); parcela de venda de mês anterior vira uma linha própria, com o % travado dela.
   const itens=[];
   const doMes={};
-  parc.forEach(p=>{
+  for(const p of parc){
     const v=p.vendas||{};
-    const val=fora(p)?0:baseComissaoParcela(p), bruto=Number(p.valor_bruto||0);
-    const vendaDoMes=(v.data_venda||'').slice(0,7)===anoMes;
-    if(vendaDoMes){
+    const bruto=Number(p.valor_bruto||0);
+    const val=fora(p)?0:baseComissaoParcela(p);
+    const comp=(v.mes_competencia||v.data_venda||'').slice(0,7);
+    const info=await comPctDaVenda({...v,closer:v.closer});
+    // Closer desligado para de comissionar as parcelas seguintes. O que já foi apurado
+    // em mês fechado permanece; o valor não passa pra ninguém.
+    const desligado=inativos.has(v.closer)&&!fech.fechado;
+    const pct=desligado?0:info.pct;
+    const linha={cliente:v.nome_cliente||'—',data:p.data_recebimento,pago:0,comissiona:0,
+                 reembolso:fora(p),closer:v.closer,sdr:v.sdr,social:v.social_seller,
+                 pct,travado:info.travado,origem:info.origem,competencia:comp,
+                 desligado,parcela:comp!==anoMes,numero:p.numero_parcela||null};
+    if(comp===anoMes){
       const k=p.venda_id;
-      if(!doMes[k]){
-        doMes[k]={cliente:v.nome_cliente||'—',data:p.data_recebimento,pago:0,comissiona:0,
-                  reembolso:fora(p),closer:v.closer,sdr:v.sdr,social:v.social_seller};
-        itens.push(doMes[k]);
-      }
+      if(!doMes[k]){ doMes[k]=linha; itens.push(linha); }
       doMes[k].pago+=bruto; doMes[k].comissiona+=val;
       if(p.data_recebimento<doMes[k].data) doMes[k].data=p.data_recebimento;
     } else {
-      itens.push({cliente:v.nome_cliente||'—',data:p.data_recebimento,pago:bruto,comissiona:val,
-                  reembolso:fora(p),closer:v.closer,sdr:v.sdr,social:v.social_seller,parcela:true});
+      linha.pago=bruto; linha.comissiona=val;
+      itens.push(linha);
     }
-  });
+  }
   itens.sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+  // Cada linha comissiona pelo SEU percentual — é isso que permite duas vendas do mesmo
+  // closer, no mesmo mês, saírem com percentuais diferentes.
   itens.forEach(i=>{
-    const soma=(mapa,nome)=>{ if(!nome) return; const o=pega(mapa,nome); o.itens.push(i); o.base+=i.comissiona; o.pago+=i.reembolso?0:i.pago; };
-    soma(closers,i.closer); soma(sdrs,i.sdr); soma(socials,i.social);
+    i.comissao=Math.round(i.comissiona*i.pct)/100;
+    const soma=(mapa,nome,pctFixo)=>{ if(!nome) return;
+      const o=pega(mapa,nome); o.itens.push(i);
+      o.base+=i.comissiona; o.pago+=i.reembolso?0:i.pago;
+      o.comissao+=pctFixo!=null?Math.round(i.comissiona*pctFixo)/100:i.comissao; };
+    soma(closers,i.closer,null); soma(sdrs,i.sdr,0.5); soma(socials,i.social,0.5);
   });
 
-  // Faixa do closer vem da conversão do mês (vendas ÷ reuniões), igual à aba Performance
-  for(const nome of Object.keys(closers)){
+  // Eixo 1: a faixa do mês, pelo contratado. Independe do que entrou em caixa.
+  Object.keys(closers).forEach(nome=>{
     const o=closers[nome];
-    if(gestores.has(nome)){
-      // Gestor não tem funil nem faixa: a venda dele fica registrada, mas não gera comissão.
-      o.gestor=true; o.pct=0; o.comissao=0; o.faixa='—'; o.conversao=null; o.semFunil=false;
-      continue;
+    const contratado=volume[nome]||0;
+    const faixa=getFaixa(contratado);
+    o.contratado=contratado; o.faixa=faixa.nome; o.faixaCls=faixa.cls; o.pct=faixa.pct;
+    o.proxima=proximaFaixa(contratado);
+    o.desligado=inativos.has(nome);
+    // Percentuais distintos convivendo no mesmo mês é o normal do modelo novo.
+    o.pcts=[...new Set(o.itens.map(i=>i.pct))].sort((a,b)=>a-b);
+  });
+  // Closer que só vendeu (nada entrou em caixa ainda) também precisa aparecer com faixa.
+  Object.keys(volume).forEach(nome=>{
+    if(closers[nome]) return;
+    const faixa=getFaixa(volume[nome]);
+    closers[nome]={base:0,pago:0,comissao:0,itens:[],ajustes:[],contratado:volume[nome],
+      faixa:faixa.nome,faixaCls:faixa.cls,pct:faixa.pct,proxima:proximaFaixa(volume[nome]),
+      desligado:inativos.has(nome),pcts:[]};
+  });
+  [sdrs,socials].forEach(mapa=>Object.values(mapa).forEach(o=>{o.pct=0.5;}));
+
+  // Ajustes lançados neste mês, referentes a meses já fechados.
+  (ajustes||[]).forEach(a=>{
+    const mapa=a.papel==='sdr'?sdrs:a.papel==='social_seller'?socials:closers;
+    const o=pega(mapa,a.pessoa);
+    o.ajustes.push(a); o.comissao+=Number(a.valor||0);
+  });
+
+  return {anoMes,closers,sdrs,socials,fech,volume,alertas};
+}
+
+// ── O FECHAMENTO ──
+// É aqui que a faixa deixa de ser projeção e vira número gravado. Grava o percentual em
+// lote em todas as vendas com competência no mês, e escreve o consolidado por pessoa.
+// Depois disso o mês não reabre: correção vira ajuste manual no mês corrente.
+async function comFecharMesAction(anoMes){
+  const f=await comFecharMes(anoMes);
+  const nomes=Object.keys(f.closers);
+  const resumo=nomes.map(n=>`${n}: contratado ${fmtBRL(f.closers[n].contratado||0)} → ${f.closers[n].pct}%`).join('\n');
+  const ok=await pmmConfirm(
+    `Fechar ${anoMes} grava o percentual em todas as vendas com competência neste mês. `
+    +`O mês não poderá ser reaberto.\n\n${resumo||'Nenhum closer com venda no mês.'}`,
+    '🔒','Fechar o mês');
+  if(!ok) return;
+  const box=document.getElementById('comissionamentoContent');
+  if(box) box.innerHTML='<p class="empty-state">Gravando a trava...</p>';
+  try{
+    const campo=await comCampoCompetencia();
+    const filtro=campo==='mes_competencia'
+      ? 'mes_competencia=eq.'+anoMes
+      : 'data_venda=gte.'+anoMes+'-01&data_venda=lte.'+ultimoDiaDoMes(anoMes);
+    for(const nome of nomes){
+      const o=f.closers[nome];
+      await supaFetch('vendas?closer=eq.'+encodeURIComponent(nome)+'&'+filtro
+        +'&status=not.in.(cancelada,arrependimento)',
+        {method:'PATCH',body:JSON.stringify({
+          percentual_travado:o.pct, status_trava:'DEFINITIVO', origem_trava:'APURACAO_MENSAL'})});
     }
-    const regs=await getCloserData(nome,anoMes);
-    const reun=regs.reduce((s,r)=>s+r.reun,0);
-    // Nº de vendas sempre pela guia de Vendas; do funil só aproveita as reuniões.
-    const reais=await getVendasDoMes(nome,anoMes);
-    const vend=reais!=null?reais:regs.reduce((s,r)=>s+r.vendas,0);
-    const conv=reun>0?(vend/reun*100):null;
-    const faixa=conv!==null?getFaixa(conv):null;
-    o.reunioes=reun; o.vendas=vend; o.conversao=conv;
-    o.faixa=faixa?faixa.nome:'—'; o.pct=faixa?faixa.pct:0;
-    o.comissao=o.base*o.pct/100;
-    o.semFunil=reun===0;
+    const linhas=[];
+    const push=(mapa,papel)=>Object.entries(mapa).forEach(([nome,o])=>linhas.push({
+      pessoa:nome, papel, mes_competencia:anoMes,
+      total_contratado_vendas_novas:Math.round((o.contratado||0)*100)/100,
+      faixa_aplicada:o.faixa||null, percentual:o.pct,
+      total_recebido_no_mes:Math.round(o.base*100)/100,
+      total_ajustes:Math.round((o.ajustes||[]).reduce((s,a)=>s+Number(a.valor||0),0)*100)/100,
+      total_comissao_a_pagar:Math.round(o.comissao*100)/100,
+      status:'FECHADO', data_fechamento:new Date().toISOString(),
+      fechado_por:(currentUser&&currentUser.nome)||null}));
+    push(f.closers,'closer'); push(f.sdrs,'sdr'); push(f.socials,'social_seller');
+    if(linhas.length) await supaFetch('fechamento_mensal',{method:'POST',
+      body:JSON.stringify(linhas),
+      headers:{'Prefer':'return=representation,resolution=merge-duplicates'}});
+    _volCache[anoMes]=null; delete _volCache[anoMes];
+    await pmmAlert('Mês '+anoMes+' fechado. O percentual está gravado nas vendas.','🔒','Fechamento');
+  }catch(e){
+    await pmmAlert('Não consegui fechar o mês: '+e.message
+      +'\n\nSe a mensagem fala de coluna ou tabela inexistente, o comissionamento-v2.sql ainda não rodou no Supabase.','❌','Erro');
   }
-  [sdrs,socials].forEach(mapa=>Object.values(mapa).forEach(o=>{o.pct=0.5;o.comissao=o.base*0.005;}));
-  return {anoMes,closers,sdrs,socials};
+  carregarComissionamento();
+}
+
+// ── MIGRAÇÃO RETROATIVA ──
+// Toda venda anterior a agosto/2026 que ainda tem parcela em aberto precisa de um
+// percentual travado — senão, a partir de agosto, ela não teria por qual % comissionar.
+// O percentual sai da faixa NOVA (por volume) aplicada ao mês de competência histórico
+// de cada venda. Nenhuma comissão já paga até julho/2026 é recalculada: isso aqui só
+// define por qual percentual as parcelas FUTURAS dessas vendas vão comissionar.
+async function comLevantarMigracao(){
+  const campo=await comCampoCompetencia();
+  // 'YYYY-MM' compara com 'YYYY-MM'; data_venda compara com o 1º dia do mês de corte.
+  const corte=campo==='mes_competencia'
+    ? 'mes_competencia=lt.'+COM_V2_INICIO
+    : 'data_venda=lt.'+COM_V2_INICIO+'-01';
+  const [vendas,parcelas]=await Promise.all([
+    supaFetch('vendas?'+corte+'&status=not.in.(cancelada,arrependimento)'
+      +'&select=id,nome_cliente,closer,valor_bruto,data_venda'
+      +(campo==='mes_competencia'?',mes_competencia,percentual_travado,status_trava,origem_trava':'')
+      +'&order=data_venda.asc').catch(()=>[]),
+    supaFetch('pagamentos_venda?status=eq.pendente&select=venda_id,valor_bruto').catch(()=>[]),
+  ]);
+  const emAberto={};
+  (parcelas||[]).forEach(p=>{ emAberto[p.venda_id]=(emAberto[p.venda_id]||0)+Number(p.valor_bruto||0); });
+
+  // Volume contratado de cada closer, mês a mês, no histórico — é o que define a faixa.
+  const volume={};
+  (vendas||[]).forEach(v=>{
+    const comp=(v.mes_competencia||v.data_venda||'').slice(0,7);
+    if(!comp||!v.closer) return;
+    volume[comp]=volume[comp]||{};
+    volume[comp][v.closer]=(volume[comp][v.closer]||0)+Number(v.valor_bruto||0);
+  });
+
+  const linhas=(vendas||[])
+    .filter(v=>emAberto[v.id]>0)          // só quem ainda tem parcela pra receber
+    .map(v=>{
+      const comp=(v.mes_competencia||v.data_venda||'').slice(0,7);
+      const contratado=(volume[comp]&&volume[comp][v.closer])||0;
+      const faixa=getFaixa(contratado);
+      return {id:v.id,cliente:v.nome_cliente||'—',closer:v.closer||'—',competencia:comp,
+              contratado,valor:Number(v.valor_bruto||0),aberto:emAberto[v.id],
+              pct:faixa.pct,faixa:faixa.nome,cls:faixa.cls,
+              jaTravada:v.percentual_travado!=null,pctAtual:v.percentual_travado};
+    })
+    .sort((a,b)=>(b.competencia||'').localeCompare(a.competencia||'')||b.aberto-a.aberto);
+  return {linhas,volume};
+}
+
+async function comAplicarMigracao(){
+  const {linhas}=await comLevantarMigracao();
+  const pendentes=linhas.filter(l=>!l.jaTravada);
+  if(!pendentes.length){ await pmmAlert('Todas as vendas antigas com parcela em aberto já estão travadas.','✓','Migração'); return; }
+  const ok=await pmmConfirm(
+    `Vou gravar o percentual em ${pendentes.length} venda(s) anterior(es) a agosto/2026 que ainda têm parcela em aberto.\n\n`
+    +`Comissão já paga até julho/2026 não é recalculada — isto define só por qual percentual as parcelas futuras dessas vendas vão comissionar.`,
+    '↻','Migração retroativa');
+  if(!ok) return;
+  const box=document.getElementById('comissionamentoContent');
+  if(box) box.innerHTML='<p class="empty-state">Gravando a trava retroativa...</p>';
+  let feitas=0, erro=null;
+  for(const l of pendentes){
+    try{
+      await supaFetch('vendas?id=eq.'+l.id,{method:'PATCH',body:JSON.stringify({
+        percentual_travado:l.pct, status_trava:'DEFINITIVO', origem_trava:'MIGRACAO_RETROATIVA',
+        compoe_faixa:false})});
+      feitas++;
+    }catch(e){ erro=e.message; break; }
+  }
+  await pmmAlert(erro
+    ? feitas+' venda(s) travadas antes do erro: '+erro+'\n\nSe fala de coluna inexistente, o comissionamento-v2.sql ainda não rodou no Supabase.'
+    : feitas+' venda(s) travadas com o percentual histórico.','↻','Migração retroativa');
+  carregarComissionamento();
+}
+
+function comRenderMigracao({linhas}){
+  const pendentes=linhas.filter(l=>!l.jaTravada).length;
+  const totalAberto=linhas.reduce((s,l)=>s+l.aberto,0);
+  const divergentes=linhas.filter(l=>l.jaTravada&&Number(l.pctAtual)!==l.pct);
+  return `
+    <div class="cob-card" style="margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:240px;">
+        <div class="cob-card-label">Relatório de migração · vendas até julho/2026 com parcela em aberto</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;">
+          Confira venda a venda antes do primeiro fechamento de agosto. O percentual sai da faixa
+          por volume aplicada ao mês de competência histórico de cada venda. Comissão já paga não
+          é recalculada — isto define por qual percentual as <b>parcelas futuras</b> comissionam.
+        </div>
+      </div>
+      ${pendentes?`<button class="btn-novo" onclick="comAplicarMigracao()">Travar ${pendentes} venda(s)</button>`
+                 :'<span class="status-badge" style="background:#ECFDF5;color:#065F46;">tudo travado</span>'}
+    </div>
+    <div class="cal-summary">
+      <div class="cob-card"><div class="cob-card-label">Vendas na migração</div><div class="cob-card-value">${linhas.length}</div></div>
+      <div class="cob-card"><div class="cob-card-label">Ainda sem trava</div><div class="cob-card-value ${pendentes?'coral':''}">${pendentes}</div></div>
+      <div class="cob-card"><div class="cob-card-label">Valor em aberto</div><div class="cob-card-value">${fmtBRL(totalAberto)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">parcelas que ainda vão comissionar</div></div>
+    </div>
+    ${divergentes.length?`<div class="cob-card" style="border-color:#E8C7C7;background:#FDF6F6;margin-bottom:16px;">
+      <div class="cob-card-label" style="color:#9C0006;">⚠ ${divergentes.length} venda(s) travadas com percentual diferente do que a regra calcularia hoje</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;">Pode ser ajuste manual proposital. A migração não sobrescreve venda já travada.</div>
+    </div>`:''}
+    ${linhas.length===0?'<p class="empty-state">Nenhuma venda anterior a agosto/2026 com parcela em aberto.</p>':`
+    <div class="perf-table-wrap">
+      <table class="perf-table">
+        <thead><tr><th>Competência</th><th>Cliente</th><th>Closer</th><th>Contratado do closer no mês</th><th>Valor da venda</th><th>Em aberto</th><th>%</th><th>Trava</th></tr></thead>
+        <tbody>${linhas.map(l=>`<tr>
+          <td>${l.competencia||'—'}</td>
+          <td>${escHtml(l.cliente)}</td>
+          <td>${escHtml(l.closer)}</td>
+          <td style="color:var(--muted);">${fmtBRL(l.contratado)}</td>
+          <td style="color:var(--muted);">${fmtBRL(l.valor)}</td>
+          <td style="font-weight:600;">${fmtBRL(l.aberto)}</td>
+          <td><span class="faixa-badge ${l.cls}">${l.pct}%</span>${l.jaTravada&&Number(l.pctAtual)!==l.pct?` <span style="font-size:11px;color:#9C0006;">gravado ${l.pctAtual}%</span>`:''}</td>
+          <td>${l.jaTravada?'<span class="status-badge" style="background:#ECFDF5;color:#065F46;">travada</span>':'<span class="status-badge" style="background:#FFF7ED;color:#9A3412;">pendente</span>'}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`}`;
 }
 
 function comMesesAteHoje(){
@@ -6499,6 +6907,7 @@ async function carregarComissionamento(){
   const lbl=document.getElementById('comMesLabel');
   if(lbl) lbl.textContent=MESES_NOMES[comMes]+' '+comAno;
   box.innerHTML='<p class="empty-state">Calculando...</p>';
+  _alertasCache=null;   // recarregar a aba refaz os alertas
   try{
     if(comModo==='mes'){
       const anoMes=comAnoMes();
@@ -6509,6 +6918,10 @@ async function carregarComissionamento(){
       const f=await comFecharMes(anoMes);
       _comUltimo={tipo:'mes',dados:f};
       box.innerHTML=comRenderMes(f);
+    } else if(comModo==='migracao'){
+      const m=await comLevantarMigracao();
+      _comUltimo={tipo:'migracao',dados:m};
+      box.innerHTML=comRenderMigracao(m);
     } else {
       const meses=comMesesAteHoje();
       const fechados=[];
@@ -6524,42 +6937,93 @@ async function carregarComissionamento(){
 
 function comRenderMes(f){
   const nomes=Object.keys(f.closers).sort((a,b)=>f.closers[b].comissao-f.closers[a].comissao);
-  const soCloser=nomes.filter(n=>!f.closers[n].gestor);
-  const totalBase=soCloser.reduce((s,n)=>s+f.closers[n].base,0);
-  const totalCom=soCloser.reduce((s,n)=>s+f.closers[n].comissao,0);
+  const totalBase=nomes.reduce((s,n)=>s+f.closers[n].base,0);
+  const totalCom=nomes.reduce((s,n)=>s+f.closers[n].comissao,0);
+  const totalContratado=nomes.reduce((s,n)=>s+(f.closers[n].contratado||0),0);
   const apoio=[...Object.entries(f.sdrs).map(([n,o])=>[n,o,'SDR']),
                ...Object.entries(f.socials).map(([n,o])=>[n,o,'Social seller'])]
               .sort((a,b)=>b[1].comissao-a[1].comissao);
   const totalApoio=apoio.reduce((s,x)=>s+x[1].comissao,0);
+  const fechado=f.fech&&f.fech.fechado;
 
   // Pendências: o que faz o número da tela não ser confiável
   const pend=[];
-  nomes.forEach(n=>{ if(f.closers[n].semFunil&&!f.closers[n].gestor) pend.push('<b>'+escHtml(n)+'</b> recebeu '+fmtBRL(f.closers[n].base)+' no mês mas não lançou nenhuma reunião no funil — sem conversão não dá pra definir a faixa, então está comissionando 0%.'); });
+  nomes.forEach(n=>{ const o=f.closers[n];
+    if(o.desligado&&o.comissao>0) pend.push('<b>'+escHtml(n)+'</b> está inativo no cadastro — as parcelas seguintes deixam de comissionar.');
+    if(o.itens.some(i=>!i.travado)&&fechado) pend.push('<b>'+escHtml(n)+'</b> tem parcela sem percentual travado num mês já fechado.'); });
 
   return `
+    <div class="cob-card" style="margin-bottom:16px;border-color:${fechado?'rgba(6,95,70,.25)':'rgba(212,87,42,.25)'};background:${fechado?'#F3FBF7':'#FDF8F4'};display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:220px;">
+        <div class="cob-card-label" style="color:${fechado?'#065F46':'var(--coral)'};">${fechado?'✓ Mês fechado':'● Mês aberto'}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.6;">
+          ${fechado
+            ? 'O percentual está gravado em cada venda deste mês. Correção posterior não reabre o fechamento — entra como ajuste no mês corrente.'
+            : 'Comissão <b>provisória</b>: a faixa é a projetada pelo contratado até agora. Ao fechar, o percentual é gravado em todas as vendas do mês.'}
+        </div>
+      </div>
+      ${fechado?'':`<button class="btn-novo" onclick="comFecharMesAction('${f.anoMes}')">Fechar ${f.anoMes}</button>`}
+    </div>
     ${pend.length?`<div class="cob-card" style="border-color:#E8C7C7;background:#FDF6F6;margin-bottom:16px;">
-      <div class="cob-card-label" style="color:#9C0006;">⚠ Pendências que travam o fechamento</div>
+      <div class="cob-card-label" style="color:#9C0006;">⚠ Pendências</div>
       <ul style="margin:8px 0 0;padding-left:18px;font-size:12px;line-height:1.7;color:var(--text);">
-        ${pend.map(t=>'<li>'+t+'</li>').join('')}
+        ${[...new Set(pend)].map(t=>'<li>'+t+'</li>').join('')}
       </ul></div>`:''}
+    ${comRenderAlertas(f.alertas)}
     <div class="cal-summary">
-      <div class="cob-card"><div class="cob-card-label">Base total</div><div class="cob-card-value">${fmtBRL(totalBase)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">entrou no mês, sem reembolso</div></div>
-      <div class="cob-card"><div class="cob-card-label">Comissão dos closers</div><div class="cob-card-value coral">${fmtBRL(totalCom)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${soCloser.length} closer(es)${nomes.length>soCloser.length?' · gestor fora da conta':''}</div></div>
+      <div class="cob-card"><div class="cob-card-label">Contratado no mês</div><div class="cob-card-value">${fmtBRL(totalContratado)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">base da faixa · eixo 1</div></div>
+      <div class="cob-card"><div class="cob-card-label">Recebido no mês</div><div class="cob-card-value">${fmtBRL(totalBase)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">base do pagamento · eixo 2</div></div>
+      <div class="cob-card"><div class="cob-card-label">Comissão dos closers</div><div class="cob-card-value coral">${fmtBRL(totalCom)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${nomes.length} closer(es)</div></div>
       <div class="cob-card"><div class="cob-card-label">SDR e social seller</div><div class="cob-card-value">${fmtBRL(totalApoio)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">0,5% cada</div></div>
       <div class="cob-card"><div class="cob-card-label">Total a pagar</div><div class="cob-card-value" style="color:var(--green);">${fmtBRL(totalCom+totalApoio)}</div></div>
     </div>
-    ${nomes.length===0?'<p class="empty-state">Nenhum valor recebido neste mês.</p>':''}
+    ${nomes.length===0?'<p class="empty-state">Nenhuma venda nem recebimento neste mês.</p>':''}
     ${nomes.map(n=>comBlocoPessoa(n,f.closers[n],'closer')).join('')}
     ${apoio.length?`<p class="vf-section-title" style="margin:26px 0 10px;">SDR e social seller · 0,5%</p>
       ${apoio.map(([n,o,papel])=>comBlocoPessoa(n,o,papel)).join('')}`:''}`;
 }
 
+function comRenderAlertas(al){
+  if(!al) return '';
+  const {atrasadas=[],janela7=[]}=al;
+  if(!atrasadas.length&&!janela7.length) return '';
+  return `
+    ${janela7.length?`<div class="cob-card" style="border-color:rgba(212,87,42,.35);background:#FDF8F4;margin-bottom:12px;">
+      <div class="cob-card-label" style="color:var(--coral);">⚠ ${janela7.length} venda(s) na janela de 7 dias do CDC</div>
+      <div style="font-size:12px;color:var(--muted);margin:6px 0 8px;line-height:1.6;">
+        Cancelamento dentro de 7 dias corridos do pagamento é <b>arrependimento</b> — o único caso que
+        remove a venda da base da faixa e obriga a recalcular o mês. Confirme e mude o status da venda
+        para <b>Arrependimento</b>; fora da janela, o cancelamento não recalcula nada.
+      </div>
+      <table class="perf-table"><thead><tr><th>Cliente</th><th>Closer</th><th>Valor</th><th>1º pagamento</th><th>Dias</th></tr></thead>
+      <tbody>${janela7.map(v=>`<tr>
+        <td>${escHtml(v.nome_cliente||'—')}</td><td>${escHtml(v.closer||'—')}</td>
+        <td>${fmtBRL(v.valor_bruto)}</td><td>${fmtDataBR(v.pgto)}</td>
+        <td style="font-weight:600;">${v.dias}</td></tr>`).join('')}</tbody></table>
+    </div>`:''}
+    ${atrasadas.length?`<div class="cob-card" style="border-color:#E8C7C7;background:#FDF6F6;margin-bottom:16px;">
+      <div class="cob-card-label" style="color:#9C0006;">⚠ ${atrasadas.length} parcela(s) com mais de 30 dias de atraso</div>
+      <div style="font-size:12px;color:var(--muted);margin:6px 0 8px;line-height:1.6;">
+        Encaminhar ao jurídico. Parcela não paga não gera comissão — mas a venda continua na
+        apuração da faixa do mês em que foi computada.
+      </div>
+      <table class="perf-table"><thead><tr><th>Cliente</th><th>Closer</th><th>Valor</th><th>Vencimento</th><th>Atraso</th></tr></thead>
+      <tbody>${atrasadas.slice(0,25).map(p=>`<tr>
+        <td>${escHtml(p.vendas?.nome_cliente||'—')}</td><td>${escHtml(p.vendas?.closer||'—')}</td>
+        <td>${fmtBRL(p.valor_bruto)}</td><td>${fmtDataBR(p.data_prevista)}</td>
+        <td style="font-weight:600;">${p.dias} dias</td></tr>`).join('')}</tbody></table>
+      ${atrasadas.length>25?`<p style="font-size:11px;color:var(--muted);margin:8px 0 0;">Mostrando as 25 mais antigas de ${atrasadas.length}. O CSV traz todas.</p>`:''}
+    </div>`:''}`;
+}
+
 function comBlocoPessoa(nome,o,papel){
   const id='com-'+nome.replace(/[^a-zA-Z0-9]/g,'');
+  const misto=o.pcts&&o.pcts.length>1;
   const sub=papel!=='closer'?papel+' · 0,5%'
-    : o.gestor?'Gestor · vende eventualmente, não roda funil — sem conversão e sem comissão'
-    : o.semFunil?'<span style="color:#9C0006;">funil não lançado</span>'
-    : `${o.reunioes} reuniões · ${o.vendas} vendas · <b>${o.conversao.toFixed(2)}%</b> · ${escHtml(o.faixa)} (${o.pct}%)`;
+    : `contratado ${fmtBRL(o.contratado||0)} · <span class="faixa-badge ${o.faixaCls||''}">${escHtml(o.faixa||'—')}</span>`
+      +(misto?` <span style="font-size:11px;color:var(--muted);">· recebimentos a ${o.pcts.map(p=>p+'%').join(', ')}</span>`:'')
+      +(o.desligado?' <span style="color:#9C0006;font-size:11px;">· inativo</span>':'')
+      +(o.proxima?` <span style="font-size:11px;color:var(--muted);">· faltam ${fmtBRL(o.proxima.falta)} pra ${o.proxima.faixa.pct}%</span>`:'');
   return `<div class="reemb-card" style="margin-bottom:10px;">
     <div class="reemb-card-head" onclick="comToggle('${id}')">
       <div class="reemb-avatar">${(nome||'?').trim().charAt(0).toUpperCase()}</div>
@@ -6570,21 +7034,34 @@ function comBlocoPessoa(nome,o,papel){
         <div class="reemb-meta">${sub}</div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
-        <div class="reemb-valor">${o.gestor?'—':fmtBRL(o.comissao)}</div>
-        <div style="font-size:11px;color:var(--muted);">${o.gestor?'entrou':'base'} ${fmtBRL(o.base)}</div>
+        <div class="reemb-valor">${fmtBRL(o.comissao)}</div>
+        <div style="font-size:11px;color:var(--muted);">recebido ${fmtBRL(o.base)}</div>
       </div>
       <span class="reemb-caret">${o.itens.length} <i>▾</i></span>
     </div>
     <div id="${id}" style="display:none;padding:0 16px 14px 19px;">
       <table class="perf-table" style="margin-top:6px;">
-        <thead><tr><th>Recebido em</th><th>Cliente</th><th><span class="hint" tabindex="0" data-hint="parcPago">Pago</span></th><th><span class="hint" tabindex="0" data-hint="parcComissiona">Comissiona</span></th></tr></thead>
+        <thead><tr><th>Recebido em</th><th>Cliente</th><th>Parc.</th><th>Competência</th><th>%</th><th>Trava</th><th><span class="hint" tabindex="0" data-hint="parcPago">Bruto recebido</span></th><th>Comissão</th></tr></thead>
         <tbody>${o.itens.map(i=>`<tr${i.reembolso?' style="opacity:.55;"':''}>
           <td>${fmtDataBR(i.data)}</td>
-          <td>${escHtml(i.cliente)}${i.reembolso?' <span class="status-badge s-reembolso">↩ fora da base</span>':''}${i.parcela?' <span style="font-size:11px;color:var(--muted);">· parcela de venda anterior</span>':''}</td>
+          <td>${escHtml(i.cliente)}${i.reembolso?' <span class="status-badge s-reembolso">↩ fora da base</span>':''}${i.parcela?' <span style="font-size:11px;color:var(--muted);">· venda anterior</span>':''}</td>
+          <td style="color:var(--muted);">${i.numero?(i.numero===1?'entrada':i.numero+'ª'):'—'}</td>
+          <td style="color:var(--muted);">${i.competencia||'—'}</td>
+          <td style="font-weight:600;">${papel==='closer'?i.pct+'%':'0,5%'}</td>
+          <td>${i.travado
+                ?`<span class="status-badge" style="background:#ECFDF5;color:#065F46;" title="${i.origem==='MIGRACAO_RETROATIVA'?'Trava retroativa da migração':'Travado no fechamento do mês'}">${i.origem==='MIGRACAO_RETROATIVA'?'retroativa':'definitivo'}</span>`
+                :'<span class="status-badge" style="background:#FFF7ED;color:#9A3412;">provisório</span>'}</td>
           <td style="color:var(--muted);">${fmtBRL(i.pago)}</td>
-          <td style="font-weight:600;">${fmtBRL(i.comissiona)}</td>
+          <td style="font-weight:600;">${fmtBRL(papel==='closer'?(i.comissao||0):Math.round(i.comissiona*0.5)/100)}</td>
         </tr>`).join('')}</tbody>
       </table>
+      ${(o.ajustes&&o.ajustes.length)?`<p class="vf-section-title" style="margin:16px 0 8px;font-size:12px;">Ajustes lançados neste mês</p>
+        <table class="perf-table"><thead><tr><th>Tipo</th><th>Mês de origem</th><th>Motivo</th><th>Responsável</th><th>Valor</th></tr></thead>
+        <tbody>${o.ajustes.map(a=>`<tr>
+          <td>${escHtml(a.tipo)}</td><td>${escHtml(a.mes_origem||'—')}</td>
+          <td>${escHtml(a.motivo||'—')}</td><td>${escHtml(a.responsavel||'—')}</td>
+          <td style="font-weight:600;color:${Number(a.valor)<0?'#9C0006':'var(--green)'};">${fmtBRL(Number(a.valor||0))}</td>
+        </tr>`).join('')}</tbody></table>`:''}
     </div>
   </div>`;
 }
@@ -6623,7 +7100,7 @@ function comRenderAcumulado(fechados){
       <div class="cob-card"><div class="cob-card-label">Base dos closers</div><div class="cob-card-value">${fmtBRL(totalBase)}</div></div>
       <div class="cob-card"><div class="cob-card-label">Comissão total</div><div class="cob-card-value coral">${fmtBRL(totalCom)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">closers + SDR + social</div></div>
     </div>
-    <p style="font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 14px;">Somado mês a mês, porque a faixa do closer muda conforme a conversão de cada mês — não dá pra somar a base e aplicar um percentual só.</p>
+    <p style="font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 14px;">Somado mês a mês, porque cada venda carrega o percentual travado do seu próprio mês de competência — não dá pra somar a base e aplicar um percentual só.</p>
     <div class="perf-table-wrap">
       <table class="perf-table">
         <thead><tr><th>Pessoa</th><th>Papel</th><th>Base acumulada</th><th>Comissão acumulada</th>${fechados.map(f=>'<th>'+mesLbl(f.anoMes)+'</th>').join('')}</tr></thead>
@@ -6645,22 +7122,35 @@ function exportarComissionamento(){
   const num=v=>String(Number(v||0).toFixed(2)).replace('.',',');
   if(_comUltimo.tipo==='mes'){
     const f=_comUltimo.dados;
-    linhas.push(['Mês','Pessoa','Papel','Conversão','Faixa','%','Cliente','Recebido em','Pago pelo cliente','Comissiona']);
-    const dump=(mapa,papel)=>Object.entries(mapa).forEach(([n,o])=>o.itens.forEach(i=>
-      linhas.push([f.anoMes,n,papel,o.conversao!=null?o.conversao.toFixed(2)+'%':'',o.faixa||'',o.pct,
-        i.cliente,i.data,num(i.pago),num(i.comissiona)])));
+    // Uma linha por parcela recebida, com o percentual travado e a origem da trava —
+    // é a listagem de conferência do fechamento.
+    linhas.push(['Mês','Pessoa','Papel','Contratado no mês','Faixa','Cliente','Parcela',
+                 'Competência da venda','% aplicado','Trava','Recebido em','Bruto recebido','Comissão']);
+    const dump=(mapa,papel)=>Object.entries(mapa).forEach(([n,o])=>o.itens.forEach(i=>{
+      const pct=papel==='Closer'?i.pct:0.5;
+      linhas.push([f.anoMes,n,papel,num(o.contratado||0),o.faixa||'',i.cliente,
+        i.numero?(i.numero===1?'entrada':i.numero+'ª'):'',i.competencia||'',pct+'%',
+        i.travado?(i.origem==='MIGRACAO_RETROATIVA'?'retroativa':'definitivo'):'provisório',
+        i.data,num(i.pago),num(Math.round(i.comissiona*pct)/100)]);}));
     dump(f.closers,'Closer'); dump(f.sdrs,'SDR'); dump(f.socials,'Social seller');
     linhas.push([]);
-    linhas.push(['Mês','Pessoa','Papel','Base','Comissão']);
-    Object.entries(f.closers).forEach(([n,o])=>linhas.push([f.anoMes,n,'Closer',num(o.base),num(o.comissao)]));
-    Object.entries(f.sdrs).forEach(([n,o])=>linhas.push([f.anoMes,n,'SDR',num(o.base),num(o.comissao)]));
-    Object.entries(f.socials).forEach(([n,o])=>linhas.push([f.anoMes,n,'Social seller',num(o.base),num(o.comissao)]));
+    linhas.push(['Mês','Pessoa','Papel','Contratado (faixa)','%','Recebido','Ajustes','Total a pagar']);
+    const tot=(mapa,papel)=>Object.entries(mapa).forEach(([n,o])=>linhas.push([f.anoMes,n,papel,
+      num(o.contratado||0),o.pct+'%',num(o.base),
+      num((o.ajustes||[]).reduce((s,a)=>s+Number(a.valor||0),0)),num(o.comissao)]));
+    tot(f.closers,'Closer'); tot(f.sdrs,'SDR'); tot(f.socials,'Social seller');
+  } else if(_comUltimo.tipo==='migracao'){
+    linhas.push(['Competência','Cliente','Closer','Contratado do closer no mês','Valor da venda',
+                 'Em aberto','% a travar','Situação','% já gravado']);
+    _comUltimo.dados.linhas.forEach(l=>linhas.push([l.competencia,l.cliente,l.closer,
+      num(l.contratado),num(l.valor),num(l.aberto),l.pct+'%',
+      l.jaTravada?'travada':'pendente',l.pctAtual!=null?l.pctAtual+'%':'']));
   } else {
-    linhas.push(['Mês','Pessoa','Papel','Base','Comissão']);
+    linhas.push(['Mês','Pessoa','Papel','Contratado (faixa)','%','Recebido','Total a pagar']);
     _comUltimo.dados.forEach(f=>{
-      Object.entries(f.closers).forEach(([n,o])=>linhas.push([f.anoMes,n,'Closer',num(o.base),num(o.comissao)]));
-      Object.entries(f.sdrs).forEach(([n,o])=>linhas.push([f.anoMes,n,'SDR',num(o.base),num(o.comissao)]));
-      Object.entries(f.socials).forEach(([n,o])=>linhas.push([f.anoMes,n,'Social seller',num(o.base),num(o.comissao)]));
+      const tot=(mapa,papel)=>Object.entries(mapa).forEach(([n,o])=>linhas.push([f.anoMes,n,papel,
+        num(o.contratado||0),(o.pct||0)+'%',num(o.base),num(o.comissao)]));
+      tot(f.closers,'Closer'); tot(f.sdrs,'SDR'); tot(f.socials,'Social seller');
     });
   }
   const csv='﻿'+linhas.map(l=>l.map(c=>{
@@ -6669,7 +7159,7 @@ function exportarComissionamento(){
   }).join(';')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
-  a.download='comissionamento-'+(_comUltimo.tipo==='mes'?_comUltimo.dados.anoMes:'acumulado')+'.csv';
+  a.download='comissionamento-'+(_comUltimo.tipo==='mes'?_comUltimo.dados.anoMes:_comUltimo.tipo)+'.csv';
   a.click(); URL.revokeObjectURL(a.href);
 }
 
