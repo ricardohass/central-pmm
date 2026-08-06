@@ -33,7 +33,9 @@ KEY = base64.b64decode(
 
 ASANA = 'https://app.asana.com/api/1.0/'
 PROJETO = '1215606464571136'  # projeto PMM
-TOKEN = os.environ.get('ASANA_TOKEN', '')
+# .strip() porque token colado no secret costuma vir com quebra de linha junto,
+# e aí o header sai malformado e o Asana devolve 401
+TOKEN = os.environ.get('ASANA_TOKEN', '').strip()
 
 APELIDO = {'Caroline Neiva': 'Carol', 'Gabriel Mor': 'Mor', 'Gabriel Rocha': 'Rocha',
            'Janaina Xavier': 'Jana', 'Lígia Oliveira': 'Lígia', 'Amanda Duarte': 'Amanda',
