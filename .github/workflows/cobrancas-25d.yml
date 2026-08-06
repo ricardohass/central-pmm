@@ -1,0 +1,26 @@
+name: Cobranças 25d+
+
+# Varre as parcelas da Central e abre no Asana uma tarefa por caso que passou de
+# 25 dias de atraso. Roda no GitHub porque a sandbox dos agentes na nuvem tem
+# proxy com allowlist e bloqueia o acesso direto ao Supabase (403).
+
+on:
+  schedule:
+    - cron: '7 11 * * *'   # 11:07 UTC = 08:07 em São Paulo
+  workflow_dispatch:        # botão "Run workflow" pra rodar na mão
+
+permissions:
+  contents: read
+
+jobs:
+  cobrancas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Levantar parcelas e abrir tarefas no Asana
+        env:
+          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
+        run: python3 .github/scripts/cobrancas_25dias.py
