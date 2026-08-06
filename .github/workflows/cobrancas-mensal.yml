@@ -1,0 +1,25 @@
+name: Cobranças mensal
+
+# Fechamento do mês: uma tarefa no Asana com todos os atrasados agrupados por
+# closer. Irmã da rotina diária, mesmo motivo pra viver aqui e não na nuvem.
+
+on:
+  schedule:
+    - cron: '0 11 1 * *'   # 11:00 UTC do dia 1º = 08:00 em São Paulo
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cobrancas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fechamento mensal de cobranças
+        env:
+          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
+        run: python3 .github/scripts/cobrancas_mensal.py
