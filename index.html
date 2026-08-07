@@ -1275,7 +1275,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
         <p style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:20px;">* Valor <strong>previsto</strong> e sujeito a alteração. Ele é fechado apenas ao final do mês — ajustes de cálculo, correção de alguma venda lançada ou outras revisões podem mudar o total. Use este número como estimativa, não como valor definitivo.</p>
         <div class="perf-table-wrap" style="margin-bottom:32px;">
           <table class="perf-table">
-            <thead><tr><th>Recebido em</th><th>Cliente</th><th><span class="hint" tabindex="0" data-hint="parcPago">Bruto recebido</span></th><th><span class="hint" tabindex="0" data-hint="baseNegociada">Base (negociado)</span></th><th><span class="hint" tabindex="0" data-hint="pctTravado">%</span></th><th>Comissão</th><th>Método</th><th><span class="hint" tabindex="0" data-hint="competencia">Competência</span></th></tr></thead>
+            <thead><tr><th>Recebido em</th><th>Cliente</th><th><span class="hint" tabindex="0" data-hint="parcPago">Bruto recebido</span></th><th><span class="hint" tabindex="0" data-hint="baseNegociada">Comissiona</span></th><th><span class="hint" tabindex="0" data-hint="pctTravado">%</span></th><th>Comissão</th><th>Método</th><th><span class="hint" tabindex="0" data-hint="competencia">Competência</span></th></tr></thead>
             <tbody id="minhasVendasTbody"></tbody>
           </table>
         </div>
@@ -1647,8 +1647,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
         <div class="pgto-total-item"><span class="pgto-total-label hint" tabindex="0" data-hint="aReceber">A receber:</span><span class="pgto-total-val" id="pgtoTotalRestante" style="color:var(--coral);">R$ 0,00</span></div>
       </div>
       <div style="margin-top:14px;display:flex;gap:14px;align-items:end;flex-wrap:wrap;">
-        <div class="vf-field" style="max-width:220px;margin:0;"><label><span class="hint" tabindex="0" data-hint="negociacao">Valor da negociação (R$)</span></label><input type="number" id="vfComissao" step="0.01" min="0" value="0" oninput="comissaoAutomatica();atualizarTotaisPgto()"></div>
-        <button type="button" class="btn-add-pgto" style="margin:0;" onclick="ajustarComissaoPelaNegociacao()">Recalcular comissão pela regra</button>
+        <div class="vf-field" style="max-width:220px;margin:0;"><label><span class="hint" tabindex="0" data-hint="negociacao">Valor da negociação (R$)</span></label><input type="number" id="vfComissao" step="0.01" min="0" value="0" oninput="atualizarTotaisPgto()"></div>
       </div>
       <p id="pgtoComissaoAviso" style="font-size:11px;line-height:1.5;margin:8px 0 0;"></p>
     </div>
@@ -2176,9 +2175,9 @@ const CRITERIOS={
   reembVolta:'<b>Valor que volta pro cliente</b> = quanto a empresa devolve de fato. Não é o quanto o cliente pagou — no reembolso <b>parcial</b> é só a parte acordada com o jurídico. É esse valor que as parcelas do reembolso têm que somar, e é ele que aparece em "A reembolsar".',
   parcBruto:'Valor cheio desta parcela, com os juros do parcelamento já embutidos, antes das taxas do gateway.',
   parcPago:'Quanto o cliente desembolsou nesta parcela, com os juros do parcelamento embutidos. É o que entra no faturamento e no caixa.',
-  negociacao:'<b>Valor da negociação</b> = o preço fechado com o cliente, sem os juros do parcelamento. É <b>ele</b> que a comissão multiplica: o percentual da faixa incide sobre este valor, não sobre o bruto que o cliente desembolsou.',
-  parcComissiona:'Quanto desta parcela entra na base de comissão: a fatia do <b>valor da negociação</b> proporcional a esta parcela. Ex.: venda de R$ 32.000 negociados que virou R$ 38.400,11 de bruto — a base é R$ 32.000, e o percentual incide sobre ela. Somadas todas as parcelas até a quitação, a base fecha exatamente o negociado.',
-  baseNegociada:'A base da comissão é o <b>valor da negociação</b> da venda (o preço fechado com o cliente), rateado pela fatia que cada parcela representa do bruto. O <b>bruto recebido</b> não comissiona — ele serve pro caixa/faturamento e pro contratado do mês, que define a faixa.',
+  negociacao:'<b>Valor da negociação</b> = o preço fechado com o cliente, sem os juros do parcelamento. Serve de referência: a tela confere se a coluna <b>Comissiona (R$)</b> soma este valor e avisa quando não bate — mas nunca corrige sozinha.',
+  parcComissiona:'Quanto desta parcela entra na base de comissão. É <b>digitado à mão</b>, parcela por parcela: não existe regra automática, nem rateio, nem dedução de juros. O que estiver aqui é o que o closer comissiona quando esta parcela entrar. Em branco = zero.',
+  baseNegociada:'A base da comissão é o valor <b>digitado na coluna "Comissiona (R$)"</b> do cadastro da venda, parcela por parcela. O <b>bruto recebido</b> não comissiona — ele serve pro caixa/faturamento e pro contratado do mês, que define a faixa.',
   pctTravado:'Percentual <b>travado na venda</b>. Sai da faixa que o closer atingiu no mês de competência da venda e acompanha todas as parcelas dela até a quitação — mesmo virando o ano ou mudando a tabela de faixas. Enquanto o mês não fecha aparece como <b>prov.</b> (provisório, projetado pelo contratado até agora).',
   competencia:'Mês em que a venda entra na apuração da faixa. É o mês do <b>primeiro pagamento</b> (a entrada), não o do fechamento nem o da assinatura do contrato. Venda fechada em 31/08 com entrada paga em 02/09 tem competência de setembro.',
   faixaVolume:'A faixa vem do <b>valor contratado bruto</b> das vendas novas do mês, apurado individualmente por closer: até R$ 100.000,00 → 2% · de R$ 100.000,01 a R$ 199.999,99 → 3% · R$ 200.000,00 ou mais → 4%. Não existe faixa de time nem proporcional para quem entrou no meio do mês.',
@@ -3070,7 +3069,6 @@ async function salvarVenda(){
       // Parcela que sobrou de uma versão anterior maior do cronograma sai.
       for(let i=pagamentos.length;i<antigas.length;i++)
         await supaFetch('pagamentos_venda?id=eq.'+antigas[i].id,{method:'DELETE',headers:{'Prefer':''}});
-      await recalcComissaoVenda(vendaId);
       await marcarCompetencia(vendaId);
     }
     fecharFormVenda();carregarVendas();
@@ -3222,58 +3220,22 @@ const CLOSERS_LIST=['Lígia Oliveira','Gabriel Rocha','Caroline Neiva','Gabriel 
 const AV_COLORS={'Lígia Oliveira':'#4E7260','Gabriel Rocha':'#D4572A','Caroline Neiva':'#854F0B','Gabriel Mor':'#3D5C4A','Janaina Xavier':'#7C5CBF','Amanda Duarte':'#1565C0','Bruno Martins':'#0F766E'};
 const INITIALS=n=>n.split(' ').map(w=>w[0]).slice(0,2).join('');
 
-// ── A REGRA DA COMISSÃO, num lugar só ──
-// Classifica o cronograma. Hoje serve só pro texto de conferência do formulário — a regra de
-// comissão não depende mais do formato do parcelamento (ver calcularComissoes).
-function classificarPagamento(ps){
-  const meses=new Set(ps.map(p=>p.mes).filter(Boolean));
-  if(meses.size===1&&ps.every(p=>p.status==='recebido')) return 'quitada';
-  const contagem={};
-  ps.forEach(p=>{ const k=Number(p.valor||0).toFixed(2); contagem[k]=(contagem[k]||0)+1; });
-  if(Object.values(contagem).some(n=>n>=3)) return 'mensalidade';
-  return 'entrada_quitacao';
-}
-// Recebe as parcelas normalizadas ({valor,status,mes}) em ordem de vencimento e o valor
-// negociado; devolve quanto cada uma comissiona. REGRA ÚNICA, seja quitada no mês,
-// mensalidade ou entrada + quitação: a comissão incide sobre o VALOR DA NEGOCIAÇÃO, e cada
-// parcela leva a fatia dele proporcional ao que representa no bruto total. Os juros do
-// parcelamento nunca comissionam, e a última parcela absorve o arredondamento pra soma
-// fechar exatamente o negociado. Sem negociação cadastrada, cai no bruto.
-function calcularComissoes(ps,negociacao){
-  const neg=Number(negociacao||0);
-  const total=ps.reduce((s,p)=>s+Number(p.valor||0),0);
-  if(neg<=0||total<=0) return ps.map(p=>Number(p.valor||0));
-  let acum=0;
-  return ps.map((p,i)=>{
-    const v=i===ps.length-1?Math.round((neg-acum)*100)/100
-      :Math.round(Number(p.valor||0)*(neg/total)*100)/100;
-    if(i<ps.length-1) acum+=v;
-    return v;
-  });
-}
 // Taxa que o gateway desconta. Conferido na base: só a Cispay cobra, e cobra 3% cravado.
 const TAXA_GATEWAY={'Cispay':0.03};
 function taxaGateway(gw){ return TAXA_GATEWAY[gw]||0; }
-// Quanto desta parcela comissiona: o VALOR DA NEGOCIAÇÃO da venda (o preço fechado com o
-// cliente, digitado no cadastro), rateado pela fatia que esta parcela representa no bruto
-// total da venda. O bruto recebido NÃO é mais a base: ele serve só pro caixa/faturamento e
-// pro eixo 1 (o contratado do mês, que define a faixa).
-//   ex.: venda de R$ 32.000 negociados, R$ 38.400,11 de bruto parcelado, entrada única →
-//        base = 38.400,11 × (32.000 / 38.400,11) = 32.000 → 2% = R$ 640,00.
-// O rateio garante que, somadas todas as parcelas até a quitação, a base bate exatamente o
-// negociado — e cada mês comissiona só o que entrou nele.
-// Venda antiga sem negociação cadastrada cai no bruto, como era antes.
-function baseComissaoParcela(p,v){
+// Quanto desta parcela comissiona: o valor DIGITADO na coluna "Comissiona (R$)" do cadastro
+// da venda. Não existe regra automática — nem rateio pelo negociado, nem dedução de juros:
+// quem decide é quem cadastra, parcela por parcela. O sistema só lê o que está gravado.
+// Parcela antiga que nunca teve esse campo preenchido cai no bruto, pra não zerar histórico.
+// O bruto recebido segue mandando no caixa/faturamento e no eixo 1 (o contratado do mês,
+// que define a faixa) — lá ele não muda nada.
+function baseComissaoParcela(p){
   if(!p) return 0;
-  const bruto=Number(p.valor_bruto||0);
-  const venda=v||p.vendas||{};
-  const neg=Number(venda.base_comissao||0);
-  const total=Number(venda.valor_bruto||0);
-  if(neg>0&&total>0) return Math.round(bruto*(neg/total)*100)/100;
-  return bruto;
+  const manual=leBaseLegado(p);
+  return manual!=null?Number(manual):Number(p.valor_bruto||0);
 }
-// A base sem juros virou legado e mudou de nome na migração v2. Descobrir em runtime qual
-// coluna existe evita que rodar o SQL antes ou depois do deploy quebre o cadastro de venda.
+// A coluna mudou de nome na migração v2. Descobrir em runtime qual existe evita que rodar
+// o SQL antes ou depois do deploy quebre o cadastro de venda.
 let _colBase=null;
 async function colBaseLegado(){
   if(_colBase) return _colBase;
@@ -3537,8 +3499,8 @@ async function renderPerf(){
     ctbody.innerHTML=resumos.join('');
   }
 
-  // Comissão: closer (faixa%) e SDR/social seller (0,5%) — sobre a base NEGOCIADA das vendas
-  // deles, na proporção do que ENTROU no mês.
+  // Comissão: closer (faixa%) e SDR/social seller (0,5%) — sobre o valor que cada parcela
+  // recebida no mês comissiona, digitado no cadastro da venda.
   const secao=document.getElementById('minhasVendasSection');
   const _fc=currentUser&&currentUser.funcao;
   const _temComissao=_fc==='closer'||_fc==='sdr'||_fc==='social_seller';
@@ -3552,13 +3514,15 @@ async function renderPerf(){
       const primeiroDia=anoMes+'-01';
       const ultimoDia=anoMes+'-'+new Date(perfAno,perfMes+1,0).getDate();
       const campo=_fc==='closer'?'closer':(_fc==='sdr'?'sdr':'social_seller');
-      // base_comissao + valor_bruto da venda são o que permite ratear o negociado por parcela.
-      const selVenda='vendas!inner(nome_cliente,data_venda,status,closer,base_comissao,valor_bruto,percentual_travado,status_trava,origem_trava,mes_competencia)';
+      const selVenda='vendas!inner(nome_cliente,data_venda,status,closer,percentual_travado,status_trava,origem_trava,mes_competencia)';
+      // A base de comissão é o valor digitado por parcela — sem ela na query não há o que somar.
+      const colB=await colBaseLegado();
       const urlParc=sel=>'pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia
-        +'&data_recebimento=lte.'+ultimoDia+'&select=venda_id,valor_bruto,data_recebimento,metodo,numero_parcela,'+sel
+        +'&data_recebimento=lte.'+ultimoDia+'&select=venda_id,valor_bruto,'+colB
+        +',data_recebimento,metodo,numero_parcela,'+sel
         +'&vendas.'+campo+'=eq.'+encodeURIComponent(currentUser.nome)+'&order=data_recebimento.asc';
       const [parc,reembCasosCom,fechMes]=await Promise.all([
-        supaFetch(urlParc(selVenda)).catch(()=>supaFetch(urlParc('vendas!inner(nome_cliente,data_venda,status,closer,base_comissao,valor_bruto)'))),
+        supaFetch(urlParc(selVenda)).catch(()=>supaFetch(urlParc('vendas!inner(nome_cliente,data_venda,status,closer)'))),
         supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status,status_reembolso').catch(()=>[]),
         comStatusFechamento(anoMes),
       ]);
@@ -3566,7 +3530,7 @@ async function renderPerf(){
       // a empresa absorve e o closer não devolve nada.
       const reembAbertoCom=new Set((reembCasosCom||[]).filter(c=>c.status!=='resolvido'&&!reembSemEfeito(c)).map(c=>c.venda_id));
       const foraDaBase=p=>!fechMes.fechado&&((p.vendas&&(p.vendas.status==='reembolso'||p.vendas.status==='arrependimento'))||reembAbertoCom.has(p.venda_id));
-      const baseTotal=parc.filter(p=>!foraDaBase(p)).reduce((s,p)=>s+baseComissaoParcela(p,p.vendas),0);
+      const baseTotal=parc.filter(p=>!foraDaBase(p)).reduce((s,p)=>s+baseComissaoParcela(p),0);
       const brutoTotal=parc.filter(p=>!foraDaBase(p)).reduce((s,p)=>s+Number(p.valor_bruto||0),0);
 
       // Cada parcela comissiona pelo percentual travado da SUA venda de origem.
@@ -3577,7 +3541,7 @@ async function renderPerf(){
         const info=_fc==='closer'
           ? await comPctDaVenda(p.vendas||{})
           : {pct:0.5,travado:true,origem:null,faixa:'0,5%'};
-        const base=fora?0:baseComissaoParcela(p,p.vendas);
+        const base=fora?0:baseComissaoParcela(p);
         const com=Math.round(base*info.pct)/100;
         comissaoTotal+=com;
         linhas.push({p,fora,info,base,com});
@@ -3590,10 +3554,10 @@ async function renderPerf(){
         const faixa=getFaixa(contratadoMes);
         prox=proximaFaixa(contratadoMes);
         faixaLabel=faixa.nome+(fechMes.fechado?'':' · projetada');
-        subtitulo='o percentual incide sobre o valor negociado da venda, não sobre o bruto pago';
+        subtitulo='o percentual incide sobre o valor que comissiona em cada parcela, não sobre o bruto pago';
       } else {
         faixaLabel='0,5%';
-        subtitulo=(_fc==='sdr'?'0,5% do valor negociado das vendas em que sou SDR':'0,5% do valor negociado das vendas em que sou social seller');
+        subtitulo=(_fc==='sdr'?'0,5% do que comissiona nas vendas em que sou SDR':'0,5% do que comissiona nas vendas em que sou social seller');
       }
       const tit=document.getElementById('cvTitulo');
       if(tit) tit.innerHTML='Recebido no mês <span style="font-weight:400;color:var(--muted);font-size:12px;">— base da minha comissão ('+subtitulo+')</span>';
@@ -3628,7 +3592,7 @@ async function renderPerf(){
           <td>${fmtDataBR(p.data_recebimento)}</td>
           <td>${p.vendas?.nome_cliente||'—'}${fora?' <span class="status-badge s-reembolso" title="Reembolso — o valor não entra na base de comissão">↩ fora da base</span>':''}${p.numero_parcela?' <span style="font-size:11px;color:var(--muted);">· '+(p.numero_parcela===1?'entrada':p.numero_parcela+'ª parcela')+'</span>':''}</td>
           <td style="color:var(--muted);">${fmtBRL(p.valor_bruto)}</td>
-          <td${fora?' style="text-decoration:line-through;color:var(--muted);"':''}>${fmtBRL(fora?baseComissaoParcela(p,p.vendas):base)}</td>
+          <td${fora?' style="text-decoration:line-through;color:var(--muted);"':''}>${fmtBRL(fora?baseComissaoParcela(p):base)}</td>
           <td>${info.pct}%${info.travado?'':' <span style="font-size:11px;color:#9A3412;">prov.</span>'}${info.origem==='MIGRACAO_RETROATIVA'?' <span style="font-size:11px;color:var(--muted);" title="Percentual atribuído na migração das vendas anteriores a agosto/2026">retro.</span>':''}</td>
           <td${fora?' style="text-decoration:line-through;"':' style="font-weight:600;"'}>${fmtBRL(com)}</td>
           <td>${p.metodo||'—'}</td>
@@ -5728,16 +5692,16 @@ async function migrarVendasQuebradas(){
 // ── CRONOGRAMA DE PAGAMENTOS (form) ──
 function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,comissao,status,parcelas){
   dataPrev=dataPrev||''; metodo=metodo||'PIX'; gateway=gateway||''; bruto=bruto||''; status=status||'pendente'; parcelas=parseInt(parcelas)||1;
-  // Regra: parcela mensal comissiona o valor cheio. Só venda quitada de uma vez comissiona
-  // o valor da negociação (sem os juros do cartão) — aí ajustarComissaoPelaNegociacao reescreve.
-  comissao=(comissao===undefined||comissao===null||comissao==='')?bruto:comissao;
+  // O que comissiona é digitado à mão, parcela por parcela — nenhuma regra escreve por cima.
+  // Linha nova nasce vazia de propósito: preenchida sozinha, ninguém confere.
+  comissao=(comissao===undefined||comissao===null)?'':comissao;
   const isCartao=metodo==='Cartão';
   const opsParcelas=[1,2,3,4,5,6,7,8,9,10,11,12,15,18,24].map(n=>`<option value="${n}"${n===parcelas?' selected':''}>${n===1?'À vista':n+'x'}</option>`).join('');
   const wrap=document.getElementById('pgtoWrap');
   const div=document.createElement('div');
   div.className='pgto-row';
   div.innerHTML=`
-    <input type="date" class="pgto-input pgto-data" value="${dataPrev}" oninput="comissaoAutomatica();atualizarTotaisPgto()">
+    <input type="date" class="pgto-input pgto-data" value="${dataPrev}" oninput="atualizarTotaisPgto()">
     <select class="pgto-select pgto-metodo" onchange="onPgtoMetodoChange(this);atualizarTotaisPgto()">
       <option value="PIX"${metodo==='PIX'?' selected':''}>PIX</option>
       <option value="Cartão"${metodo==='Cartão'?' selected':''}>Cartão</option>
@@ -5755,9 +5719,9 @@ function adicionarPgtoRow(dataPrev,metodo,gateway,bruto,comissao,status,parcelas
       <option value="Asaas"${gateway==='Asaas'?' selected':''}>Asaas</option>
       <option value="Wise"${gateway==='Wise'?' selected':''}>Wise</option>
     </select>
-    <input type="number" class="pgto-input pgto-bruto" step="0.01" min="0" value="${bruto}" placeholder="0,00" oninput="comissaoAutomatica();atualizarTotaisPgto()">
-    <input type="number" class="pgto-input pgto-comissao" step="0.01" min="0" value="${comissao}" placeholder="0,00" oninput="this.dataset.manual='1';atualizarTotaisPgto()">
-    <select class="pgto-select pgto-status" onchange="comissaoAutomatica();atualizarTotaisPgto()">
+    <input type="number" class="pgto-input pgto-bruto" step="0.01" min="0" value="${bruto}" placeholder="0,00" oninput="atualizarTotaisPgto()">
+    <input type="number" class="pgto-input pgto-comissao" step="0.01" min="0" value="${comissao}" placeholder="0,00" oninput="atualizarTotaisPgto()">
+    <select class="pgto-select pgto-status" onchange="atualizarTotaisPgto()">
       <option value="pendente"${status==='pendente'?' selected':''}>Pendente</option>
       <option value="recebido"${status==='recebido'?' selected':''}>Recebido</option>
       <option value="cancelada"${status==='cancelada'?' selected':''}>Cancelada</option>
@@ -5788,42 +5752,9 @@ function removerPgtoRow(btn){
   atualizarTotaisPgto();
 }
 
-// A REGRA, uma só, independente do cronograma: comissiona o valor da NEGOCIAÇÃO, repartido
-// entre as parcelas na proporção do bruto de cada uma. Os juros do parcelamento ficam fora.
-// Roda sozinha enquanto ninguém digitar na coluna de comissão.
-function comissaoAutomatica(){
-  const rows=[...document.querySelectorAll('#pgtoWrap .pgto-row')];
-  if(!rows.length) return;
-  if(rows.some(r=>r.querySelector('.pgto-comissao').dataset.manual==='1')) return; // respeita edição manual
-  aplicarRegraComissao(rows,false);
-}
-// Quitou inteira dentro de um mês só? Aí os juros saem. Se sobra parcela pendente, ou se o
-// cronograma atravessa meses, cada mês comissiona cheio o que entrou nele.
-function parcelasDoForm(rows){
-  return rows.map(r=>({
-    valor:parseFloat(r.querySelector('.pgto-bruto').value)||0,
-    status:r.querySelector('.pgto-status').value,
-    mes:(r.querySelector('.pgto-data').value||'').slice(0,7),
-  }));
-}
-function aplicarRegraComissao(rows,marcarManual){
-  const neg=parseFloat(document.getElementById('vfComissao').value)||0;
-  const ordenadas=rows.slice().sort((a,b)=>(a.querySelector('.pgto-data').value||'').localeCompare(b.querySelector('.pgto-data').value||''));
-  const valores=calcularComissoes(parcelasDoForm(ordenadas),neg);
-  ordenadas.forEach((r,i)=>{
-    const el=r.querySelector('.pgto-comissao');
-    el.value=valores[i]||'';
-    if(marcarManual) el.dataset.manual='1';
-  });
-  atualizarTotaisPgto();
-}
-// Botão: força o recálculo pela regra, jogando fora qualquer ajuste manual.
-function ajustarComissaoPelaNegociacao(){
-  const rows=[...document.querySelectorAll('#pgtoWrap .pgto-row')];
-  if(!rows.length) return;
-  rows.forEach(r=>{ delete r.querySelector('.pgto-comissao').dataset.manual; });
-  aplicarRegraComissao(rows,false);
-}
+// Não existe mais regra automática de comissão: os três valores (bruto, negociação e o que
+// comissiona) são digitados à mão. O que a tela faz é conferir a soma e avisar quando ela
+// não bate com a negociação — avisar, nunca corrigir sozinha.
 function atualizarTotaisPgto(){
   let bruto=0,comissao=0,restante=0;
   document.querySelectorAll('#pgtoWrap .pgto-row').forEach(r=>{
@@ -5836,22 +5767,28 @@ function atualizarTotaisPgto(){
   document.getElementById('pgtoTotalBruto').textContent=fmtBRL(bruto);
   document.getElementById('pgtoTotalComissao').textContent=fmtBRL(comissao);
   document.getElementById('pgtoTotalRestante').textContent=fmtBRL(restante);
-  // Confere a soma da coluna de comissão contra o valor da negociação
+  // Confere a soma da coluna de comissão contra o valor da negociação — só confere.
   const neg=parseFloat(document.getElementById('vfComissao').value)||0;
   const av=document.getElementById('pgtoComissaoAviso');
   if(!av) return;
-  const rows=[...document.querySelectorAll('#pgtoWrap .pgto-row')];
   if(bruto<=0){ av.textContent=''; return; }
-  const ps=parcelasDoForm(rows.slice().sort((a,b)=>(a.querySelector('.pgto-data').value||'').localeCompare(b.querySelector('.pgto-data').value||'')));
-  const meses=[...new Set(ps.map(p=>p.mes).filter(Boolean))];
+  const vazias=[...document.querySelectorAll('#pgtoWrap .pgto-row')].filter(r=>{
+    const b=parseFloat(r.querySelector('.pgto-bruto').value)||0;
+    return b>0&&(r.querySelector('.pgto-comissao').value||'').trim()==='';
+  }).length;
+  const dif=Math.round((comissao-neg)*100)/100;
   if(neg<=0){
-    av.innerHTML='<span style="color:#9C0006;">⚠️ falta o valor da negociação. Sem ele, a comissão cai '
-      +'sobre o bruto e os juros do parcelamento entram junto.</span>';
+    av.innerHTML='<span style="color:#9C0006;">⚠️ falta o valor da negociação.</span>';
+  } else if(vazias>0){
+    av.innerHTML='<span style="color:#9C0006;">⚠️ '+vazias+' parcela(s) sem o valor que comissiona. '
+      +'Parcela em branco entra como <b>zero</b> na comissão do closer.</span>';
+  } else if(Math.abs(dif)<=0.01){
+    av.innerHTML='<span style="color:var(--green);">✓ a coluna que comissiona soma exatamente a '
+      +'negociação ('+fmtBRL(neg)+')'+(bruto-neg>0.01?', deixando '+fmtBRL(bruto-neg)+' de juros de fora':'')+'.</span>';
   } else {
-    av.innerHTML='<span style="color:var(--green);">✓ comissiona o <b>valor da negociação</b> ('
-      +fmtBRL(neg)+')'+(bruto-neg>0.01?', sem os '+fmtBRL(bruto-neg)+' de juros do parcelamento':'')
-      +(meses.length>1?' — repartido entre as parcelas, cada mês leva a fatia do que entrou nele':'')
-      +'. Total: '+fmtBRL(comissao)+'.</span>';
+    av.innerHTML='<span style="color:#9A3412;">⚠️ a coluna que comissiona soma '+fmtBRL(comissao)
+      +' e a negociação é '+fmtBRL(neg)+' — '+(dif>0?'R$ '+fmtBRL(dif).replace('R$ ','')+' a mais'
+      :'R$ '+fmtBRL(-dif).replace('R$ ','')+' a menos')+'. Se for de propósito, pode seguir.</span>';
   }
 }
 
@@ -5890,6 +5827,8 @@ function gerarRecorrenciaPgto(){
     const ultimoDia=new Date(yy,mm+1,0).getDate();
     const dia=Math.min(d,ultimoDia);     // clampa se o mês não tem esse dia
     const iso=yy+'-'+String(mm+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
+    // O gerador repete o valor que você digitou nas duas colunas — é ponto de partida,
+    // dá pra editar linha a linha depois. Nenhum recálculo passa por cima disso.
     adicionarPgtoRow(iso,metodo,gateway,valor,valor,'pendente',1);
   }
   document.getElementById('recValor').value=''; // evita gerar de novo sem querer
@@ -6259,31 +6198,11 @@ async function recalcTotaisVenda(vendaId){
   const liquido=parcelas.filter(p=>p.status==='recebido').reduce((s,p)=>s+Number(p.valor_liquido||0),0);
   const restante=parcelas.filter(p=>p.status==='pendente').reduce((s,p)=>s+Number(p.valor_bruto||0),0);
   await supaFetch('vendas?id=eq.'+vendaId,{method:'PATCH',body:JSON.stringify({valor_liquido:liquido,valor_restante:restante})});
-  await recalcComissaoVenda(vendaId,parcelas);
 }
 
-// Mantém atualizado o valor "sem juros" de cada parcela: a fatia do negociado que ela carrega.
-// A apuração da comissão não LÊ este campo (ela recalcula na hora, em baseComissaoParcela),
-// mas os dois seguem a mesma regra — este fica gravado como rastro do financeiro.
-async function recalcComissaoVenda(vendaId,parcelas){
-  try{
-    const col=await colBaseLegado();
-    if(!parcelas) parcelas=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&select=*&order=data_prevista.asc,id.asc');
-    if(!parcelas.length) return;
-    const v=(await supaFetch('vendas?id=eq.'+vendaId+'&select=base_comissao'))[0];
-    const neg=Number((v&&v.base_comissao)||0);
-    // A data que vale é a do dinheiro que entrou; parcela pendente usa a prevista.
-    const norm=parcelas.map(p=>({
-      valor:Number(p.valor_bruto||0), status:p.status,
-      mes:((p.status==='recebido'?p.data_recebimento:p.data_prevista)||'').slice(0,7)}));
-    const valores=calcularComissoes(norm,neg);
-    for(let i=0;i<parcelas.length;i++){
-      const p=parcelas[i], val=valores[i], atual=leBaseLegado(p);
-      if(atual==null||Math.abs(Number(atual||0)-val)>0.005)
-        await supaFetch('pagamentos_venda?id=eq.'+p.id,{method:'PATCH',body:JSON.stringify({[col]:val})});
-    }
-  }catch(e){ console.warn('recalc base legado da venda:',e.message); }
-}
+// NÃO existe mais recálculo automático da base de comissão. O valor que comissiona é digitado
+// parcela por parcela no cadastro da venda, e só muda quando alguém edita a venda de novo —
+// marcar recebido ou corrigir uma data não pode reescrever o que foi combinado com o closer.
 
 // A COMPETÊNCIA de uma venda é o mês do primeiro pagamento RECEBIDO — não o do fechamento
 // nem o da assinatura. Venda fechada em 31/08 com entrada paga em 02/09 é de setembro.
@@ -6329,8 +6248,8 @@ async function atualizarDataRecebimento(id,novaData,dateStr){
     await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify({data_recebimento:novaData})});
     const p=todosPagamentos.find(x=>x.id===id);
     if(p) p.data_recebimento=novaData;
-    // Mudar a data pode fazer a venda deixar de quitar dentro de um mês só — refaz a comissão.
-    if(p&&p.vendas?.id) await recalcComissaoVenda(p.vendas.id);
+    // A data muda só o MÊS em que esta parcela comissiona; o valor que ela comissiona é o
+    // digitado no cadastro e não se mexe aqui.
   }catch(e){pmmAlert('Erro ao atualizar data de recebimento: '+e.message,'❌','Erro');}
 }
 
@@ -6344,7 +6263,6 @@ async function atualizarDataPagamento(id,novaData,dateStrOriginal){
     if(p&&p.vendas?.id){
       const restante=todosPagamentos.filter(x=>x.vendas?.id===p.vendas.id&&x.status==='pendente').reduce((s,x)=>s+Number(x.valor_bruto||0),0);
       await supaFetch('vendas?id=eq.'+p.vendas.id,{method:'PATCH',body:JSON.stringify({valor_restante:restante})});
-      await recalcComissaoVenda(p.vendas.id);
     }
     renderCobrancas();
     // Abre o detalhe no novo dia
@@ -6490,14 +6408,14 @@ function reembJanelaBadge(r){
 //                       1º pagamento). Define o percentual, que TRAVA em cada venda.
 //                       Parcela de venda antiga não entra nesta base.
 //
-//   EIXO 2 · A PAGAR    o que foi RECEBIDO no mês, de qualquer venda, convertido na fatia
-//                       correspondente do VALOR NEGOCIADO da venda de origem (o bruto pago
-//                       carrega juros de parcelamento e esses juros não comissionam), e
-//                       multiplicado pelo percentual travado daquela venda. Por isso duas
-//                       linhas do mesmo closer, no mesmo mês, podem ter % diferentes.
+//   EIXO 2 · A PAGAR    o que foi RECEBIDO no mês, de qualquer venda: cada parcela entra
+//                       pelo valor DIGITADO no cadastro dela (coluna "Comissiona (R$)"),
+//                       multiplicado pelo percentual travado da SUA venda de origem. Por
+//                       isso duas linhas do mesmo closer, no mesmo mês, podem ter %
+//                       diferentes. Nenhuma regra recalcula essa base — ela é manual.
 //
 // O bruto só manda no eixo 1 (o contratado que define a faixa) e no caixa/faturamento.
-// SDR e social seller ficam fora da faixa: 0,5% fixo sobre a mesma base negociada.
+// SDR e social seller ficam fora da faixa: 0,5% fixo sobre a mesma base.
 const COM_INICIO='2026-07';          // antes disso as contas antigas não são confiáveis
 const COM_V2_INICIO='2026-08';       // a partir daqui vale a faixa por volume
 let comModo='mes';
@@ -6614,19 +6532,20 @@ async function comAlertas(){
 // Levanta o que entrou num mês, já separando o que é reembolso e não comissiona.
 async function comDadosDoMes(anoMes){
   const ultimo=ultimoDiaDoMes(anoMes);
+  // A base de comissão de cada parcela é o valor digitado no cadastro — tem que vir na query.
+  const colB=await colBaseLegado();
   const [parc,casos,usuarios,fech]=await Promise.all([
     supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01'
       +'&data_recebimento=lte.'+ultimo
-      +'&select=venda_id,valor_bruto,data_recebimento,numero_parcela,'
+      +'&select=venda_id,valor_bruto,'+colB+',data_recebimento,numero_parcela,'
       +'vendas!inner(nome_cliente,closer,sdr,social_seller,status,data_venda,'
-      +'base_comissao,valor_bruto,'
       +'percentual_travado,status_trava,origem_trava,mes_competencia)'
       +'&order=data_recebimento.asc').catch(()=>
       // Antes da migração v2 as colunas de trava ainda não existem — segue sem elas.
       supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01'
         +'&data_recebimento=lte.'+ultimo
-        +'&select=venda_id,valor_bruto,data_recebimento,'
-        +'vendas!inner(nome_cliente,closer,sdr,social_seller,status,data_venda,base_comissao,valor_bruto)'
+        +'&select=venda_id,valor_bruto,'+colB+',data_recebimento,'
+        +'vendas!inner(nome_cliente,closer,sdr,social_seller,status,data_venda)'
         +'&order=data_recebimento.asc')),
     supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status,status_reembolso').catch(()=>[]),
     supaFetch('usuarios?select=nome,funcao,status').catch(()=>[]),
@@ -6660,7 +6579,7 @@ async function comFecharMes(anoMes){
   for(const p of parc){
     const v=p.vendas||{};
     const bruto=Number(p.valor_bruto||0);
-    const val=fora(p)?0:baseComissaoParcela(p,v);
+    const val=fora(p)?0:baseComissaoParcela(p);
     const comp=(v.mes_competencia||v.data_venda||'').slice(0,7);
     const info=await comPctDaVenda({...v,closer:v.closer});
     // Closer desligado para de comissionar as parcelas seguintes. O que já foi apurado
@@ -7040,7 +6959,7 @@ function comBlocoPessoa(nome,o,papel){
     </div>
     <div id="${id}" style="display:none;padding:0 16px 14px 19px;">
       <table class="perf-table" style="margin-top:6px;">
-        <thead><tr><th>Recebido em</th><th>Cliente</th><th>Parc.</th><th>Competência</th><th>%</th><th>Trava</th><th><span class="hint" tabindex="0" data-hint="parcPago">Bruto recebido</span></th><th><span class="hint" tabindex="0" data-hint="baseNegociada">Base (negociado)</span></th><th>Comissão</th></tr></thead>
+        <thead><tr><th>Recebido em</th><th>Cliente</th><th>Parc.</th><th>Competência</th><th>%</th><th>Trava</th><th><span class="hint" tabindex="0" data-hint="parcPago">Bruto recebido</span></th><th><span class="hint" tabindex="0" data-hint="baseNegociada">Comissiona</span></th><th>Comissão</th></tr></thead>
         <tbody>${o.itens.map(i=>`<tr${i.reembolso?' style="opacity:.55;"':''}>
           <td>${fmtDataBR(i.data)}</td>
           <td>${escHtml(i.cliente)}${i.reembolso?' <span class="status-badge s-reembolso">↩ fora da base</span>':''}${i.parcela?' <span style="font-size:11px;color:var(--muted);">· venda anterior</span>':''}</td>
@@ -7126,7 +7045,7 @@ function exportarComissionamento(){
     // é a listagem de conferência do fechamento.
     linhas.push(['Mês','Pessoa','Papel','Contratado no mês','Faixa','Cliente','Parcela',
                  'Competência da venda','% aplicado','Trava','Recebido em','Bruto recebido',
-                 'Base (negociado)','Comissão']);
+                 'Comissiona','Comissão']);
     const dump=(mapa,papel)=>Object.entries(mapa).forEach(([n,o])=>o.itens.forEach(i=>{
       const pct=papel==='Closer'?i.pct:0.5;
       linhas.push([f.anoMes,n,papel,num(o.contratado||0),o.faixa||'',i.cliente,
@@ -7136,7 +7055,7 @@ function exportarComissionamento(){
     dump(f.closers,'Closer'); dump(f.sdrs,'SDR'); dump(f.socials,'Social seller');
     linhas.push([]);
     linhas.push(['Mês','Pessoa','Papel','Contratado (faixa)','%','Bruto recebido',
-                 'Base (negociado)','Ajustes','Total a pagar']);
+                 'Comissiona','Ajustes','Total a pagar']);
     const tot=(mapa,papel)=>Object.entries(mapa).forEach(([n,o])=>linhas.push([f.anoMes,n,papel,
       num(o.contratado||0),o.pct+'%',num(o.pago),num(o.base),
       num((o.ajustes||[]).reduce((s,a)=>s+Number(a.valor||0),0)),num(o.comissao)]));
