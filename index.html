@@ -3050,18 +3050,20 @@ async function salvarVenda(){
         const linha={...p, venda_id:vendaId, numero_parcela:i+1,
           data_recebimento:p.status==='recebido'
             ?((velha&&velha.data_recebimento)||p.data_prevista):null};
-        try{
-          if(velha) await supaFetch('pagamentos_venda?id=eq.'+velha.id,
-            {method:'PATCH',body:JSON.stringify(linha)});
-          else await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify([linha])});
-        }catch(e2){
-          // Colunas que ainda não existem no banco (parcelas, numero_parcela) saem do corpo.
-          const m=/'([a-z_]+)' column/.exec(e2.message)||/column "?([a-z_]+)"?/.exec(e2.message);
-          if(m&&linha[m[1]]!==undefined){
-            delete linha[m[1]];
-            if(velha) await supaFetch('pagamentos_venda?id=eq.'+velha.id,{method:'PATCH',body:JSON.stringify(linha)});
+        // Colunas que ainda não existem no banco (parcelas, numero_parcela) saem do corpo.
+        // O Postgrest só aponta UMA coluna faltando por vez, então tira de uma em uma até
+        // passar — tentar só uma vez deixava a venda cair quando faltavam duas colunas.
+        for(;;){
+          try{
+            if(velha) await supaFetch('pagamentos_venda?id=eq.'+velha.id,
+              {method:'PATCH',body:JSON.stringify(linha)});
             else await supaFetch('pagamentos_venda',{method:'POST',body:JSON.stringify([linha])});
-          } else throw e2;
+            break;
+          }catch(e2){
+            const m=/'([a-z_]+)' column/.exec(e2.message)||/column "?([a-z_]+)"?/.exec(e2.message);
+            if(!(m&&linha[m[1]]!==undefined)) throw e2;
+            delete linha[m[1]];
+          }
         }
       }
       // Parcela que sobrou de uma versão anterior maior do cronograma sai.
