@@ -340,6 +340,14 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .vt-full td:nth-child(4), .vt-full td:nth-child(7) { overflow:hidden; text-overflow:ellipsis; }
 /* Vendas usa a largura toda da tela (as outras páginas seguem limitadas a 1200px) */
 #page-vendas{max-width:none;}
+/* Acessos idem: usa a tela toda e deixa nome/observação quebrarem linha,
+   assim a tabela cabe inteira sem scroll lateral */
+#page-acessos{max-width:none;}
+#page-acessos .vendas-table td:nth-child(2),
+#page-acessos .vendas-table td:nth-child(3),
+#page-acessos .vendas-table td:nth-child(4),
+#page-acessos .vendas-table td:nth-child(6){ white-space:normal; word-break:break-word; }
+#page-acessos .vendas-table td:nth-child(6){ min-width:200px; }
 .vendas-table tr:last-child td { border-bottom:none; }
 .vendas-table tr:hover td { background:var(--cream); }
 .status-badge { font-size:11px; font-weight:500; padding:2px 8px; border-radius:20px; }
