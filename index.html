@@ -2175,7 +2175,7 @@ const CRITERIOS={
   reembVolta:'<b>Valor que volta pro cliente</b> = quanto a empresa devolve de fato. Não é o quanto o cliente pagou — no reembolso <b>parcial</b> é só a parte acordada com o jurídico. É esse valor que as parcelas do reembolso têm que somar, e é ele que aparece em "A reembolsar".',
   parcBruto:'Valor cheio desta parcela, com os juros do parcelamento já embutidos, antes das taxas do gateway.',
   parcPago:'Quanto o cliente desembolsou nesta parcela, com os juros do parcelamento embutidos. É o que entra no faturamento e no caixa.',
-  negociacao:'<b>Valor da negociação</b> = o preço fechado com o cliente, sem os juros do parcelamento. Serve de referência: a tela confere se a coluna <b>Comissiona (R$)</b> soma este valor e avisa quando não bate — mas nunca corrige sozinha.',
+  negociacao:'<b>Valor da negociação</b> = o preço fechado com o cliente, sem os juros do parcelamento. É referência do financeiro. Não precisa bater com a soma da coluna <b>Comissiona (R$)</b> — os juros são parte do que o cliente pagou, e o que comissiona é decisão de quem cadastra.',
   parcComissiona:'Quanto desta parcela entra na base de comissão. É <b>digitado à mão</b>, parcela por parcela: não existe regra automática, nem rateio, nem dedução de juros. O que estiver aqui é o que o closer comissiona quando esta parcela entrar. Em branco = zero.',
   baseNegociada:'A base da comissão é o valor <b>digitado na coluna "Comissiona (R$)"</b> do cadastro da venda, parcela por parcela. O <b>bruto recebido</b> não comissiona — ele serve pro caixa/faturamento e pro contratado do mês, que define a faixa.',
   pctTravado:'Percentual <b>travado na venda</b>. Sai da faixa que o closer atingiu no mês de competência da venda e acompanha todas as parcelas dela até a quitação — mesmo virando o ano ou mudando a tabela de faixas. Enquanto o mês não fecha aparece como <b>prov.</b> (provisório, projetado pelo contratado até agora).',
@@ -5767,8 +5767,9 @@ function atualizarTotaisPgto(){
   document.getElementById('pgtoTotalBruto').textContent=fmtBRL(bruto);
   document.getElementById('pgtoTotalComissao').textContent=fmtBRL(comissao);
   document.getElementById('pgtoTotalRestante').textContent=fmtBRL(restante);
-  // Confere a soma da coluna de comissão contra o valor da negociação — só confere.
-  const neg=parseFloat(document.getElementById('vfComissao').value)||0;
+  // A coluna que comissiona NÃO precisa fechar com a negociação: os juros do parcelamento
+  // são parte do que o cliente pagou. O único aviso aqui é parcela em branco, que
+  // comissionaria zero sem ninguém perceber.
   const av=document.getElementById('pgtoComissaoAviso');
   if(!av) return;
   if(bruto<=0){ av.textContent=''; return; }
@@ -5776,20 +5777,10 @@ function atualizarTotaisPgto(){
     const b=parseFloat(r.querySelector('.pgto-bruto').value)||0;
     return b>0&&(r.querySelector('.pgto-comissao').value||'').trim()==='';
   }).length;
-  const dif=Math.round((comissao-neg)*100)/100;
-  if(neg<=0){
-    av.innerHTML='<span style="color:#9C0006;">⚠️ falta o valor da negociação.</span>';
-  } else if(vazias>0){
-    av.innerHTML='<span style="color:#9C0006;">⚠️ '+vazias+' parcela(s) sem o valor que comissiona. '
-      +'Parcela em branco entra como <b>zero</b> na comissão do closer.</span>';
-  } else if(Math.abs(dif)<=0.01){
-    av.innerHTML='<span style="color:var(--green);">✓ a coluna que comissiona soma exatamente a '
-      +'negociação ('+fmtBRL(neg)+')'+(bruto-neg>0.01?', deixando '+fmtBRL(bruto-neg)+' de juros de fora':'')+'.</span>';
-  } else {
-    av.innerHTML='<span style="color:#9A3412;">⚠️ a coluna que comissiona soma '+fmtBRL(comissao)
-      +' e a negociação é '+fmtBRL(neg)+' — '+(dif>0?'R$ '+fmtBRL(dif).replace('R$ ','')+' a mais'
-      :'R$ '+fmtBRL(-dif).replace('R$ ','')+' a menos')+'. Se for de propósito, pode seguir.</span>';
-  }
+  av.innerHTML=vazias>0
+    ?'<span style="color:#9C0006;">⚠️ '+vazias+' parcela(s) sem o valor que comissiona. '
+      +'Parcela em branco entra como <b>zero</b> na comissão do closer.</span>'
+    :'';
 }
 
 function toggleRecorrencia(){
@@ -6497,19 +6488,18 @@ async function comStatusFechamento(anoMes){
 // ── ALERTAS QUE PRECEDEM O FECHAMENTO ──
 // (1) parcela com mais de 30 dias de atraso → encaminhar ao jurídico;
 // (2) venda cancelada/reembolsada dentro da janela de 7 dias do CDC → é arrependimento,
-//     e arrependimento é o único caso que remove a venda da base da faixa e força recálculo;
-// (3) venda cujo cronograma não fecha com a negociação — parcela em branco, ou a soma da
-//     coluna que comissiona diferente do preço fechado. Com a base manual, esse é o erro
-//     que passa batido: ninguém reabre uma venda pra conferir uma coluna. Aqui ele aparece
-//     antes do mês fechar, quando ainda dá pra corrigir.
+//     e arrependimento é o único caso que remove a venda da base da faixa e força recálculo.
+//
+// NÃO existe alerta de "coluna que comissiona diferente da negociação": os juros do
+// parcelamento são parte do que o cliente pagou, então a soma pode passar do preço fechado
+// sem que isso seja erro. Quem decide o que cada parcela comissiona é quem cadastra.
 let _alertasCache=null;
 async function comAlertas(){
   if(_alertasCache) return _alertasCache;   // não dependem do mês: no acumulado, busca uma vez só
   const hoje=new Date();
   const limite=new Date(hoje.getTime()-30*864e5).toISOString().slice(0,10);
   const campo=await comCampoCompetencia();
-  const colB=await colBaseLegado();
-  const [atrasadas,recentes,todasParc,todasVendas]=await Promise.all([
+  const [atrasadas,recentes]=await Promise.all([
     supaFetch('pagamentos_venda?status=eq.pendente&data_prevista=lt.'+limite
       +'&select=id,valor_bruto,data_prevista,vendas!inner(nome_cliente,closer,status)'
       +'&vendas.status=not.in.(cancelada,arrependimento,reembolso)'
@@ -6517,10 +6507,6 @@ async function comAlertas(){
     supaFetch('vendas?status=in.(cancelada,reembolso)&select=id,nome_cliente,closer,valor_bruto,data_venda'
       +(campo==='mes_competencia'?',mes_competencia,data_primeiro_pagamento,data_cancelamento':'')
       +'&order=data_venda.desc&limit=200').catch(()=>[]),
-    supaFetch('pagamentos_venda?select=venda_id,valor_bruto,'+colB).catch(()=>[]),
-    supaFetch('vendas?status=not.in.(cancelada,arrependimento)'
-      +'&select=id,nome_cliente,closer,valor_bruto,base_comissao,data_venda'
-      +(campo==='mes_competencia'?',mes_competencia':'')).catch(()=>[]),
   ]);
   const dias=(a,b)=>Math.floor((new Date(b)-new Date(a))/864e5);
   const janela7=(recentes||[]).map(v=>{
@@ -6532,26 +6518,9 @@ async function comAlertas(){
     const d=dias(pgto,canc||hoje.toISOString().slice(0,10));
     return (d>=0&&d<=7)?{...v,pgto,canc,dias:d}:null;
   }).filter(Boolean);
-  // Cronograma que não fecha com a negociação. Venda sem negociação cadastrada fica fora:
-  // ali não há com o que comparar, e o aviso viraria ruído em toda venda antiga.
-  const porVenda={};
-  (todasParc||[]).forEach(p=>{ (porVenda[p.venda_id]=porVenda[p.venda_id]||[]).push(p); });
-  const baseFora=(todasVendas||[]).map(v=>{
-    const ps=porVenda[v.id]||[];
-    const neg=Number(v.base_comissao||0);
-    if(!ps.length||neg<=0) return null;
-    // Soma o que a venda VAI pagar de verdade — parcela em branco entra pelo bruto, que é
-    // o que baseComissaoParcela devolve. Comparar com zero acusaria venda que está certa.
-    const emBranco=ps.filter(p=>leBaseLegado(p)==null).length;
-    const soma=Math.round(ps.reduce((s,p)=>s+baseComissaoParcela(p),0)*100)/100;
-    const dif=Math.round((soma-neg)*100)/100;
-    if(Math.abs(dif)<=0.01) return null;
-    return {...v,parcelas:ps.length,emBranco,soma,neg,dif,
-            competencia:(v.mes_competencia||v.data_venda||'').slice(0,7)};
-  }).filter(Boolean).sort((a,b)=>Math.abs(b.dif)-Math.abs(a.dif));
   _alertasCache={
     atrasadas:(atrasadas||[]).map(p=>({...p,dias:dias(p.data_prevista,hoje.toISOString().slice(0,10))})),
-    janela7, baseFora};
+    janela7};
   return _alertasCache;
 }
 
@@ -6929,26 +6898,9 @@ function comRenderMes(f){
 
 function comRenderAlertas(al){
   if(!al) return '';
-  const {atrasadas=[],janela7=[],baseFora=[]}=al;
-  if(!atrasadas.length&&!janela7.length&&!baseFora.length) return '';
+  const {atrasadas=[],janela7=[]}=al;
+  if(!atrasadas.length&&!janela7.length) return '';
   return `
-    ${baseFora.length?`<div class="cob-card" style="border-color:#E0CBA8;background:#FDFAF3;margin-bottom:12px;">
-      <div class="cob-card-label" style="color:#9A3412;">⚠ ${baseFora.length} venda(s) com o cronograma fora da negociação</div>
-      <div style="font-size:12px;color:var(--muted);margin:6px 0 8px;line-height:1.6;">
-        A coluna <b>Comissiona (R$)</b> é preenchida à mão, parcela por parcela — nada recalcula
-        sozinho. Nestas vendas ela não soma o valor da negociação: somadas todas as parcelas até
-        a quitação, o closer vai comissionar mais (ou menos) do que o preço fechado. Parcela em
-        branco entra pelo bruto. Abra a venda e acerte antes de fechar o mês.
-      </div>
-      <table class="perf-table"><thead><tr><th>Cliente</th><th>Closer</th><th>Competência</th><th>Parc.</th><th>Negociação</th><th>Comissiona no total</th><th>Diferença</th></tr></thead>
-      <tbody>${baseFora.slice(0,25).map(v=>`<tr>
-        <td>${escHtml(v.nome_cliente||'—')}</td><td>${escHtml(v.closer||'—')}</td>
-        <td style="color:var(--muted);">${v.competencia||'—'}</td>
-        <td style="color:var(--muted);">${v.parcelas}${v.emBranco?` <span style="color:#9C0006;">· ${v.emBranco} em branco</span>`:''}</td>
-        <td>${fmtBRL(v.neg)}</td><td>${fmtBRL(v.soma)}</td>
-        <td style="font-weight:600;color:${v.dif>0?'#9C0006':'#9A3412'};">${v.dif>0?'+':''}${fmtBRL(v.dif)}</td></tr>`).join('')}</tbody></table>
-      ${baseFora.length>25?`<p style="font-size:11px;color:var(--muted);margin:8px 0 0;">Mostrando as 25 maiores diferenças de ${baseFora.length}.</p>`:''}
-    </div>`:''}
     ${janela7.length?`<div class="cob-card" style="border-color:rgba(212,87,42,.35);background:#FDF8F4;margin-bottom:12px;">
       <div class="cob-card-label" style="color:var(--coral);">⚠ ${janela7.length} venda(s) na janela de 7 dias do CDC</div>
       <div style="font-size:12px;color:var(--muted);margin:6px 0 8px;line-height:1.6;">
