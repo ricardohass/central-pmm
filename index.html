@@ -5208,6 +5208,27 @@ const OFERTA_2M = [
   {cond:'4x',      sub:'PIX ou boleto',   parcela:2783.33, total:11133.33, gateway:'Asaas', url:'https://www.asaas.com/c/qvzfa2g4e88ob6jc', copyId:'2m3'},
 ];
 
+// Programa 2M no cartão: um link por valor cheio, todos 12x na Cispay.
+// A parcela é sempre 1/10 do valor cheio — 12 delas, ou seja, o total sai 20% acima.
+const OFERTA_2M_CISPAY = [
+  {cond:'R$ 9.800', parcela:980, total:11760, gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshhzz2v000202ju18mt8c28', copyId:'2mc0'},
+  {cond:'R$ 9.000', parcela:900, total:10800, gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshi0mq7000302jua3j2e530', copyId:'2mc1'},
+  {cond:'R$ 8.000', parcela:800, total:9600,  gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshi15n2000402ju783t5q1l', copyId:'2mc2'},
+  {cond:'R$ 7.000', parcela:700, total:8400,  gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshi1r2e000502jud4dr9vyz', copyId:'2mc3'},
+  {cond:'R$ 6.000', parcela:600, total:7200,  gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshi2igw000602jubfiweib0', copyId:'2mc4'},
+  {cond:'R$ 5.000', parcela:500, total:6000,  gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshi3403000702ju8edmgtc7', copyId:'2mc5'},
+  {cond:'R$ 4.800', parcela:480, total:5760,  gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshi3oi7000802ju5csy70h4', copyId:'2mc6'},
+  {cond:'R$ 4.000', parcela:400, total:4800,  gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshi4a3o000902ju3ox12z38', copyId:'2mc7'},
+  {cond:'R$ 3.000', parcela:300, total:3600,  gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshi5rws000a02juest3fmzj', copyId:'2mc8'},
+  {cond:'R$ 2.000', parcela:200, total:2400,  gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshi6gcd000b02ju4d2p7cse', copyId:'2mc9'},
+  {cond:'R$ 1.000', parcela:100, total:1200,  gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshi6z98000c02ju0etz8zve', copyId:'2mc10'},
+  // Este link está cadastrado errado na Cispay: 12x de R$ 100 é a parcela do link de R$ 1.000.
+  // Pelo padrão dos outros, deveria ser 12x de R$ 80 (total R$ 960). Fica inativo até corrigirem
+  // na Cispay — visível para ninguém recriar, bloqueado para ninguém vender por engano.
+  {cond:'R$ 800', sub:'⚠️ Link com erro — está cobrando 12x de R$ 100 (R$ 1.200). Não usar até corrigir na Cispay.',
+   parcela:100, total:1200, gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshi7gvq000d02juenn0di76', copyId:'2mc11', inativo:true},
+];
+
 // Wonder Prø — produto separado do PMM
 const OFERTA_WONDER = [
   {cond:'Cartão — recorrência', sub:'Cobrança mensal', parcela:10000, gateway:'Asaas',       url:'https://www.asaas.com/c/zmge8p7y8swax3gu', copyId:'wd0'},
@@ -5357,6 +5378,7 @@ async function carregarLinks(){
       <div class="lk-bloco">
         ${produtoTituloHTML('Programa de Aceleração 2M')}
         ${lkOfertaHTML('Oferta 10K',{rotulo:'À vista',valor:'R$ 10.000'},OFERTA_2M)}
+        ${lkOfertaHTML('Cartão 12x — Cispay',{rotulo:'Valores',valor:'R$ 800 a R$ 9.800'},OFERTA_2M_CISPAY)}
       </div>
       <div class="lk-bloco">
         ${produtoTituloHTML('Wonder Prø')}
