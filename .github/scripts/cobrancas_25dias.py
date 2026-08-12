@@ -207,6 +207,33 @@ def main():
         print(f"! reembolso em aberto, não vira cobrança: {i['cliente']} ({i['atraso']}d)")
 
 
+def carona_cancelamentos():
+    """Roda a rotina de cancelamento nos gateways de carona neste workflow.
+
+    O workflow dela (.github/workflows/cancelamentos-gateway.yml) não subiu: o
+    token do Mac não tem escopo `workflow`, e o GitHub rejeita o push de
+    qualquer arquivo em .github/workflows/. Script em .github/scripts/ passa
+    normal — então, enquanto o .yml não sobe pela interface web, a rotina pega
+    carona aqui e roda uma vez por dia em vez de a cada 2 horas.
+
+    Isolada de propósito: subprocess separado e except largo, pra que uma falha
+    lá não derrube o levantamento de cobranças, que é o dono deste job.
+    """
+    import subprocess
+    irmao = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         'cancelamentos_gateway.py')
+    if not os.path.exists(irmao):
+        return
+    print('\n--- carona: cancelamento nos gateways ---')
+    try:
+        r = subprocess.run([sys.executable, irmao], capture_output=True, text=True, timeout=300)
+        print(r.stdout, end='')
+        if r.returncode:
+            print(r.stderr[-2000:], file=sys.stderr)
+    except Exception:
+        print(traceback.format_exc(), file=sys.stderr)
+
+
 if __name__ == '__main__':
     try:
         main()
@@ -214,4 +241,6 @@ if __name__ == '__main__':
         erro = traceback.format_exc()
         print(erro, file=sys.stderr)
         avisar_falha(erro)
+        carona_cancelamentos()  # cobrança quebrou, mas o cancelamento é independente
         sys.exit(1)
+    carona_cancelamentos()
