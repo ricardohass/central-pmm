@@ -43,7 +43,6 @@ from zoneinfo import ZoneInfo
 # tem RSA. O workflow instala antes de rodar.
 try:
     from google.oauth2 import service_account
-    import google.auth.transport.requests
     TEM_GOOGLE = True
 except ImportError:
     TEM_GOOGLE = False
@@ -131,6 +130,38 @@ def meetrox(path):
     return http(MEETROX + path, {'x-api-key': MEETROX_KEY, 'accept': 'application/json'})
 
 
+class _RespGoogle(object):
+    """Resposta no formato que o google-auth espera do transporte."""
+    def __init__(self, status, headers, data):
+        self.status, self.headers, self.data = status, headers, data
+
+
+class TransporteUrllib(object):
+    """Transporte do google-auth feito com urllib da biblioteca padrão.
+
+    O caminho normal seria `google.auth.transport.requests`, mas ele exige a
+    biblioteca `requests`, que NÃO vem junto do google-auth — é um extra. Foi
+    isso que derrubou a primeira execução real: o pip instalou, o import
+    quebrou, e o script concluiu que faltava credencial.
+
+    Corrigir pelo workflow (instalar `google-auth[requests]`) seria mais óbvio,
+    mas o token do Mac não dá push em .github/workflows/ e a correção ficaria
+    dependendo de alguém editar pela web. Sem dependência nenhuma, não quebra
+    de novo.
+    """
+    def __call__(self, url, method='GET', body=None, headers=None, timeout=None, **kw):
+        req = urllib.request.Request(url, data=body, method=method)
+        for k, v in (headers or {}).items():
+            req.add_header(k, v)
+        try:
+            with urllib.request.urlopen(req, timeout=timeout or 60) as r:
+                return _RespGoogle(r.status, dict(r.headers), r.read())
+        except urllib.error.HTTPError as e:
+            # O google-auth lê o corpo do erro pra montar a mensagem — devolver
+            # em vez de estourar é o que faz 'unauthorized_client' chegar legível.
+            return _RespGoogle(e.code, dict(e.headers), e.read())
+
+
 def token_google(subject, escopos):
     """Token de acesso. Com `subject`, agindo em nome daquele usuário.
 
@@ -148,7 +179,7 @@ def token_google(subject, escopos):
     info = json.loads(SA_JSON)
     cred = service_account.Credentials.from_service_account_info(
         info, scopes=escopos, subject=subject or None)
-    cred.refresh(google.auth.transport.requests.Request())
+    cred.refresh(TransporteUrllib())
     return cred.token
 
 
@@ -432,8 +463,7 @@ def main():
         '%s=%s' % (nome, 'ok' if val else 'FALTA')
         for nome, val in [('MEETROX_API_KEY', MEETROX_KEY),
                           ('SUPABASE_SERVICE_ROLE', SERVICE_ROLE),
-                          ('GOOGLE_SA_JSON', SA_JSON),
-                          ('GOOGLE_ADMIN_EMAIL', ADMIN_EMAIL)]))
+                          ('GOOGLE_SA_JSON', SA_JSON)]))
     if SA_JSON and not TEM_GOOGLE:
         print('  google-auth não importou — o passo de instalação do workflow falhou?')
 
