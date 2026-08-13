@@ -464,6 +464,71 @@ def uniformizar(linha):
     return saida
 
 
+def cliente_do_titulo(titulo):
+    """Nomes prováveis do cliente no título, pra reconhecer o mesmo lead.
+
+    Os títulos seguem dois formatos pro mesmo encontro: 'Call — Fulano' e
+    '[Análise] Closer & Fulano'. Tirando o prefixo e o nome do closer, sobra
+    o cliente nos dois.
+    """
+    t = re.sub(r'^\s*\[[^\]]*\]\s*', '', titulo or '')
+    t = re.sub(r'(?i)^\s*call\s*[—\-]\s*', '', t)
+    partes = re.split(r'(?i)\s*[&x]\s*|\s+e\s+', t)
+    return {sem_acento(p).strip() for p in partes if len(sem_acento(p).strip()) > 3}
+
+
+# Quando a call acontece, a sala que importa é a que teve gente. A ordem diz
+# qual linha vence quando o mesmo encontro aparece em dois eventos.
+_PESO = {'ok': 4, 'sem_gravacao': 3, 'no_show': 2, 'nao_aconteceu': 1, 'fora_da_agenda': 0}
+
+
+def remover_duplicatas(linhas, nomes_closers):
+    """Mesmo encontro marcado duas vezes na agenda, cada um com sua sala.
+
+    Acontece quando o closer cria um 'Call — Fulano' e a automação cria um
+    '[Análise] Closer & Fulano' no mesmo horário. A call ocorre numa das salas;
+    a outra fica vazia e viraria uma linha fantasma em "não aconteceu".
+
+    Só junta quando o CLIENTE é o mesmo. Dois clientes diferentes no mesmo
+    horário é agenda dupla de verdade — um aconteceu, o outro não — e as duas
+    linhas têm que continuar existindo.
+    """
+    grupos = {}
+    for l in linhas:
+        if l.get('inicio') and l.get('evento_id'):
+            grupos.setdefault((l['closer'], l['inicio']), []).append(l)
+
+    descartadas = []
+    for (closer, _), grupo in grupos.items():
+        if len(grupo) < 2:
+            continue
+        proprio = sem_acento(closer).split()
+        nomes = [cliente_do_titulo(l['titulo']) - set(proprio) for l in grupo]
+        if not set.intersection(*nomes):
+            continue                       # clientes diferentes: agenda dupla
+        grupo.sort(key=lambda l: _PESO.get(l['status'], 0), reverse=True)
+        for perdedora in grupo[1:]:
+            descartadas.append(perdedora)
+
+    if descartadas:
+        chaves = {l['chave'] for l in descartadas}
+        print('\nDuplicatas na agenda (mesmo cliente, mesmo horário): %d descartada(s)'
+              % len(descartadas))
+        for l in descartadas:
+            print('  %s  %-16s %s' % (l['data'], l['closer'], (l['titulo'] or '')[:52]))
+        linhas = [l for l in linhas if l['chave'] not in chaves]
+        # Apaga o que rodadas antigas já gravaram, senão a fantasma fica pra
+        # sempre: o upsert atualiza, nunca remove.
+        if SERVICE_ROLE:
+            for ch in chaves:
+                try:
+                    supa('cobertura_calls?chave=eq.' + urllib.parse.quote(ch),
+                         'DELETE', prefer='return=minimal')
+                except Exception:
+                    pass
+    return linhas
+
+
 def janela(argv):
     # Aspas vazias contam como argumento: na rodada agendada o workflow passa
     # "" "" e a janela tem que voltar a ser a padrão, não estourar.
@@ -657,6 +722,8 @@ def main():
             'status': 'fora_da_agenda', 'motivo': 'gravada sem evento correspondente na agenda',
             'atualizado_em': datetime.now(timezone.utc).isoformat(),
         })
+
+    linhas = remover_duplicatas(linhas, {c['nome'] for c in closers})
 
     resumo = {}
     for l in linhas:

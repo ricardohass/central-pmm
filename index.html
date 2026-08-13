@@ -6360,10 +6360,11 @@ async function carregarCobertura(){
 
   const porCloser={};
   linhas.forEach(l=>{
-    const c=porCloser[l.closer]||(porCloser[l.closer]={ok:0,falha:0,ns:0});
+    const c=porCloser[l.closer]||(porCloser[l.closer]={ok:0,falha:0,ns:0,fora:0});
     if(l.status_final==='ok') c.ok++;
     else if(l.status_final==='sem_gravacao') c.falha++;
     else if(['no_show','nao_aconteceu'].includes(l.status_final)) c.ns++;
+    else if(l.status_final==='fora_da_agenda') c.fora++;
   });
   const closers=Object.keys(porCloser).sort((a,b)=>porCloser[b].falha-porCloser[a].falha);
 
@@ -6388,6 +6389,7 @@ async function carregarCobertura(){
         <div class="ps-grid">
           <div><p class="ps-l">Sem gravação</p><p class="ps-v${v.falha?' coral':''}">${v.falha}</p></div>
           <div><p class="ps-l">Não aconteceram</p><p class="ps-v">${v.ns}</p></div>
+          <div title="Gravadas pelo Meetrox sem evento correspondente na agenda — call marcada na hora. Não entram no cálculo de cobertura porque não havia compromisso a cumprir."><p class="ps-l">Fora da agenda</p><p class="ps-v">${v.fora}</p></div>
         </div>
       </div>`;}).join('')}</div>
 
