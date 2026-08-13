@@ -14,10 +14,11 @@ script encontra.
 TRÊS FONTES, cruzadas pelo código do Meet (ex: 'nwz-fwmb-zgc'):
   1. Agenda de cada closer  → que calls estavam marcadas
   2. Meetrox               → quais foram gravadas
-  3. Log de auditoria do Meet → quem de fato entrou na sala
+  3. Meet API              → quem de fato entrou em cada sala
 
-A terceira é o que separa no-show de falha do bot. Sem ela o script ainda roda,
-mas os casos sem gravação ficam como 'indeterminado' e alguém classifica na mão.
+A terceira é o que separa no-show de falha do bot, e só é consultada para as
+calls SEM gravação — nas gravadas o Meetrox já respondeu. Sem ela o script ainda
+roda, mas aí "sem gravação" mistura falha de processo com lead que não apareceu.
 
 JANELA MÓVEL: reprocessa os últimos dias sempre, com upsert. O Meetrox às vezes
 demora pra terminar de processar uma call, e a rodada seguinte corrige o veredito
@@ -66,9 +67,15 @@ ADMIN_EMAIL = os.environ.get('GOOGLE_ADMIN_EMAIL', '').strip()
 
 MEETROX = 'https://api.meetrox.ai/v1'
 GCAL = 'https://www.googleapis.com/calendar/v3'
-REPORTS = 'https://admin.googleapis.com/admin/reports/v1'
+MEET = 'https://meet.googleapis.com/v2'
 ESCOPO_CAL = ['https://www.googleapis.com/auth/calendar.readonly']
-ESCOPO_LOG = ['https://www.googleapis.com/auth/admin.reports.audit.readonly']
+# Escopo de usuário comum: alcança só as salas que o próprio closer criou.
+# Não é o admin.reports do domínio — foi a versão que o TI aceitou autorizar.
+ESCOPO_MEET = ['https://www.googleapis.com/auth/meetings.space.readonly']
+
+# Como o bot do Meetrox se identifica na sala. Vê-lo entre os participantes é
+# prova direta de que ele foi admitido, sem depender do registro do Meetrox.
+BOT = 'meetrox'
 
 DIAS_JANELA = int(os.environ.get('COBERTURA_DIAS', '3'))
 
@@ -208,45 +215,50 @@ def _buscar_eventos(email, t0, t1, compartilhada):
     return saida
 
 
-def presencas_no_meet(t0, t1):
-    """{codigo_do_meet: [participantes]} pelo log de auditoria do domínio.
+def com_traco(cod):
+    """'okavtebywp' → 'oka-vteb-ywp'. A Meet API exige o formato com traço."""
+    c = norm(cod)
+    return '%s-%s-%s' % (c[:3], c[3:7], c[7:]) if len(c) == 10 else c
 
-    Só pode ser lido em nome de um super admin — não do closer. Por isso o
-    GOOGLE_ADMIN_EMAIL é um secret à parte.
+
+def quem_entrou(email_closer, cod, quando):
+    """Participantes de uma sala do Meet. None quando não dá pra apurar.
+
+    Chamada só para as calls SEM gravação — que são as ambíguas. Para as
+    gravadas o Meetrox já respondeu, e consultar seria gastar requisição à toa.
+
+    `quando` desempata sala recorrente: o mesmo código pode ter várias
+    conferências, e a que interessa é a do dia do evento.
     """
-    tok = token_google(ADMIN_EMAIL, ESCOPO_LOG)
-    por_codigo, page = {}, None
-    while True:
-        q = {'startTime': t0.isoformat(), 'endTime': t1.isoformat(),
-             'eventName': 'call_ended', 'maxResults': '1000'}
-        if page:
-            q['pageToken'] = page
-        url = '%s/activity/users/all/applications/meet?%s' % (
-            REPORTS, urllib.parse.urlencode(q))
-        r = http(url, {'Authorization': 'Bearer ' + tok})
-        for item in (r.get('items') or []):
-            for ev in (item.get('events') or []):
-                p = {}
-                for par in (ev.get('parameters') or []):
-                    nome = par.get('name')
-                    if 'value' in par:
-                        p[nome] = par['value']
-                    elif 'intValue' in par:
-                        p[nome] = int(par['intValue'])
-                    elif 'boolValue' in par:
-                        p[nome] = par['boolValue']
-                cod = norm(p.get('meeting_code'))
-                if not cod:
-                    continue
-                por_codigo.setdefault(cod, []).append({
-                    'quem': (p.get('identifier') or '').lower(),
-                    'segundos': int(p.get('duration_seconds') or 0),
-                    'externo': bool(p.get('is_external')),
-                })
-        page = r.get('nextPageToken')
-        if not page:
-            break
-    return por_codigo
+    tok = token_google(email_closer, ESCOPO_MEET)
+    h = {'Authorization': 'Bearer ' + tok}
+    filtro = urllib.parse.quote('space.meeting_code="%s"' % com_traco(cod))
+    r = http('%s/conferenceRecords?filter=%s' % (MEET, filtro), h, tolerar=(403, 404))
+    if r is None:
+        return None
+    regs = r.get('conferenceRecords') or []
+    if not regs:
+        return []          # a sala nunca foi aberta: ninguém entrou
+    if quando and len(regs) > 1:
+        regs.sort(key=lambda x: abs(_ts(x.get('startTime')) - quando))
+
+    p = http('%s/%s/participants' % (MEET, regs[0]['name']), h, tolerar=(403, 404))
+    if p is None:
+        return None
+    saida = []
+    for x in (p.get('participants') or []):
+        nome = ((x.get('signedinUser') or {}).get('displayName')
+                or (x.get('anonymousUser') or {}).get('displayName')
+                or (x.get('phoneUser') or {}).get('displayName') or '')
+        saida.append({'nome': nome, 'entrou': x.get('earliestStartTime')})
+    return saida
+
+
+def _ts(iso):
+    try:
+        return datetime.fromisoformat((iso or '').replace('Z', '+00:00')).timestamp()
+    except Exception:
+        return 0.0
 
 
 def calls_do_meetrox(t0, t1):
@@ -326,28 +338,39 @@ def e_call_de_verdade(ev, email_closer):
     return True, len(externos)
 
 
-def classificar(gravada, presencas, email_closer):
-    """gravada + quem entrou na sala → veredito."""
-    if presencas is None:
-        # Sem log de auditoria a pergunta respondida é só "teve Meetrox ou não",
-        # que é a que importa. Não afirma nada sobre o lead ter comparecido —
-        # parte destes é no-show, e o motivo deixa isso escrito.
-        return ('ok', 'gravada') if gravada else \
-               ('sem_gravacao', 'agendada com cliente e sem gravação · não dá '
-                                'pra saber se o lead compareceu')
+def classificar(gravada, presencas, nome_closer):
+    """gravada + quem entrou na sala → veredito.
 
-    closer = any(p['quem'] == email_closer.lower() or not p['externo'] for p in presencas)
-    ext = [p for p in presencas if p['externo'] and p['segundos'] > 0]
-
+    A distinção que importa: sem gravação, a call aconteceu ou não? Só quem
+    esteve na sala responde isso, e é o que separa falha de processo de lead
+    que não apareceu.
+    """
     if gravada:
         return 'ok', 'gravada'
-    if closer and ext:
-        return 'sem_gravacao', 'closer e lead entraram, o Meetrox não gravou'
-    if closer and not ext:
-        return 'no_show', 'só o closer entrou na sala'
-    if not closer and not ext:
+    if presencas is None:
+        return ('sem_gravacao', 'sem gravação · não consegui apurar quem entrou '
+                                'na sala, pode ser no-show')
+
+    primeiro = lambda s: sem_acento(s).split()[0] if s.strip() else ''
+    alvo = primeiro(nome_closer)
+    bot = [p for p in presencas if BOT in sem_acento(p['nome'])]
+    humanos = [p for p in presencas if p not in bot]
+    closer = [p for p in humanos if alvo and alvo in sem_acento(p['nome'])]
+    leads = [p for p in humanos if p not in closer]
+
+    if not presencas:
         return 'nao_aconteceu', 'ninguém entrou na sala'
-    return 'sem_gravacao', 'lead entrou sem o closer'
+    if closer and leads:
+        if bot:
+            # Bot entrou e mesmo assim não há registro: o problema é do Meetrox,
+            # não do closer. Separar isso evita cobrar a pessoa errada.
+            return 'sem_gravacao', 'closer, lead e o bot entraram — o Meetrox não gerou a gravação'
+        return 'sem_gravacao', 'closer e lead na sala, o bot do Meetrox não foi admitido'
+    if closer and not leads:
+        return 'no_show', 'só o closer entrou na sala'
+    if leads and not closer:
+        return 'sem_gravacao', 'o lead entrou e o closer não'
+    return 'nao_aconteceu', 'ninguém identificável entrou na sala'
 
 
 # ── execução ─────────────────────────────────────────────────────────────────
@@ -437,16 +460,10 @@ def main():
         print('\nO cruzamento com a agenda depende da credencial do Google.')
         return
 
-    presencas = None
-    if ADMIN_EMAIL:
-        try:
-            presencas = presencas_no_meet(t0, t1)
-            print('Log de auditoria do Meet: %d salas com registro' % len(presencas))
-        except Exception as e:
-            print('Log de auditoria indisponível (%s) — casos sem gravação vão '
-                  'ficar como indeterminado.' % str(e)[:160])
-    else:
-        print('Sem GOOGLE_ADMIN_EMAIL: não dá pra separar no-show de falha do bot.')
+    # A Meet API responde "a call aconteceu?" para as sem gravação. Escopo de
+    # usuário: cada closer só enxerga as salas que ele mesmo criou.
+    usa_meet = True
+    _avisou_meet = False
 
     linhas, casados = [], set()
 
@@ -478,11 +495,24 @@ def main():
             for a in achadas:
                 casados.add(a['id'])
 
-            pres = presencas.get(cod, []) if presencas is not None else None
-            status, porque = classificar(bool(mrx), pres, email)
             ini = (ev.get('start') or {}).get('dateTime')
+            # Só as sem gravação vão à Meet API: nas gravadas o Meetrox já
+            # respondeu, e consultar seria requisição jogada fora.
+            pres = None
+            if not mrx and usa_meet:
+                try:
+                    pres = quem_entrou(email, cod, _ts(ini))
+                except Exception as e:
+                    if not _avisou_meet:
+                        print('  Meet API indisponível (%s) — os casos sem gravação '
+                              'ficam sem apuração de presença.' % str(e)[:140])
+                        _avisou_meet = True
+            status, porque = classificar(bool(mrx), pres, nome)
+            humanos = [p for p in (pres or []) if BOT not in sem_acento(p['nome'])]
             fim = (ev.get('end') or {}).get('dateTime')
-            ext_pres = [p for p in (pres or []) if p['externo']]
+            alvo = sem_acento(nome).split()[0] if nome.strip() else ''
+            entrou_closer = [p for p in humanos if alvo and alvo in sem_acento(p['nome'])]
+            leads_pres = [p for p in humanos if p not in entrou_closer]
 
             linhas.append({
                 'chave': 'ev:' + ev['id'],
@@ -498,11 +528,8 @@ def main():
                 'meetrox_url': mrx.get('url') if mrx else None,
                 'gravada': bool(mrx),
                 'duracao_gravacao': int(mrx['duration']) if mrx and mrx.get('duration') else None,
-                'meet_entrou_closer': (any(p['quem'] == email.lower() or not p['externo'] for p in pres)
-                                       if pres is not None else None),
-                'meet_entrou_ext': (bool(ext_pres) if pres is not None else None),
-                'meet_dur_ext_seg': (max([p['segundos'] for p in ext_pres]) if ext_pres else 0)
-                                    if pres is not None else None,
+                'meet_entrou_closer': bool(entrou_closer) if pres is not None else None,
+                'meet_entrou_ext': bool(leads_pres) if pres is not None else None,
                 'meet_apurado': pres is not None,
                 'status': status, 'motivo': porque,
                 'atualizado_em': datetime.now(timezone.utc).isoformat(),
