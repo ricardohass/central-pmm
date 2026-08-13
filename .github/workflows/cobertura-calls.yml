@@ -1,0 +1,41 @@
+name: Cobertura de calls
+
+# Cruza a agenda dos closers com o Meetrox e grava, por call, se foi gravada —
+# e quando não foi, se o bot falhou ou o lead não apareceu.
+
+on:
+  schedule:
+    # 10:30 UTC = 07:30 em São Paulo. Meia hora antes da daily de propósito:
+    # o agendador do Actions atrasa quando a fila está cheia.
+    - cron: '30 10 * * *'
+  workflow_dispatch:
+    inputs:
+      de:
+        description: 'Data inicial (AAAA-MM-DD) — vazio usa os últimos 3 dias'
+        required: false
+      ate:
+        description: 'Data final (AAAA-MM-DD)'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  cobertura:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar google-auth
+        run: pip install --quiet google-auth
+      - name: Cruzar agenda x Meetrox
+        env:
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          GOOGLE_ADMIN_EMAIL: ${{ secrets.GOOGLE_ADMIN_EMAIL }}
+          MEETROX_API_KEY: ${{ secrets.MEETROX_API_KEY }}
+          SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+          DE: ${{ inputs.de }}
+          ATE: ${{ inputs.ate }}
+        run: python3 .github/scripts/cobertura_calls.py "$DE" "$ATE"
