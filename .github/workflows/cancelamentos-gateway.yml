@@ -1,0 +1,26 @@
+name: Cancelamento nos gateways
+
+# A cada caso novo na aba Reembolsos, abre no Asana uma tarefa pra cancelar a
+# cobrança no Asaas / Hotmart / Cispay — congelar ou cancelar parcela na Central
+# não mexe na recorrência da plataforma.
+
+on:
+  schedule:
+    - cron: '5 11-23/2 * * *'   # de 2 em 2 horas, 08:05 às 20:05 em São Paulo
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cancelamentos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Levantar casos novos e abrir tarefas no Asana
+        env:
+          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
+        run: python3 .github/scripts/cancelamentos_gateway.py
