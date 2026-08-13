@@ -192,6 +192,16 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .ps-l { font-size:10px; color:var(--muted); margin-bottom:2px; }
 .ps-v { font-size:13px; font-weight:500; color:var(--text); }
 .ps-v.coral { color:var(--coral); }
+.cob-sec-title { font-size:12px; font-weight:600; color:var(--text); margin:0 0 10px; }
+/* evolução por produto */
+.pe-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.pe-sub { font-size:11px; color:var(--muted); }
+.pe-toggle { display:flex; gap:0; border:0.5px solid var(--border); border-radius:8px; overflow:hidden; flex-shrink:0; }
+.pe-btn { background:#fff; border:none; padding:6px 14px; font-size:12px; color:var(--muted); cursor:pointer; font-family:'Inter',sans-serif; transition:background .15s,color .15s; }
+.pe-btn:hover { background:var(--cream2); }
+.pe-btn.active { background:var(--green); color:#fff; }
+.pe-nota { font-size:11px; color:var(--muted); margin-top:12px; padding-top:10px; border-top:0.5px solid var(--border); line-height:1.6; }
+.cob-prod-tag { display:inline-block; font-size:10px; line-height:1.5; padding:0 7px; border-radius:10px; border:0.5px solid; margin-left:6px; vertical-align:1px; }
 .charts-row { display:grid; grid-template-columns:1fr 240px 240px; gap:12px; margin-bottom:16px; }
 .chart-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:20px; }
 .fat-card { display:flex; flex-direction:column; }
@@ -1170,6 +1180,21 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
           <div class="mcard"><p class="mcard-label"><span class="hint" tabindex="0" data-hint="aReceber">A receber</span></p><p class="mcard-value coral" id="dash-a-receber">—</p><p class="mcard-meta">valor restante pendente</p></div>
         </div>
         <div class="prod-split" id="prodSplit"></div>
+        <div class="chart-card" id="prodEvolCard" style="margin-bottom:20px;">
+          <div class="pe-head">
+            <div>
+              <p class="chart-title" style="margin-bottom:2px;">Evolução por produto</p>
+              <p class="pe-sub" id="prodEvolSub">—</p>
+            </div>
+            <div class="pe-toggle">
+              <button class="pe-btn active" id="peBtn-contratado" onclick="setProdEvolMetrica('contratado')">Contratado</button>
+              <button class="pe-btn" id="peBtn-recebido" onclick="setProdEvolMetrica('recebido')">Recebido</button>
+            </div>
+          </div>
+          <div style="position:relative;height:230px;"><canvas id="prodEvolChart"></canvas></div>
+          <div class="chart-legend" id="prodEvolLegend"></div>
+          <p class="pe-nota" id="prodEvolNota"></p>
+        </div>
         <div class="charts-row">
           <div class="chart-card fat-card"><p class="chart-title">Faturamento por dia</p><div style="position:relative;height:200px;"><canvas id="fatChart"></canvas></div><div class="chart-legend"><div class="cli"><div class="cli-line" style="background:rgba(61,92,74,0.2);height:8px;border-radius:2px;"></div><span class="hint" tabindex="0" data-hint="fatBruto">Fat. bruto</span></div><div class="cli"><div class="cli-line" style="background:#3D5C4A;"></div><span class="hint" tabindex="0" data-hint="fatLiquido">Fat. líquido</span></div></div><div class="fat-resumo" id="fatResumo"></div></div>
           <div class="chart-card pie-wrap">
@@ -2707,6 +2732,105 @@ async function carregarHomeSnapshot(){
   }catch(e){console.error('snapshot',e);}
 }
 
+// ── EVOLUÇÃO MENSAL POR PRODUTO ──
+// Janela fixa de 12 meses terminando no mês selecionado. Não segue o filtro de período do
+// topo (que é de um mês/intervalo só) — a graça aqui é justamente ver a série.
+//
+// "Contratado" usa o valor CHEIO do contrato na data da venda, sem o ajuste que faz o Wonder
+// contar só o pago. É proposital: é esse número que mostra o peso real do produto no mês.
+// "Recebido" segue a data de recebimento das parcelas, igual ao KPI do topo.
+let prodEvolMetrica='contratado';
+let _prodEvolCache=null; // {ate, meses, dados}
+
+function setProdEvolMetrica(m){
+  prodEvolMetrica=m;
+  ['contratado','recebido'].forEach(k=>{
+    const b=document.getElementById('peBtn-'+k);
+    if(b) b.classList.toggle('active',k===m);
+  });
+  desenharProdEvol();
+}
+
+async function carregarProdEvol(fimIso){
+  const ateMes=(fimIso||'').slice(0,7);
+  if(!ateMes) return;
+  if(_prodEvolCache&&_prodEvolCache.ate===ateMes){ desenharProdEvol(); return; }
+
+  const [fy,fm]=ateMes.split('-').map(Number);
+  const meses=[];
+  for(let i=11;i>=0;i--){
+    const d=new Date(fy,fm-1-i,1);
+    meses.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  }
+  const ini=meses[0]+'-01';
+  const fim=ateMes+'-'+String(new Date(fy,fm,0).getDate()).padStart(2,'0');
+
+  try{
+    const [vs,pg]=await Promise.all([
+      supaFetch('vendas?data_venda=gte.'+ini+'&data_venda=lte.'+fim+'&status=not.in.(cancelada,reembolso)&select=data_venda,produto,valor_bruto'),
+      supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+ini+'&data_recebimento=lte.'+fim+'&select=valor_bruto,data_recebimento,vendas!inner(produto)')
+    ]);
+    const zerado=()=>{const o={};meses.forEach(m=>o[m]=0);return o;};
+    const dados={contratado:{},recebido:{}};
+    PRODUTOS_DASH.forEach(x=>{dados.contratado[x.key]=zerado();dados.recebido[x.key]=zerado();});
+    vs.forEach(v=>{
+      const m=(v.data_venda||'').slice(0,7), k=prodKeyDe(v.produto);
+      if(dados.contratado[k]&&m in dados.contratado[k]) dados.contratado[k][m]+=Number(v.valor_bruto||0);
+    });
+    pg.forEach(p=>{
+      const m=(p.data_recebimento||'').slice(0,7), k=prodKeyDe(p.vendas&&p.vendas.produto);
+      if(dados.recebido[k]&&m in dados.recebido[k]) dados.recebido[k][m]+=Number(p.valor_bruto||0);
+    });
+    _prodEvolCache={ate:ateMes,meses,dados};
+    desenharProdEvol();
+  }catch(e){console.error('prodEvol',e);}
+}
+
+function desenharProdEvol(){
+  const cv=document.getElementById('prodEvolChart');
+  if(!cv||!_prodEvolCache||typeof Chart==='undefined') return;
+  const {meses,dados,ate}=_prodEvolCache;
+  const alvo=dados[prodEvolMetrica];
+  const prods=PRODUTOS_DASH.filter(x=>!dashProduto||x.key===dashProduto);
+
+  const labels=meses.map(m=>{const[y,mm]=m.split('-');return MESES_NOMES[Number(mm)-1].slice(0,3)+'/'+y.slice(2);});
+  const datasets=prods.map(x=>({
+    label:x.nome,
+    data:meses.map(m=>alvo[x.key][m]),
+    backgroundColor:x.cor, borderRadius:3, borderSkipped:false
+  }));
+
+  if(window._prodEvolChart) window._prodEvolChart.destroy();
+  window._prodEvolChart=new Chart(cv,{
+    type:'bar',
+    data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBRL(c.parsed.y)}}},
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:{font:{size:10},color:'#aaa'}},
+        y:{stacked:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:10},color:'#aaa',callback:v=>v>=1000?'R$'+(v/1000)+'k':'R$'+v}}
+      }}
+  });
+
+  // Legenda com o total da janela e o peso no último mês — é onde a rampa aparece
+  const ultimo=meses[meses.length-1];
+  const totUltimo=prods.reduce((s,x)=>s+alvo[x.key][ultimo],0);
+  const leg=document.getElementById('prodEvolLegend');
+  if(leg) leg.innerHTML=prods.map(x=>{
+    const total=meses.reduce((s,m)=>s+alvo[x.key][m],0);
+    const pctUlt=totUltimo>0?Math.round((alvo[x.key][ultimo]/totUltimo)*100):0;
+    return `<div class="cli"><div class="cli-line" style="background:${x.cor};height:8px;border-radius:2px;"></div><span>${x.nome} · ${fmtBRL(total)} em 12 meses${prods.length>1?` · ${pctUlt}% do último mês`:''}</span></div>`;
+  }).join('');
+
+  const [ay,am]=ate.split('-').map(Number);
+  const sub=document.getElementById('prodEvolSub');
+  if(sub) sub.textContent='12 meses até '+MESES_NOMES[am-1]+' de '+ay+' — independe do período selecionado acima';
+  const nota=document.getElementById('prodEvolNota');
+  if(nota) nota.textContent=prodEvolMetrica==='contratado'
+    ? 'Contratado: valor cheio do contrato, pela data da venda. Aqui o Wonder Prø entra pelo contratado — nos cartões acima ele conta só o que já foi pago, por isso os números não batem.'
+    : 'Recebido: parcelas efetivamente recebidas no mês, pela data de recebimento. Mesma base dos cartões do topo (sem abater reembolso).';
+}
+
 // Quebra do período por produto. Recebe os mesmos dados já carregados pelo dashboard
 // (nenhuma query extra) e monta um card por produto com recebido, vendas e a receber.
 // `dados=null` esconde o bloco.
@@ -2845,6 +2969,7 @@ async function carregarDashboard(){
 
     // Quebra por produto (só na visão "todos" — no recorte de um produto seria redundante)
     renderProdSplit(dashProduto?null:{todas,vendas,pgRecebidos,reembImpacto,_valorReemb,fatBruto});
+    carregarProdEvol(ultimoDia); // série de 12 meses; usa cache quando o mês final não muda
 
     // Ranking (usa valor contratado — métrica de performance do closer)
     const ranking={};
@@ -6028,7 +6153,7 @@ function pagOculto(p){ return p && p.categoria!=='reembolso' && p.status==='pend
 function fetchRecebidosMes(ano,mes){
   const anoMes=ano+'-'+String(mes+1).padStart(2,'0');
   const ultimo=anoMes+'-'+String(new Date(ano,mes+1,0).getDate()).padStart(2,'0');
-  return supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01&data_recebimento=lte.'+ultimo+'&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc').catch(()=>[]);
+  return supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01&data_recebimento=lte.'+ultimo+'&select=*,vendas(nome_cliente,id,closer,produto)&order=data_prevista.asc').catch(()=>[]);
 }
 
 async function carregarCobrancas(){
@@ -6037,9 +6162,9 @@ async function carregarCobrancas(){
   container.innerHTML='<p style="text-align:center;color:var(--muted);padding:40px;">Carregando cobranças...</p>';
   try{
     const [pendentes,recebidosMes,reembPags,reembCasos]=await Promise.all([
-      supaFetch('pagamentos_venda?status=eq.pendente&select=*,vendas(nome_cliente,id,closer)&order=data_prevista.asc'),
+      supaFetch('pagamentos_venda?status=eq.pendente&select=*,vendas(nome_cliente,id,closer,produto)&order=data_prevista.asc'),
       fetchRecebidosMes(calAno,calMes),
-      supaFetch('reembolsos_pagamentos?select=*,reembolsos(nome_cliente,id,closer,responsavel,tipo)&order=data_prevista.asc').catch(()=>[]),
+      supaFetch('reembolsos_pagamentos?select=*,reembolsos(nome_cliente,id,closer,responsavel,tipo,vendas(produto))&order=data_prevista.asc').catch(()=>[]),
       supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status,status_reembolso').catch(()=>[]),
     ]);
     // Monta os conjuntos de congelado (caso aberto) e oculto (caso resolvido). Aberto tem prioridade.
@@ -6062,12 +6187,68 @@ async function carregarCobrancas(){
       nome_cliente:(rp.reembolsos&&rp.reembolsos.nome_cliente)||'Cliente',
       closer:(rp.reembolsos&&rp.reembolsos.closer)||'',
       responsavel:(rp.reembolsos&&rp.reembolsos.responsavel)||'',
+      // Reembolso avulso (sem venda_id) não tem produto — cai fora do filtro por produto.
+      produto:(rp.reembolsos&&rp.reembolsos.vendas&&rp.reembolsos.vendas.produto)||'',
       reembolso_id:rp.reembolsos&&rp.reembolsos.id
     }));
     renderCobrancas();
   }catch(e){
     container.innerHTML='<div style="text-align:center;padding:48px;color:var(--coral);font-size:13px;">Erro ao carregar cobranças.<br><span style="color:var(--muted);font-size:12px;">Verifique se a tabela <code>pagamentos_venda</code> foi criada no Supabase.</span></div>';
   }
+}
+
+// ── FILTRO POR PRODUTO (cobranças) ──
+let cobProduto=''; // '' = todos
+function setCobProduto(k){ cobProduto=k; renderCobrancas(); }
+// Reembolso avulso (sem venda) não tem produto e cai em 'Outros'.
+function cobProdDe(p){
+  return prodKeyDe(p.categoria==='reembolso'?p.produto:(p.vendas&&p.vendas.produto));
+}
+function cobProdOk(p){ return !cobProduto||cobProdDe(p)===cobProduto; }
+function cobProdTag(p){
+  const k=cobProdDe(p);
+  if(k==='Outros') return '';
+  const i=prodInfo(k);
+  return `<span class="sep">·</span><span class="cob-prod-tag" style="border-color:${i.cor};color:${i.cor};">${i.nome}</span>`;
+}
+
+// Carteira total a receber (todas as parcelas pendentes ativas, sem recorte de mês),
+// quebrada por produto. É o número que o calendário mensal não mostra.
+function cobCarteiraHTML(hojStr){
+  if(cobProduto) return ''; // no recorte de um produto o bloco vira repetição dos cards
+  const em30=new Date(); em30.setHours(0,0,0,0); em30.setDate(em30.getDate()+30);
+  const em30Str=em30.toISOString().split('T')[0];
+  const pend=todosPagamentos.filter(p=>p.status==='pendente'&&!pagCongelado(p)&&!pagOculto(p));
+  if(!pend.length) return '';
+
+  const agg={};
+  pend.forEach(p=>{
+    const k=cobProdDe(p);
+    const b=agg[k]||(agg[k]={v:0,n:0,atr:0,d30:0,clientes:new Set()});
+    const val=Number(p.valor_bruto||0);
+    b.v+=val; b.n++;
+    if(p.vendas&&p.vendas.id) b.clientes.add(p.vendas.id);
+    if(p.data_prevista<hojStr) b.atr+=val;
+    else if(p.data_prevista<=em30Str) b.d30+=val;
+  });
+  const total=Object.values(agg).reduce((s,b)=>s+b.v,0);
+  const keys=Object.keys(agg).sort((a,b)=>agg[b].v-agg[a].v);
+
+  return `<p class="cob-sec-title">Carteira a receber · ${fmtBRL(total)} em ${pend.length} parcela(s)</p>
+  <div class="prod-split">${keys.map(k=>{
+    const b=agg[k], info=prodInfo(k);
+    const share=total>0?Math.round((b.v/total)*100):0;
+    return `<div class="ps-card">
+      <div class="ps-head"><span class="ps-dot" style="background:${info.cor}"></span><p class="ps-name">${info.nome}</p><span class="ps-share">${share}% da carteira</span></div>
+      <p class="ps-value">${fmtBRL(b.v)}</p>
+      <p class="ps-sub">${b.n} parcela(s) · ${b.clientes.size} venda(s)</p>
+      <div class="ps-bar"><div class="ps-bar-fill" style="width:${share}%;background:${info.cor}"></div></div>
+      <div class="ps-grid">
+        <div><p class="ps-l">Atrasado</p><p class="ps-v${b.atr>0?' coral':''}">${fmtBRL(b.atr)}</p></div>
+        <div><p class="ps-l">Vence em 30 dias</p><p class="ps-v">${fmtBRL(b.d30)}</p></div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 function renderCobrancas(){
@@ -6079,16 +6260,22 @@ function renderCobrancas(){
 
   // Congeladas e ocultas ficam fora dos totais/alertas de cobrança
   const ativa=p=>!pagCongelado(p)&&!pagOculto(p);
-  const atrasados=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista<hojStr&&ativa(p));
-  const hojeArr=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista===hojStr&&ativa(p));
-  const prox7=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista>hojStr&&p.data_prevista<=em7Str&&ativa(p));
-  const recMes=todosPagamentos.filter(p=>p.status==='recebido');
-  const congeladas=todosPagamentos.filter(pagCongelado);
+  const noProd=p=>cobProdOk(p);
+  const atrasados=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista<hojStr&&ativa(p)&&noProd(p));
+  const hojeArr=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista===hojStr&&ativa(p)&&noProd(p));
+  const prox7=todosPagamentos.filter(p=>p.status==='pendente'&&p.data_prevista>hojStr&&p.data_prevista<=em7Str&&ativa(p)&&noProd(p));
+  const recMes=todosPagamentos.filter(p=>p.status==='recebido'&&noProd(p));
+  const congeladas=todosPagamentos.filter(p=>pagCongelado(p)&&noProd(p));
   const sumBRL=arr=>fmtBRL(arr.reduce((s,p)=>s+Number(p.valor_bruto||0),0));
-  const reembPend=todosReembPagamentos.filter(p=>p.status==='pendente');
+  const reembPend=todosReembPagamentos.filter(p=>p.status==='pendente'&&noProd(p));
   const reembSum=fmtBRL(reembPend.reduce((s,p)=>s+Number(p.valor||0),0));
 
   container.innerHTML=`
+    <div class="prod-tabs">
+      <button class="prod-tab${cobProduto===''?' active':''}" onclick="setCobProduto('')">Todos os produtos</button>
+      ${PRODUTOS_DASH.map(x=>`<button class="prod-tab${cobProduto===x.key?' active':''}" onclick="setCobProduto('${x.key}')">${x.nome}</button>`).join('')}
+    </div>
+    ${cobCarteiraHTML(hojStr)}
     <div class="cal-summary">
       <div class="cob-card"><div class="cob-card-label">Atrasado</div><div class="cob-card-value coral">${sumBRL(atrasados)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${atrasados.length} a receber</div></div>
       <div class="cob-card"><div class="cob-card-label">Vence hoje</div><div class="cob-card-value amber">${sumBRL(hojeArr)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${hojeArr.length} a receber</div></div>
@@ -6156,6 +6343,7 @@ function renderCalendario(){
   const byDate={};
   [...todosPagamentos,...todosReembPagamentos].forEach(p=>{
     if(!p.data_prevista) return;
+    if(!cobProdOk(p)) return; // fora do produto selecionado
     if(pagOculto(p)) return; // cobrança futura de venda com reembolso resolvido: some do calendário
     const key=p.data_prevista.split('T')[0];
     if(!byDate[key]) byDate[key]=[];
@@ -6228,7 +6416,7 @@ function mostrarDetalheCalDia(dateStr){
   if(!detail) return;
   const hoje=new Date(); hoje.setHours(0,0,0,0);
   const hojStr=hoje.toISOString().split('T')[0];
-  const pagsDia=[...todosPagamentos,...todosReembPagamentos].filter(p=>p.data_prevista&&p.data_prevista.split('T')[0]===dateStr&&!pagOculto(p));
+  const pagsDia=[...todosPagamentos,...todosReembPagamentos].filter(p=>p.data_prevista&&p.data_prevista.split('T')[0]===dateStr&&!pagOculto(p)&&cobProdOk(p));
   const [ano,mes,dia]=dateStr.split('-');
 
   // Cabeçalho do dia: data por extenso + contador + total consolidado
@@ -6260,7 +6448,7 @@ function mostrarDetalheCalDia(dateStr){
           <div class="cob-lanc-top">
             <div class="cob-lanc-id">
               <div class="cob-lanc-nome">${escHtml(p.nome_cliente)}</div>
-              <div class="cob-lanc-meta">↩ Reembolso${p.responsavel?`<span class="sep">·</span>${escHtml(p.responsavel)}`:''}${p.closer?`<span class="sep">·</span>${escHtml(p.closer)}`:''}<span class="sep">·</span>${vencHtml}</div>
+              <div class="cob-lanc-meta">↩ Reembolso${cobProdTag(p)}${p.responsavel?`<span class="sep">·</span>${escHtml(p.responsavel)}`:''}${p.closer?`<span class="sep">·</span>${escHtml(p.closer)}`:''}<span class="sep">·</span>${vencHtml}</div>
             </div>
             <div class="cob-lanc-money">
               <div class="cob-lanc-valor">${fmtBRL(p.valor)}</div>
@@ -6285,7 +6473,7 @@ function mostrarDetalheCalDia(dateStr){
           <div class="cob-lanc-top">
             <div class="cob-lanc-id">
               <div class="cob-lanc-nome">❄ ${escHtml(nomeC)}</div>
-              <div class="cob-lanc-meta">${mIconC?mIconC+' ':''}${escHtml(p.metodo||'—')}${closerC?`<span class="sep">·</span>${escHtml(closerC)}`:''}<span class="sep">·</span>Venc. ${fmtDataBR(dC)}</div>
+              <div class="cob-lanc-meta">${mIconC?mIconC+' ':''}${escHtml(p.metodo||'—')}${cobProdTag(p)}${closerC?`<span class="sep">·</span>${escHtml(closerC)}`:''}<span class="sep">·</span>Venc. ${fmtDataBR(dC)}</div>
             </div>
             <div class="cob-lanc-money">
               <div class="cob-lanc-valor">${fmtBRL(p.valor_bruto)}</div>
@@ -6311,7 +6499,7 @@ function mostrarDetalheCalDia(dateStr){
         <div class="cob-lanc-top">
           <div class="cob-lanc-id">
             <div class="cob-lanc-nome">${escHtml(nome)}</div>
-            <div class="cob-lanc-meta">${mIcon?mIcon+' ':''}${escHtml(p.metodo||'—')}${closer?`<span class="sep">·</span>${escHtml(closer)}`:''}<span class="sep">·</span>${vencHtml}</div>
+            <div class="cob-lanc-meta">${mIcon?mIcon+' ':''}${escHtml(p.metodo||'—')}${cobProdTag(p)}${closer?`<span class="sep">·</span>${escHtml(closer)}`:''}<span class="sep">·</span>${vencHtml}</div>
           </div>
           <div class="cob-lanc-money">
             <div class="cob-lanc-valor">${fmtBRL(p.valor_bruto)}</div>
@@ -7245,7 +7433,15 @@ async function carregarReembolsos(){
   if(!container) return;
   container.innerHTML='<p class="empty-state">Carregando casos...</p>';
   try{
-    todosReembolsos=await supaFetch('reembolsos?select=*,reembolsos_pagamentos(*),reembolsos_atualizacoes(*)&order=created_at.desc');
+    // vendas(produto) permite a taxa de reembolso por produto; o total de vendas por produto
+    // é o denominador dessa taxa. Caso avulso (sem venda_id) vem com vendas=null.
+    const [casos,vendasProd]=await Promise.all([
+      supaFetch('reembolsos?select=*,vendas(produto),reembolsos_pagamentos(*),reembolsos_atualizacoes(*)&order=created_at.desc'),
+      supaFetch('vendas?select=produto&limit=5000').catch(()=>[])
+    ]);
+    todosReembolsos=casos;
+    reembVendasPorProduto={};
+    (vendasProd||[]).forEach(v=>{const k=prodKeyDe(v.produto);reembVendasPorProduto[k]=(reembVendasPorProduto[k]||0)+1;});
     renderReembolsos();
   }catch(e){
     container.innerHTML='<div style="text-align:center;padding:48px;color:var(--coral);font-size:13px;">Erro ao carregar reembolsos.<br><span style="color:var(--muted);font-size:12px;">'+escHtml(e.message)+'</span></div>';
@@ -7307,10 +7503,61 @@ function limparFiltrosReemb(){
   renderReembolsos();
 }
 
+// ── FILTRO POR PRODUTO (reembolsos) ──
+let reembVendasPorProduto={};
+let reembFiltroProduto=''; // '' = todos
+function setReembProduto(k){ reembFiltroProduto=k; renderReembolsos(); }
+function reembProdDe(r){ return prodKeyDe(r.vendas&&r.vendas.produto); }
+function reembProdOk(r){ return !reembFiltroProduto||reembProdDe(r)===reembFiltroProduto; }
+function reembProdTag(r){
+  const k=reembProdDe(r);
+  if(k==='Outros') return '';
+  const i=prodInfo(k);
+  return `<span class="cob-prod-tag" style="border-color:${i.cor};color:${i.cor};margin-left:0;">${i.nome}</span>`;
+}
+
+// Taxa de reembolso por produto: casos abertos sobre o total de vendas daquele produto.
+// Conta o caso, não o valor — é indicador de qualidade da venda, não de impacto no caixa.
+function reembTaxaHTML(casos){
+  if(reembFiltroProduto) return '';
+  const agg={};
+  casos.forEach(r=>{
+    const k=reembProdDe(r);
+    const b=agg[k]||(agg[k]={n:0,previsto:0,pago:0,resolvidos:0});
+    b.n++; b.previsto+=reembPrevisto(r); b.pago+=reembPago(r);
+    if(r.status==='resolvido') b.resolvidos++;
+  });
+  // produtos sem nenhum caso também entram — taxa zero é informação
+  PRODUTOS_DASH.forEach(x=>{ if(!agg[x.key]&&reembVendasPorProduto[x.key]) agg[x.key]={n:0,previsto:0,pago:0,resolvidos:0}; });
+  // Produtos primeiro (mais casos na frente); caso avulso, sem venda vinculada, sempre por último.
+  const keys=Object.keys(agg).sort((a,b)=>
+    (a==='Outros'?1:0)-(b==='Outros'?1:0) || agg[b].n-agg[a].n);
+  if(!keys.length) return '';
+
+  return `<p class="cob-sec-title">Taxa de reembolso por produto</p>
+  <div class="prod-split">${keys.map(k=>{
+    const b=agg[k], info=prodInfo(k);
+    const avulso=k==='Outros';
+    const nome=avulso?'Sem venda vinculada':info.nome;
+    const base=reembVendasPorProduto[k]||0;
+    const taxa=base>0?(b.n/base)*100:0;
+    return `<div class="ps-card">
+      <div class="ps-head"><span class="ps-dot" style="background:${info.cor}"></span><p class="ps-name">${nome}</p><span class="ps-share">${b.resolvidos} resolvido(s)</span></div>
+      <p class="ps-value">${avulso?b.n:(base>0?taxa.toFixed(1)+'%':'—')}</p>
+      <p class="ps-sub">${avulso?'caso(s) avulso(s) — sem taxa, não há venda de origem':b.n+' caso(s) em '+base+' venda(s)'}</p>
+      <div class="ps-bar"><div class="ps-bar-fill" style="width:${avulso?0:Math.min(taxa*5,100)}%;background:${info.cor}"></div></div>
+      <div class="ps-grid">
+        <div><p class="ps-l">A reembolsar</p><p class="ps-v">${fmtBRL(b.previsto)}</p></div>
+        <div><p class="ps-l">Já devolvido</p><p class="ps-v${b.previsto-b.pago>0.01?' coral':''}">${fmtBRL(b.pago)}</p></div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
 function renderReembolsos(){
   const container=document.getElementById('reembolsosContent');
   if(!container) return;
-  const casos=todosReembolsos;
+  const casos=todosReembolsos.filter(reembProdOk);
   const total=casos.length;
   const emAberto=casos.filter(r=>r.status!=='resolvido').length;
   const cancel=casos.filter(r=>r.tipo==='cancelamento').length;
@@ -7326,6 +7573,10 @@ function renderReembolsos(){
 
   container.innerHTML=`
     ${buildOverdueBanner()}
+    <div class="prod-tabs">
+      <button class="prod-tab${reembFiltroProduto===''?' active':''}" onclick="setReembProduto('')">Todos os produtos</button>
+      ${PRODUTOS_DASH.map(x=>`<button class="prod-tab${reembFiltroProduto===x.key?' active':''}" onclick="setReembProduto('${x.key}')">${x.nome}</button>`).join('')}
+    </div>
     <div class="cal-summary">
       <div class="cob-card"><div class="cob-card-label">Total de casos</div><div class="cob-card-value">${total}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">desde o início</div></div>
       <div class="cob-card"><div class="cob-card-label">Em aberto</div><div class="cob-card-value amber">${emAberto}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">não resolvidos</div></div>
@@ -7334,6 +7585,7 @@ function renderReembolsos(){
       <div class="cob-card"><div class="cob-card-label"><span class="hint" tabindex="0" data-hint="reembAReembolsar">A reembolsar</span></div><div class="cob-card-value">${fmtBRL(aReembolsar)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${fmtBRL(pago)} já devolvido${retidoTotal>0?' · '+fmtBRL(retidoTotal)+' retido':''}</div></div>
       <div class="cob-card"><div class="cob-card-label"><span class="hint" tabindex="0" data-hint="reembPendente">Pendente</span></div><div class="cob-card-value coral">${fmtBRL(aReembolsar-pago)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">ainda falta devolver</div></div>
     </div>
+    ${reembTaxaHTML(casos)}
     <div class="reemb-viz">
       <div class="reemb-viz-card">
         <p class="reemb-viz-title">Casos por dia — últimos 14 dias</p>
@@ -7427,7 +7679,7 @@ function irParaReemb(id){
   if(det){ abrirReembDetalhe(det,id); det.scrollIntoView({behavior:'smooth',block:'center'}); }
 }
 function buildReembListaHTML(){
-  let base=todosReembolsos.slice();
+  let base=todosReembolsos.filter(reembProdOk);
   if(reembFiltroTipo) base=base.filter(r=>r.tipo===reembFiltroTipo);
   if(reembFiltroStatusReemb.length) base=base.filter(r=>reembFiltroStatusReemb.includes(r.status_reembolso||'pendente'));
   if(reembFiltroBaixa.length) base=base.filter(r=>reembFiltroBaixa.includes(r.status_baixa||'pendente'));
@@ -7463,7 +7715,7 @@ function renderReembChart(){
   for(let i=13;i>=0;i--){const d=new Date(hoje);d.setDate(hoje.getDate()-i);dias.push(d.toISOString().split('T')[0]);}
   const cancel={}, desist={};
   dias.forEach(d=>{cancel[d]=0;desist[d]=0;});
-  todosReembolsos.forEach(r=>{
+  todosReembolsos.filter(reembProdOk).forEach(r=>{
     const d=reembDataRef(r);
     if(d in cancel){ if(r.tipo==='cancelamento')cancel[d]++; else if(r.tipo==='desistencia')desist[d]++; }
   });
@@ -7534,6 +7786,7 @@ function renderReembCard(r){
           <span class="reemb-nome">${escHtml(r.nome_cliente||'Sem nome')}</span>
           <span class="status-badge ${tipoBadge}">${REEMB_TIPO_LABEL[r.tipo]||r.tipo}</span>
           <span class="status-badge ${statusBadge}">${REEMB_STATUS_LABEL[r.status]||r.status}</span>
+          ${reembProdTag(r)}
           ${parcial?`<span class="status-badge s-reembolso" title="Reembolso parcial: por acordo, só uma parte do que o cliente pagou foi devolvida">Parcial · concluído</span>`:''}
           ${reembSemEfeito(r)?`<span class="status-badge s-reembolso" title="O cliente desistiu do reembolso — a venda voltou ao original e conta por inteiro">↩ ${r.status_reembolso==='revertido'?'Revertido':'Não foi necessário'}</span>`:''}
         </div>
