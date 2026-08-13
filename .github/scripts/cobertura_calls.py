@@ -329,9 +329,12 @@ def e_call_de_verdade(ev, email_closer):
 def classificar(gravada, presencas, email_closer):
     """gravada + quem entrou na sala → veredito."""
     if presencas is None:
-        # Sem log de auditoria não dá pra afirmar nada sobre quem entrou.
+        # Sem log de auditoria a pergunta respondida é só "teve Meetrox ou não",
+        # que é a que importa. Não afirma nada sobre o lead ter comparecido —
+        # parte destes é no-show, e o motivo deixa isso escrito.
         return ('ok', 'gravada') if gravada else \
-               ('indeterminado', 'sem gravação e sem log de auditoria pra decidir')
+               ('sem_gravacao', 'agendada com cliente e sem gravação · não dá '
+                                'pra saber se o lead compareceu')
 
     closer = any(p['quem'] == email_closer.lower() or not p['externo'] for p in presencas)
     ext = [p for p in presencas if p['externo'] and p['segundos'] > 0]
