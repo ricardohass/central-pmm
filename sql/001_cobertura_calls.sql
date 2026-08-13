@@ -104,9 +104,50 @@ create index if not exists idx_cobertura_status     on cobertura_calls (status);
 create index if not exists idx_cobertura_meetcode   on cobertura_calls (meet_code);
 
 
--- ── 3. Leitura pronta pra tela ──────────────────────────────────────────────
+-- ── 3. RLS ──────────────────────────────────────────────────────────────────
+-- Diferente do resto do banco, esta tabela nasce com RLS. Ela é nova, então
+-- ligar aqui não derruba nada — e ela guarda título de reunião e e-mail de lead.
+--
+-- Divisão: a anon key (pública, está no index.html) só LÊ, e só escreve nas
+-- três colunas de classificação manual. Quem grava o cruzamento é o job, com a
+-- service_role, que ignora RLS por natureza e vive como secret no GitHub.
+--
+-- LIMITE CONHECIDO: isto não esconde o dado de quem tem a anon key — a Central
+-- precisa ler pra exibir, e o login dela não passa pelo Auth do Supabase. O que
+-- o RLS impede aqui é escrita e remoção por fora. Proteger a leitura depende de
+-- resolver a autenticação do banco inteiro, que segue pendente.
+alter table cobertura_calls  enable row level security;
+alter table agendas_closers  enable row level security;
+
+drop policy if exists cobertura_sel_anon on cobertura_calls;
+drop policy if exists cobertura_upd_anon on cobertura_calls;
+drop policy if exists agendas_sel_anon   on agendas_closers;
+
+create policy cobertura_sel_anon on cobertura_calls
+  for select to anon, authenticated using (true);
+
+create policy cobertura_upd_anon on cobertura_calls
+  for update to anon, authenticated using (true) with check (true);
+
+create policy agendas_sel_anon on agendas_closers
+  for select to anon, authenticated using (true);
+
+-- Sem policy de insert/delete: RLS nega os dois pra anon, independente de grant.
+-- O update é limitado por coluna — a policy libera a linha, o grant escolhe o que
+-- pode ser tocado. Veredito, vínculo com o Meetrox e auditoria ficam intocáveis.
+revoke insert, update, delete on cobertura_calls from anon, authenticated;
+grant  update (status_manual, status_manual_por, status_manual_em)
+  on cobertura_calls to anon, authenticated;
+
+revoke insert, update, delete on agendas_closers from anon, authenticated;
+
+
+-- ── 4. Leitura pronta pra tela ──────────────────────────────────────────────
+-- security_invoker: sem isso a view roda com os direitos do dono e passaria por
+-- cima do RLS da tabela — o que tornaria as políticas acima decorativas.
 -- status_final = correção humana quando existe, senão o veredito do job.
-create or replace view cobertura_calls_v as
+create or replace view cobertura_calls_v
+with (security_invoker = true) as
 select
   c.*,
   coalesce(c.status_manual, c.status) as status_final,
@@ -114,7 +155,8 @@ select
 from cobertura_calls c;
 
 -- Resumo por closer/dia — é o que a aba Cobertura vai consumir.
-create or replace view cobertura_resumo_v as
+create or replace view cobertura_resumo_v
+with (security_invoker = true) as
 select
   closer,
   data,
@@ -131,8 +173,6 @@ select
 from cobertura_calls_v
 group by closer, data;
 
--- NOTA DE SEGURANÇA: estas tabelas seguem o mesmo modelo do resto do banco,
--- que hoje está sem RLS. Não estou introduzindo política só aqui pra não criar
--- um modelo inconsistente — a correção precisa ser feita no banco inteiro,
--- de uma vez. Fica registrado que este dado (título de reunião e e-mail de
--- lead) é legível por qualquer um com a anon key, igual ao restante.
+-- CONSEQUÊNCIA PRÁTICA: o job do Actions precisa da SUPABASE_SERVICE_ROLE como
+-- secret. Com a anon key ele não consegue mais gravar — que é exatamente a
+-- intenção. A Central segue lendo com a anon key, sem mudança.
