@@ -274,18 +274,26 @@ def quem_entrou(email_closer, cod, quando):
     regs = r.get('conferenceRecords') or []
     if not regs:
         return []          # a sala nunca foi aberta: ninguém entrou
-    if quando and len(regs) > 1:
-        regs.sort(key=lambda x: abs(_ts(x.get('startTime')) - quando))
 
-    p = http('%s/%s/participants' % (MEET, regs[0]['name']), h, tolerar=(403, 404))
-    if p is None:
-        return None
-    saida = []
-    for x in (p.get('participants') or []):
-        nome = ((x.get('signedinUser') or {}).get('displayName')
-                or (x.get('anonymousUser') or {}).get('displayName')
-                or (x.get('phoneUser') or {}).get('displayName') or '')
-        saida.append({'nome': nome, 'entrou': x.get('earliestStartTime')})
+    # Um mesmo código costuma ter mais de uma conferência, e uma delas vem
+    # VAZIA — a sala abriu, fechou e reabriu minutos depois. Pegar a primeira
+    # da lista fazia uma call de três pessoas virar "ninguém entrou".
+    # Junta os participantes de todas: a pergunta é quem esteve na sala, e
+    # entrar duas vezes não muda a resposta.
+    saida, vistos = [], set()
+    for reg in regs[:4]:
+        p = http('%s/%s/participants' % (MEET, reg['name']), h, tolerar=(403, 404))
+        if p is None:
+            continue
+        for x in (p.get('participants') or []):
+            nome = ((x.get('signedinUser') or {}).get('displayName')
+                    or (x.get('anonymousUser') or {}).get('displayName')
+                    or (x.get('phoneUser') or {}).get('displayName') or '')
+            chave = sem_acento(nome)
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            saida.append({'nome': nome, 'entrou': x.get('earliestStartTime')})
     return saida
 
 
@@ -373,6 +381,29 @@ def e_call_de_verdade(ev, email_closer):
     return True, len(externos)
 
 
+def identificar_closer(humanos, nome_closer):
+    """Quais participantes são o closer, e não o lead.
+
+    O time inteiro assina o Meet com 'Estrategista' no nome — conferido nos
+    cinco: 'Amanda Duarte - Estrategista', 'Janaina Xavier Estrategista',
+    'Amanda Estrategista PMM'. É o sinal mais confiável que existe aqui.
+
+    Primeiro nome sozinho não basta: um lead chamado Amanda numa call da Amanda
+    Duarte seria contado como a closer, a lista de leads ficaria vazia e a call
+    viraria no-show sem ter sido. Por isso, quando mais de um participante casa
+    pelo primeiro nome, o desempate é o 'Estrategista'.
+    """
+    primeiro = sem_acento(nome_closer).split()[0] if nome_closer.strip() else ''
+    if not primeiro:
+        return []
+    por_nome = [p for p in humanos if primeiro in sem_acento(p['nome'])]
+    if len(por_nome) <= 1:
+        return por_nome
+    # Empate: quem carrega o cargo é o closer; os outros são leads homônimos.
+    com_cargo = [p for p in por_nome if 'estrategista' in sem_acento(p['nome'])]
+    return com_cargo or por_nome[:1]
+
+
 def classificar(gravada, presencas, nome_closer):
     """gravada + quem entrou na sala → veredito.
 
@@ -386,11 +417,9 @@ def classificar(gravada, presencas, nome_closer):
         return ('sem_gravacao', 'sem gravação · não consegui apurar quem entrou '
                                 'na sala, pode ser no-show')
 
-    primeiro = lambda s: sem_acento(s).split()[0] if s.strip() else ''
-    alvo = primeiro(nome_closer)
     bot = [p for p in presencas if BOT in sem_acento(p['nome'])]
     humanos = [p for p in presencas if p not in bot]
-    closer = [p for p in humanos if alvo and alvo in sem_acento(p['nome'])]
+    closer = identificar_closer(humanos, nome_closer)
     leads = [p for p in humanos if p not in closer]
 
     if not presencas:
