@@ -173,6 +173,25 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .mbar-track { flex:1; height:3px; background:var(--cream2); border-radius:2px; }
 .mbar-fill { height:3px; background:var(--green); border-radius:2px; }
 .mbar-pct { font-size:11px; color:var(--muted); flex-shrink:0; }
+/* segmentação por produto (dashboard) */
+.prod-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+.prod-tab { background:#fff; border:0.5px solid var(--border); border-radius:20px; padding:6px 15px; font-size:12px; font-weight:500; color:var(--muted); cursor:pointer; font-family:'Inter',sans-serif; transition:background .15s,color .15s,border-color .15s; }
+.prod-tab:hover { background:var(--cream2); color:var(--text); }
+.prod-tab.active { background:var(--green); border-color:var(--green); color:#fff; }
+.prod-split { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-bottom:16px; }
+.ps-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:16px; }
+.ps-head { display:flex; align-items:center; gap:7px; margin-bottom:10px; }
+.ps-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.ps-name { flex:1; font-size:13px; font-weight:600; color:var(--text); }
+.ps-share { font-size:11px; color:var(--muted); font-weight:500; }
+.ps-value { font-size:20px; font-weight:500; color:var(--text); line-height:1.2; }
+.ps-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+.ps-bar { height:3px; background:var(--cream2); border-radius:2px; margin:10px 0 12px; }
+.ps-bar-fill { height:3px; border-radius:2px; }
+.ps-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; }
+.ps-l { font-size:10px; color:var(--muted); margin-bottom:2px; }
+.ps-v { font-size:13px; font-weight:500; color:var(--text); }
+.ps-v.coral { color:var(--coral); }
 .charts-row { display:grid; grid-template-columns:1fr 240px 240px; gap:12px; margin-bottom:16px; }
 .chart-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:20px; }
 .fat-card { display:flex; flex-direction:column; }
@@ -1107,7 +1126,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
     <!-- DASHBOARDS -->
     <div id="page-dashboards" class="page">
       <div class="dash-header">
-        <div><p class="page-eyebrow">Visão geral</p><p class="page-title">Dashboard</p></div>
+        <div><p class="page-eyebrow" id="dashEyebrow">Visão geral</p><p class="page-title">Dashboard</p></div>
         <div class="dash-controls">
           <div class="date-nav">
             <button class="date-btn" onclick="mudarMes(-1)">&#8249;</button>
@@ -1138,13 +1157,19 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
         </div>
       </div>
       <div id="dash-admin-view">
+        <div class="prod-tabs" id="prodTabs">
+          <button class="prod-tab active" data-prod="" onclick="setDashProduto('')">Todos os produtos</button>
+          <button class="prod-tab" data-prod="PMM" onclick="setDashProduto('PMM')">PMM</button>
+          <button class="prod-tab" data-prod="Wonder" onclick="setDashProduto('Wonder')">Wonder Prø</button>
+        </div>
         <div class="metrics">
           <div class="mcard"><p class="mcard-label hint" id="lbl-fat-bruto" tabindex="0" data-hint="fatBruto" style="display:inline-block;">Recebido no mês (bruto)</p><p class="mcard-value" id="dash-fat-bruto">—</p><p class="mcard-meta" id="dash-fat-bruto-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-bruto" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-bruto">0%</span></div></div>
-          <div class="mcard"><p class="mcard-label hint" id="lbl-fat-liq" tabindex="0" data-hint="fatLiquido" style="display:inline-block;">Recebido no mês (líquido)</p><p class="mcard-value" id="dash-fat-liq">—</p><p class="mcard-meta">Meta: R$ 1.000.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-liq" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-liq">0%</span></div></div>
+          <div class="mcard"><p class="mcard-label hint" id="lbl-fat-liq" tabindex="0" data-hint="fatLiquido" style="display:inline-block;">Recebido no mês (líquido)</p><p class="mcard-value" id="dash-fat-liq">—</p><p class="mcard-meta" id="dash-fat-liq-meta">Meta: R$ 1.000.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-liq" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-liq">0%</span></div></div>
           <div class="mcard"><p class="mcard-label">Total de vendas</p><p class="mcard-value big" id="dash-total-vendas">—</p><p class="mcard-meta">exceto canceladas e reembolsadas</p></div>
           <div class="mcard"><p class="mcard-label"><span class="hint" tabindex="0" data-hint="reembolso">Reembolsos (abatido)</span></p><p class="mcard-value coral" id="dash-reembolsos">—</p><p class="mcard-meta">no mês</p></div>
           <div class="mcard"><p class="mcard-label"><span class="hint" tabindex="0" data-hint="aReceber">A receber</span></p><p class="mcard-value coral" id="dash-a-receber">—</p><p class="mcard-meta">valor restante pendente</p></div>
         </div>
+        <div class="prod-split" id="prodSplit"></div>
         <div class="charts-row">
           <div class="chart-card fat-card"><p class="chart-title">Faturamento por dia</p><div style="position:relative;height:200px;"><canvas id="fatChart"></canvas></div><div class="chart-legend"><div class="cli"><div class="cli-line" style="background:rgba(61,92,74,0.2);height:8px;border-radius:2px;"></div><span class="hint" tabindex="0" data-hint="fatBruto">Fat. bruto</span></div><div class="cli"><div class="cli-line" style="background:#3D5C4A;"></div><span class="hint" tabindex="0" data-hint="fatLiquido">Fat. líquido</span></div></div><div class="fat-resumo" id="fatResumo"></div></div>
           <div class="chart-card pie-wrap">
@@ -2226,6 +2251,28 @@ let dashMes=new Date().getMonth(); // 0-indexed
 // Filtro de período personalizado (sobrepõe o mês quando ambos definidos)
 let dashRangeStart=null, dashRangeEnd=null;
 
+// ── SEGMENTAÇÃO POR PRODUTO (dashboard) ──
+// A chave é o trecho que identifica o produto dentro de vendas.produto
+// ("[PMM] Programa Multiplique e Monetize", "[Wonder] Wonder Prø").
+const PRODUTOS_DASH=[
+  {key:'PMM',    nome:'PMM',        cor:'#3D5C4A'},
+  {key:'Wonder', nome:'Wonder Prø', cor:'#D4572A'}
+];
+let dashProduto=''; // '' = todos os produtos
+function prodKeyDe(p){
+  const s=p||'';
+  const hit=PRODUTOS_DASH.find(x=>s.includes(x.key));
+  return hit?hit.key:'Outros';
+}
+function prodInfo(k){
+  return PRODUTOS_DASH.find(x=>x.key===k)||{key:k,nome:k,cor:'#B4B2A9'};
+}
+function setDashProduto(k){
+  dashProduto=k;
+  document.querySelectorAll('#prodTabs .prod-tab').forEach(b=>b.classList.toggle('active',b.dataset.prod===k));
+  carregarDashboard();
+}
+
 function atualizarLabelMes(){
   const lbl=document.getElementById('dashMesLabel');
   const btn=document.getElementById('periodoBtn');
@@ -2660,6 +2707,72 @@ async function carregarHomeSnapshot(){
   }catch(e){console.error('snapshot',e);}
 }
 
+// Quebra do período por produto. Recebe os mesmos dados já carregados pelo dashboard
+// (nenhuma query extra) e monta um card por produto com recebido, vendas e a receber.
+// `dados=null` esconde o bloco.
+function renderProdSplit(dados){
+  const el=document.getElementById('prodSplit');
+  if(!el) return;
+  if(!dados){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display='';
+
+  const {todas,vendas,pgRecebidos,reembImpacto,_valorReemb}=dados;
+  const agg={};
+  const bucket=k=>agg[k]||(agg[k]={bruto:0,liq:0,reemb:0,n:0,contratado:0,aReceber:0});
+
+  (pgRecebidos||[]).forEach(p=>{
+    const b=bucket(prodKeyDe(p.vendas&&p.vendas.produto));
+    b.bruto+=Number(p.valor_bruto||0);
+    b.liq+=Number(p.valor_liquido||0);
+  });
+  (reembImpacto||[]).forEach(r=>{
+    bucket(prodKeyDe(r.vendas&&r.vendas.produto)).reemb+=_valorReemb(r);
+  });
+  (vendas||[]).forEach(v=>{
+    const b=bucket(prodKeyDe(v.produto));
+    b.n++; b.contratado+=Number(v.valor_bruto||0);
+  });
+  (todas||[]).forEach(v=>{
+    bucket(prodKeyDe(v.produto)).aReceber+=Number(v.valor_restante||0);
+  });
+
+  // Reembolso é abatido do recebido, igual ao KPI do topo.
+  Object.values(agg).forEach(b=>{
+    b.bruto=Math.max(0,b.bruto-b.reemb);
+    b.liq=Math.max(0,b.liq-b.reemb);
+  });
+
+  const keys=Object.keys(agg).sort((a,b)=>agg[b].bruto-agg[a].bruto||agg[b].n-agg[a].n);
+  if(!keys.length){
+    el.innerHTML='<p style="font-size:13px;color:var(--muted);">Sem movimentação por produto no período.</p>';
+    return;
+  }
+  const totalBruto=keys.reduce((s,k)=>s+agg[k].bruto,0);
+
+  el.innerHTML=keys.map(k=>{
+    const b=agg[k], info=prodInfo(k);
+    const share=totalBruto>0?Math.round((b.bruto/totalBruto)*100):0;
+    const ticket=b.n?b.contratado/b.n:0;
+    // Wonder entra no dashboard só pelo valor pago (ajustarWonderPago), então o ticket
+    // dele é o recebido médio, não o contratado — avisa no tooltip pra não confundir.
+    const ticketTip=k==='Wonder'
+      ?'Wonder Prø conta só o valor já pago — este é o recebido médio por contrato, não o contratado.'
+      :'Valor contratado médio por venda no período.';
+    return `<div class="ps-card">
+      <div class="ps-head"><span class="ps-dot" style="background:${info.cor}"></span><p class="ps-name">${info.nome}</p><span class="ps-share">${share}% do recebido</span></div>
+      <p class="ps-value">${fmtBRL(b.bruto)}</p>
+      <p class="ps-sub">recebido bruto</p>
+      <div class="ps-bar"><div class="ps-bar-fill" style="width:${share}%;background:${info.cor}"></div></div>
+      <div class="ps-grid">
+        <div><p class="ps-l">Recebido líquido</p><p class="ps-v">${fmtBRL(b.liq)}</p></div>
+        <div><p class="ps-l">Vendas</p><p class="ps-v">${b.n}</p></div>
+        <div title="${ticketTip}"><p class="ps-l">Ticket médio</p><p class="ps-v">${fmtBRL(ticket)}</p></div>
+        <div><p class="ps-l">A receber</p><p class="ps-v coral">${fmtBRL(b.aReceber)}</p></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 async function carregarDashboard(){
   atualizarLabelMes();
   // Período: intervalo personalizado (se definido) ou mês selecionado
@@ -2677,22 +2790,29 @@ async function carregarDashboard(){
   if(_lblB) _lblB.textContent='Recebido '+_periodoSuf+' (bruto)';
   if(_lblL) _lblL.textContent='Recebido '+_periodoSuf+' (líquido)';
 
+  // Filtro de produto: aplicado direto na venda e, nas tabelas filhas, via join com vendas.
+  const _fProd    = dashProduto?('&produto=like.*'+dashProduto+'*'):'';
+  const _fProdEmb = dashProduto?('&vendas.produto=like.*'+dashProduto+'*'):'';
+  const _eyebrow=document.getElementById('dashEyebrow');
+  if(_eyebrow) _eyebrow.textContent=dashProduto?('Visão geral · '+prodInfo(dashProduto).nome):'Visão geral';
+
   try{
     const [todas, pgRecebidos, reembImpacto]=await Promise.all([
-      supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&select=*'),
-      supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=valor_bruto,valor_liquido'),
-      supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,modalidade,vendas!inner(data_venda,valor_bruto),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
+      supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&select=*'+_fProd),
+      supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=valor_bruto,valor_liquido,vendas!inner(produto)'+_fProdEmb),
+      supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,modalidade,vendas!inner(data_venda,valor_bruto,produto),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia+_fProdEmb).catch(()=>[])
     ]);
     ajustarWonderPago(todas); // Wonder conta só o valor pago (ranking, origem, gateway, gráfico)
     const vendas=todas.filter(v=>v.status!=='cancelada'&&v.status!=='reembolso');
     // Valor reembolsado atribuído às vendas deste mês:
     //  - integral marcado 'reembolsado' → valor total do caso
     //  - parcial/em andamento → só o que já foi pago (parcelas pagas)
-    const totalReemb=(reembImpacto||[]).reduce((s,r)=>{
+    const _valorReemb=r=>{
       const pago=(r.reembolsos_pagamentos||[]).filter(p=>p.status==='pago').reduce((a,p)=>a+Number(p.valor||0),0);
       const integral=r.modalidade?r.modalidade==='integral':(Number((r.vendas&&r.vendas.valor_bruto)||0)>0&&Number(r.valor_total||0)>=Number(r.vendas.valor_bruto||0)-0.01);
-      return s+((integral&&r.status_reembolso==='reembolsado')?Number(r.valor_total||0):pago);
-    },0);
+      return (integral&&r.status_reembolso==='reembolsado')?Number(r.valor_total||0):pago;
+    };
+    const totalReemb=(reembImpacto||[]).reduce((s,r)=>s+_valorReemb(r),0);
     const reembCount=(reembImpacto||[]).length;
     const fatBruto=Math.max(0,pgRecebidos.reduce((s,p)=>s+Number(p.valor_bruto||0),0)-totalReemb);
     const fatLiq=Math.max(0,pgRecebidos.reduce((s,p)=>s+Number(p.valor_liquido||0),0)-totalReemb);
@@ -2712,6 +2832,19 @@ async function carregarDashboard(){
     document.getElementById('pct-fat-bruto').textContent=pctB+'%';
     document.getElementById('bar-fat-liq').style.width=pctL+'%';
     document.getElementById('pct-fat-liq').textContent=pctL+'%';
+
+    // As metas são da operação inteira — some com elas quando o recorte é de um produto só.
+    const _metaVis=dashProduto?'none':'';
+    ['dash-fat-bruto-meta','dash-fat-liq-meta'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.style.display=_metaVis;
+    });
+    ['bar-fat-bruto','bar-fat-liq'].forEach(id=>{
+      const el=document.getElementById(id), row=el&&el.closest('.mbar-row');
+      if(row) row.style.display=dashProduto?'none':'flex';
+    });
+
+    // Quebra por produto (só na visão "todos" — no recorte de um produto seria redundante)
+    renderProdSplit(dashProduto?null:{todas,vendas,pgRecebidos,reembImpacto,_valorReemb,fatBruto});
 
     // Ranking (usa valor contratado — métrica de performance do closer)
     const ranking={};
