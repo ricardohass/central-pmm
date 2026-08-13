@@ -78,6 +78,7 @@ DIAS_JANELA = int(os.environ.get('COBERTURA_DIAS', '3'))
 # Descobrir em vez de configurar evita um secret a mais e sobrevive à troca de
 # um modo pelo outro sem ninguém lembrar de mexer aqui.
 MODO_COMPARTILHADO = None
+_INTERNOS = None  # equipe, carregada uma vez do /users do Meetrox
 
 
 # ── infra ────────────────────────────────────────────────────────────────────
@@ -255,6 +256,29 @@ def calls_do_meetrox(t0, t1):
 
 # ── regra ────────────────────────────────────────────────────────────────────
 
+def equipe_interna():
+    """E-mails de quem é da casa, pra não confundir reunião interna com call.
+
+    Testar só o domínio não basta: parte do time usa domínio próprio ou Gmail
+    pessoal (Gabriel Mor, SDRs), e aí Daily, Treinamento e Reunião Geral
+    entravam na auditoria como se fossem call de cliente.
+
+    A fonte é o /users do Meetrox: é a lista que já existe e já é mantida —
+    quem entra no time aparece aqui sem ninguém precisar cadastrar de novo.
+    """
+    global _INTERNOS
+    if _INTERNOS is None:
+        _INTERNOS = set()
+        try:
+            for u in (meetrox('/users?first=100').get('data') or []):
+                if u.get('email'):
+                    _INTERNOS.add(u['email'].lower())
+        except Exception as e:
+            print('  não consegui listar a equipe no Meetrox (%s) — vou usar só '
+                  'o domínio, e reunião interna pode entrar na conta.' % str(e)[:120])
+    return _INTERNOS
+
+
 def e_call_de_verdade(ev, email_closer):
     """Toda call com lead deve ter Meetrox, independente do prefixo do título.
 
@@ -265,11 +289,13 @@ def e_call_de_verdade(ev, email_closer):
         return False, 'cancelada'
     if not codigo_da_url(ev.get('hangoutLink')):
         return False, 'sem sala do Meet'
+    internos = equipe_interna()
     externos = [a for a in (ev.get('attendees') or [])
                 if a.get('email') and not a['email'].lower().endswith(DOMINIO)
+                and a['email'].lower() not in internos
                 and not a.get('resource')]
     if not externos:
-        return False, 'sem convidado externo'
+        return False, 'reunião interna'
     # Compara por e-mail, não pelo campo `self`: `self` é relativo a quem
     # autenticou. Lendo uma agenda compartilhada, quem autentica é a conta de
     # serviço, o campo nunca vem, e a recusa do closer passaria despercebida.
