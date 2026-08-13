@@ -72,6 +72,13 @@ ESCOPO_LOG = ['https://www.googleapis.com/auth/admin.reports.audit.readonly']
 
 DIAS_JANELA = int(os.environ.get('COBERTURA_DIAS', '3'))
 
+# Modo de leitura da agenda, descoberto sozinho na primeira tentativa:
+#   'compartilhada' — o closer compartilhou a agenda com a conta de serviço
+#   'delegacao'     — delegação em todo o domínio, a conta impersona o closer
+# Descobrir em vez de configurar evita um secret a mais e sobrevive à troca de
+# um modo pelo outro sem ninguém lembrar de mexer aqui.
+MODO_COMPARTILHADO = None
+
 
 # ── infra ────────────────────────────────────────────────────────────────────
 
@@ -107,15 +114,22 @@ def meetrox(path):
 
 
 def token_google(subject, escopos):
-    """Token de acesso agindo em nome de `subject`.
+    """Token de acesso. Com `subject`, agindo em nome daquele usuário.
 
-    É aqui que a delegação em todo o domínio entra: a conta de serviço não tem
-    acesso nenhum por si só — ela pede pra ser aquele usuário, e o Workspace
-    autoriza porque o Client ID dela está liberado no painel de admin.
+    Dois modos, e o script funciona nos dois:
+
+    - AGENDA COMPARTILHADA (subject=None): a conta de serviço usa a própria
+      identidade e enxerga só as agendas que foram compartilhadas com o e-mail
+      dela. Não precisa de delegação nenhuma.
+    - DELEGAÇÃO (subject=e-mail): a conta pede pra ser aquele usuário, e o
+      Workspace autoriza porque o Client ID dela está liberado no admin.
+
+    O log de auditoria do Meet só existe no segundo modo, e só em nome de um
+    admin — não há como um closer autorizar isso.
     """
     info = json.loads(SA_JSON)
     cred = service_account.Credentials.from_service_account_info(
-        info, scopes=escopos, subject=subject)
+        info, scopes=escopos, subject=subject or None)
     cred.refresh(google.auth.transport.requests.Request())
     return cred.token
 
@@ -139,8 +153,32 @@ def codigo_da_url(url):
 # ── fontes ───────────────────────────────────────────────────────────────────
 
 def eventos_da_agenda(email, t0, t1):
-    """Eventos do closer na janela. Cancelados já vêm de fora por padrão."""
-    tok = token_google(email, ESCOPO_CAL)
+    """Eventos do closer na janela. Cancelados já vêm de fora por padrão.
+
+    Na primeira chamada tenta os dois modos e fixa o que funcionar, pra não
+    repetir a descoberta a cada closer.
+    """
+    global MODO_COMPARTILHADO
+    if MODO_COMPARTILHADO is None:
+        for compartilhada in (True, False):
+            try:
+                _buscar_eventos(email, t0, t1, compartilhada)
+                MODO_COMPARTILHADO = compartilhada
+                print('  modo de leitura: %s'
+                      % ('agenda compartilhada' if compartilhada else 'delegação no domínio'))
+                break
+            except Exception:
+                continue
+        else:
+            # Nenhum funcionou: repete o compartilhado só pra propagar o erro
+            # verdadeiro pra quem chamou, em vez de um genérico.
+            MODO_COMPARTILHADO = True
+            return _buscar_eventos(email, t0, t1, True)
+    return _buscar_eventos(email, t0, t1, MODO_COMPARTILHADO)
+
+
+def _buscar_eventos(email, t0, t1, compartilhada):
+    tok = token_google(None if compartilhada else email, ESCOPO_CAL)
     saida, page = [], None
     while True:
         q = {'timeMin': t0.isoformat(), 'timeMax': t1.isoformat(),
@@ -232,7 +270,11 @@ def e_call_de_verdade(ev, email_closer):
                 and not a.get('resource')]
     if not externos:
         return False, 'sem convidado externo'
-    eu = [a for a in (ev.get('attendees') or []) if a.get('self')]
+    # Compara por e-mail, não pelo campo `self`: `self` é relativo a quem
+    # autenticou. Lendo uma agenda compartilhada, quem autentica é a conta de
+    # serviço, o campo nunca vem, e a recusa do closer passaria despercebida.
+    eu = [a for a in (ev.get('attendees') or [])
+          if (a.get('email') or '').lower() == email_closer.lower() or a.get('self')]
     if eu and eu[0].get('responseStatus') == 'declined':
         return False, 'closer recusou'
     return True, len(externos)
@@ -291,6 +333,10 @@ def diagnosticar_google(e):
     if 'access_denied' in t or 'forbidden' in t.lower():
         return ('a conta existe mas não pode agir por esse usuário. Verifique '
                 'se o e-mail está no domínio autorizado.')
+    if '404' in t and MODO_COMPARTILHADO:
+        return ('agenda não compartilhada com a conta de serviço. O closer '
+                'precisa liberar em "Ver todos os detalhes do evento" para '
+                'central-pmm-cobertura@fifth-liberty-505418-u3.iam.gserviceaccount.com')
     if 'invalid_grant' in t:
         return ('usuário inexistente ou fora do domínio da delegação.')
     if 'not been used' in t or 'is disabled' in t:
