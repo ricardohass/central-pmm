@@ -276,9 +276,44 @@ def janela(argv):
     return d0, d1, t0, t1
 
 
+def diagnosticar_google(e):
+    """Traduz o erro do Google pra causa provável.
+
+    Depurar isso pelo log do Actions é caro — a mensagem crua do Google não diz
+    o que fazer, e quem lê o log não é quem configurou.
+    """
+    t = str(e)
+    if 'unauthorized_client' in t:
+        return ('a delegação em todo o domínio não está valendo. Confira no '
+                'admin.google.com se o Client ID 102752329116181544361 está lá '
+                'com os dois escopos. Recém-autorizada, pode levar alguns '
+                'minutos pra propagar.')
+    if 'access_denied' in t or 'forbidden' in t.lower():
+        return ('a conta existe mas não pode agir por esse usuário. Verifique '
+                'se o e-mail está no domínio autorizado.')
+    if 'invalid_grant' in t:
+        return ('usuário inexistente ou fora do domínio da delegação.')
+    if 'not been used' in t or 'is disabled' in t:
+        return ('a API não foi ativada no projeto do Google Cloud.')
+    if 'Invalid JWT' in t or 'invalid_client' in t:
+        return ('o GOOGLE_SA_JSON parece truncado ou não é o arquivo inteiro.')
+    return None
+
+
 def main():
     d0, d1, t0, t1 = janela(sys.argv)
     print('Janela: %s a %s (America/Sao_Paulo)' % (d0, d1))
+
+    # Estado da configuração antes de qualquer coisa: quando isto falha, quem lê
+    # o log quer saber primeiro o que chegou e o que não chegou.
+    print('Credenciais: ' + ' · '.join(
+        '%s=%s' % (nome, 'ok' if val else 'FALTA')
+        for nome, val in [('MEETROX_API_KEY', MEETROX_KEY),
+                          ('SUPABASE_SERVICE_ROLE', SERVICE_ROLE),
+                          ('GOOGLE_SA_JSON', SA_JSON),
+                          ('GOOGLE_ADMIN_EMAIL', ADMIN_EMAIL)]))
+    if SA_JSON and not TEM_GOOGLE:
+        print('  google-auth não importou — o passo de instalação do workflow falhou?')
 
     closers = supa('agendas_closers?ativo=eq.true&select=email,nome,inicio_em&order=email')
     print('Closers auditados: %d' % len(closers))
@@ -320,9 +355,19 @@ def main():
 
     linhas, casados = [], set()
 
+    falhas = []
     for cl in closers:
         email, nome = cl['email'], cl['nome']
-        eventos = eventos_da_agenda(email, t0, t1)
+        try:
+            eventos = eventos_da_agenda(email, t0, t1)
+        except Exception as e:
+            # Um closer com agenda inacessível não pode derrubar a auditoria dos
+            # outros quatro — registra e segue.
+            falhas.append(nome)
+            print('  %s: não consegui ler a agenda. %s'
+                  % (nome, diagnosticar_google(e) or str(e)[:200]))
+            continue
+        print('  %s: %d evento(s) na agenda' % (nome, len(eventos)))
         for ev in eventos:
             if cl.get('inicio_em') and (ev.get('start') or {}).get('dateTime', '')[:10] < cl['inicio_em']:
                 continue
@@ -368,8 +413,14 @@ def main():
                 'atualizado_em': datetime.now(timezone.utc).isoformat(),
             })
 
+    if falhas and len(falhas) == len(closers):
+        sys.exit('\nNenhuma agenda pôde ser lida — não há cruzamento a fazer. '
+                 'Nada foi gravado.')
+
     # Gravou mas não havia evento na agenda: call marcada na hora.
-    nomes = {c['nome'] for c in closers}
+    # Só entra quando a agenda foi lida: sem ela, "não estava marcada" seria
+    # uma conclusão falsa — a agenda é que não foi consultada.
+    nomes = {c['nome'] for c in closers if c['nome'] not in falhas}
     for c in calls:
         if c['id'] in casados:
             continue
@@ -407,10 +458,19 @@ def main():
     if not SERVICE_ROLE:
         print('\nSem SUPABASE_SERVICE_ROLE: não gravei nada.')
         return
-    for i in range(0, len(linhas), 100):
-        supa('cobertura_calls', 'POST', linhas[i:i + 100],
-             prefer='resolution=merge-duplicates,return=minimal')
-    print('\nGravado no Supabase.')
+    if not linhas:
+        print('\nNada a gravar.')
+        return
+    try:
+        for i in range(0, len(linhas), 100):
+            supa('cobertura_calls', 'POST', linhas[i:i + 100],
+                 prefer='resolution=merge-duplicates,return=minimal')
+    except Exception as e:
+        # 401 aqui quer dizer que a chave é a anon, não a service_role: a anon
+        # tem policy só de select e de update em status_manual.
+        sys.exit('\nNão consegui gravar: %s\nSe for 401, confira se o secret '
+                 'SUPABASE_SERVICE_ROLE tem a chave service_role mesmo.' % str(e)[:300])
+    print('\nGravado no Supabase: %d linha(s).' % len(linhas))
 
 
 if __name__ == '__main__':
