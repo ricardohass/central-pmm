@@ -410,6 +410,31 @@ def classificar(gravada, presencas, nome_closer):
 
 # ── execução ─────────────────────────────────────────────────────────────────
 
+# O PostgREST exige que todo objeto do lote tenha exatamente as mesmas chaves
+# ("All object keys must match"). As linhas nascidas da agenda carregam mais
+# campos que as nascidas do Meetrox, então o lote precisa ser aparado antes.
+# Os quatro booleanos são NOT NULL no banco: mandar null quebraria a inserção.
+COLUNAS = {
+    'chave': None, 'closer': None, 'closer_email': None, 'data': None,
+    'inicio': None, 'fim': None, 'titulo': None, 'meet_code': None,
+    'evento_id': None, 'convidados_ext': None,
+    'evento_cancelado': False, 'closer_recusou': False,
+    'meetrox_call_id': None, 'meetrox_url': None,
+    'gravada': False, 'duracao_gravacao': None,
+    'meet_entrou_closer': None, 'meet_entrou_ext': None, 'meet_dur_ext_seg': None,
+    'meet_apurado': False,
+    'status': None, 'motivo': None, 'atualizado_em': None,
+}
+
+
+def uniformizar(linha):
+    saida = {}
+    for coluna, padrao in COLUNAS.items():
+        valor = linha.get(coluna)
+        saida[coluna] = padrao if valor is None else valor
+    return saida
+
+
 def janela(argv):
     # Aspas vazias contam como argumento: na rodada agendada o workflow passa
     # "" "" e a janela tem que voltar a ser a padrão, não estourar.
@@ -627,6 +652,7 @@ def main():
         print('\nNada a gravar.')
         return
     try:
+        linhas = [uniformizar(l) for l in linhas]
         for i in range(0, len(linhas), 100):
             supa('cobertura_calls', 'POST', linhas[i:i + 100],
                  prefer='resolution=merge-duplicates,return=minimal')
