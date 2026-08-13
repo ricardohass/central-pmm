@@ -80,6 +80,12 @@ DIAS_JANELA = int(os.environ.get('COBERTURA_DIAS', '3'))
 MODO_COMPARTILHADO = None
 _INTERNOS = None  # equipe, carregada uma vez do /users do Meetrox
 
+# Encontro do time que por acaso tem gente de fora na sala (aluno, parceiro) e
+# por isso passaria no teste de "tem convidado externo". Não é call de venda e
+# não entra na auditoria. Comparação sem acento e em minúsculas.
+TITULOS_FORA = ['treinamento', 'alinhamento', 'reuniao geral', 'daily',
+                'time de vendas']
+
 
 # ── infra ────────────────────────────────────────────────────────────────────
 
@@ -133,6 +139,12 @@ def token_google(subject, escopos):
         info, scopes=escopos, subject=subject or None)
     cred.refresh(google.auth.transport.requests.Request())
     return cred.token
+
+
+def sem_acento(s):
+    import unicodedata
+    return ''.join(c for c in unicodedata.normalize('NFD', (s or '').lower())
+                   if unicodedata.category(c) != 'Mn')
 
 
 def norm(codigo):
@@ -289,6 +301,9 @@ def e_call_de_verdade(ev, email_closer):
         return False, 'cancelada'
     if not codigo_da_url(ev.get('hangoutLink')):
         return False, 'sem sala do Meet'
+    titulo = sem_acento(ev.get('summary') or '')
+    if any(p in titulo for p in TITULOS_FORA):
+        return False, 'encontro do time'
     internos = equipe_interna()
     externos = [a for a in (ev.get('attendees') or [])
                 if a.get('email') and not a['email'].lower().endswith(DOMINIO)
@@ -296,6 +311,11 @@ def e_call_de_verdade(ev, email_closer):
                 and not a.get('resource')]
     if not externos:
         return False, 'reunião interna'
+    # Lead que recusou o convite: a call não ia acontecer mesmo. Cobrar gravação
+    # disso seria acusar o closer de algo que o próprio Google já registrou que
+    # não ia ocorrer.
+    if all(a.get('responseStatus') == 'declined' for a in externos):
+        return False, 'lead recusou'
     # Compara por e-mail, não pelo campo `self`: `self` é relativo a quem
     # autenticou. Lendo uma agenda compartilhada, quem autentica é a conta de
     # serviço, o campo nunca vem, e a recusa do closer passaria despercebida.
