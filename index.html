@@ -46,33 +46,49 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 
 /* APP */
 #app-screen { display:none; flex-direction:column; height:100vh; }
-.topbar { background:var(--green); display:flex; align-items:center; padding:0 24px; height:54px; flex-shrink:0; gap:2px; overflow-x:auto; }
+/* overflow visible: era `overflow-x:auto`, remendo pro excesso de abas — e era
+   ele que produzia o scroll lateral. Com as telas em pastas não sobra nada pra
+   rolar, e o menu suspenso precisa poder passar da barra pra baixo. */
+.topbar { background:var(--green); display:flex; align-items:center; padding:0 24px; height:54px; flex-shrink:0; gap:3px; overflow:visible; position:relative; z-index:100; }
 .topbar-logo { font-family:'Playfair Display',serif; color:#fff; font-size:16px; font-weight:400; margin-right:24px; letter-spacing:.02em; white-space:nowrap; flex-shrink:0; }
 .topbar-logo em { color:var(--coral); font-style:italic; }
 .topbar-spacer { flex:1; min-width:16px; }
 .topbar-user { font-size:12px; color:rgba(255,255,255,0.7); margin-right:12px; white-space:nowrap; }
 .logout-btn { font-size:12px; color:rgba(255,255,255,0.6); background:transparent; border:0.5px solid rgba(255,255,255,0.2); border-radius:6px; padding:5px 10px; cursor:pointer; white-space:nowrap; flex-shrink:0; }
 .logout-btn:hover { background:rgba(255,255,255,0.1); color:#fff; }
-/* 14 abas + logo + usuário: aperta a fonte e o padding conforme a tela encolhe,
-   pra caber tudo numa linha só sem scroll horizontal na topbar. */
-.nav-tab { font-family:'Inter',sans-serif; font-size:12px; color:rgba(255,255,255,0.6); padding:6px 10px; border-radius:7px; cursor:pointer; border:none; background:transparent; transition:background .15s,color .15s; white-space:nowrap; flex-shrink:0; }
-@media (max-width:1500px){
-  .topbar { padding:0 16px; }
-  .topbar-logo { margin-right:14px; font-size:15px; }
-  .nav-tab { font-size:11.5px; padding:6px 8px; }
-}
-@media (max-width:1320px){
-  .topbar-logo { margin-right:10px; font-size:14px; }
-  .nav-tab { font-size:11px; padding:5px 6px; }
-  .topbar-user { display:none; }
-  .topbar-spacer { min-width:8px; }
-}
-@media (max-width:1150px){
-  .nav-tab { font-size:10.5px; padding:5px 5px; letter-spacing:-.01em; }
-  .logout-btn { padding:4px 8px; font-size:11px; }
-}
+/* As telas vivem em 4 pastas, então a barra tem 5 elementos e não 17. Antes era
+   uma aba por tela, com a fonte encolhendo por media query pra tudo caber numa
+   linha — chegou no limite e voltou a dar scroll lateral quando entrou a
+   Cobertura. Agrupar resolve de vez: telas novas entram numa pasta e a barra
+   não cresce. */
+.nav-tab { font-family:'Inter',sans-serif; font-size:12.5px; color:rgba(255,255,255,0.65); padding:7px 13px; border-radius:7px; cursor:pointer; border:none; background:transparent; transition:background .15s,color .15s; white-space:nowrap; flex-shrink:0; display:flex; align-items:center; gap:5px; }
 .nav-tab:hover { background:rgba(255,255,255,0.1); color:#fff; }
 .nav-tab.active { background:var(--coral); color:#fff; }
+.nav-tab:focus-visible { outline:2px solid rgba(255,255,255,.5); outline-offset:1px; }
+
+.nav-grupo { position:relative; flex-shrink:0; }
+.nav-caret { font-size:9px; opacity:.55; transition:transform .18s; }
+.nav-grupo.aberto .nav-caret { transform:rotate(180deg); }
+/* Pasta aberta fica clara mesmo sem estar na tela ativa */
+.nav-grupo.aberto > .nav-grupo-btn { background:rgba(255,255,255,0.14); color:#fff; }
+
+.nav-menu { position:absolute; top:calc(100% + 6px); left:0; z-index:200; min-width:186px;
+  background:#fff; border:0.5px solid var(--border); border-radius:11px; padding:5px;
+  box-shadow:0 12px 34px rgba(42,61,48,0.22); display:none; flex-direction:column; gap:1px; }
+.nav-grupo.aberto .nav-menu { display:flex; }
+.nav-item { font-family:'Inter',sans-serif; font-size:13px; text-align:left; color:var(--text);
+  background:transparent; border:none; border-radius:7px; padding:8px 11px; cursor:pointer;
+  white-space:nowrap; transition:background .12s,color .12s; }
+.nav-item:hover { background:var(--cream); }
+.nav-item.active { background:var(--green); color:#fff; }
+.nav-item:focus-visible { outline:2px solid var(--coral); outline-offset:-2px; }
+
+@media (max-width:900px){
+  .topbar { padding:0 16px; }
+  .topbar-logo { margin-right:12px; font-size:14px; }
+  .topbar-user { display:none; }
+  .nav-tab { font-size:12px; padding:6px 10px; }
+}
 
 .content { flex:1; overflow-y:auto; }
 .page { display:none; padding:32px 40px 48px; max-width:1200px; margin:0 auto; width:100%; }
@@ -986,21 +1002,41 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
     <span class="topbar-logo">PMM <em>central comercial</em></span>
     <button class="nav-tab" id="tab-home"        onclick="sp('home',this)">Home</button>
     <button class="nav-tab" id="tab-time"        onclick="sp('time',this)">Time interno</button>
-    <button class="nav-tab" id="tab-dashboards"  onclick="sp('dashboards',this)">Dashboards</button>
-    <button class="nav-tab" id="tab-vendas"      onclick="sp('vendas',this)">Vendas</button>
-    <button class="nav-tab" id="tab-performance" onclick="sp('performance',this)">Performance</button>
-    <button class="nav-tab" id="tab-funil"       onclick="sp('funil',this)">Funil</button>
-    <button class="nav-tab" id="tab-usuarios"    onclick="sp('usuarios',this)">Usuários</button>
-    <button class="nav-tab" id="tab-metas"       onclick="sp('metas',this)">Metas</button>
-    <button class="nav-tab" id="tab-acessos"     onclick="sp('acessos',this)">Acessos</button>
-    <button class="nav-tab" id="tab-analises"    onclick="sp('analises',this)">Análises</button>
-    <button class="nav-tab" id="tab-depoimentos" onclick="sp('depoimentos',this)">Depoimentos</button>
-    <button class="nav-tab" id="tab-links"       onclick="sp('links',this)">Links de venda</button>
-    <button class="nav-tab" id="tab-cobrancas"  onclick="sp('cobrancas',this)">Cobranças</button>
-    <button class="nav-tab" id="tab-cobertura"  onclick="sp('cobertura',this)">Cobertura</button>
-    <button class="nav-tab" id="tab-reembolsos" onclick="sp('reembolsos',this)">Reembolsos</button>
-    <button class="nav-tab" id="tab-comissionamento" onclick="sp('comissionamento',this)">Comissionamento</button>
-    <button class="nav-tab" id="tab-faq"        onclick="sp('faq',this)">FAQ</button>
+    <div class="nav-grupo" id="grp-gestao">
+      <button class="nav-tab nav-grupo-btn" onclick="abrirGrupo(event,'gestao')">Gestão<span class="nav-caret">▾</span></button>
+      <div class="nav-menu">
+        <button class="nav-item" id="tab-dashboards" onclick="sp('dashboards',this)">Dashboards</button>
+        <button class="nav-item" id="tab-vendas" onclick="sp('vendas',this)">Vendas</button>
+        <button class="nav-item" id="tab-performance" onclick="sp('performance',this)">Performance</button>
+        <button class="nav-item" id="tab-funil" onclick="sp('funil',this)">Funil</button>
+        <button class="nav-item" id="tab-analises" onclick="sp('analises',this)">Análises</button>
+        <button class="nav-item" id="tab-metas" onclick="sp('metas',this)">Metas</button>
+        <button class="nav-item" id="tab-comissionamento" onclick="sp('comissionamento',this)">Comissionamento</button>
+        <button class="nav-item" id="tab-cobertura" onclick="sp('cobertura',this)">Cobertura</button>
+      </div>
+    </div>
+    <div class="nav-grupo" id="grp-credenciais">
+      <button class="nav-tab nav-grupo-btn" onclick="abrirGrupo(event,'credenciais')">Credenciais<span class="nav-caret">▾</span></button>
+      <div class="nav-menu">
+        <button class="nav-item" id="tab-acessos" onclick="sp('acessos',this)">Acessos</button>
+        <button class="nav-item" id="tab-usuarios" onclick="sp('usuarios',this)">Usuários</button>
+      </div>
+    </div>
+    <div class="nav-grupo" id="grp-utilidades">
+      <button class="nav-tab nav-grupo-btn" onclick="abrirGrupo(event,'utilidades')">Utilidades<span class="nav-caret">▾</span></button>
+      <div class="nav-menu">
+        <button class="nav-item" id="tab-depoimentos" onclick="sp('depoimentos',this)">Depoimentos</button>
+        <button class="nav-item" id="tab-links" onclick="sp('links',this)">Links de venda</button>
+        <button class="nav-item" id="tab-faq" onclick="sp('faq',this)">FAQ</button>
+      </div>
+    </div>
+    <div class="nav-grupo" id="grp-operacional">
+      <button class="nav-tab nav-grupo-btn" onclick="abrirGrupo(event,'operacional')">Operacional<span class="nav-caret">▾</span></button>
+      <div class="nav-menu">
+        <button class="nav-item" id="tab-cobrancas" onclick="sp('cobrancas',this)">Cobranças</button>
+        <button class="nav-item" id="tab-reembolsos" onclick="sp('reembolsos',this)">Reembolsos</button>
+      </div>
+    </div>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbarUser"></span>
     <button class="logout-btn" onclick="fazerLogout()">Sair</button>
@@ -2621,6 +2657,11 @@ function aplicarPermissoes(){
   // Time interno desativado — sempre oculto
   const tabTime=document.getElementById('tab-time');
   if(tabTime) tabTime.style.display='none';
+  // Pasta sem nenhuma tela liberada não deve aparecer vazia
+  Object.entries(NAV_GRUPOS).forEach(([chave,telas])=>{
+    const g=document.getElementById('grp-'+chave);
+    if(g) g.style.display=telas.some(t=>telasPermitidas.includes(t))?'':'none';
+  });
   if(funcao==='admin'){
     document.getElementById('dash-admin-view').style.display='block';
     document.getElementById('dash-closer-view').style.display='none';
@@ -2672,12 +2713,41 @@ function aplicarPermissoes(){
 }
 
 // ── NAV ──
+// Telas agrupadas em pastas. A permissão continua sendo por tela (id tab-xxx);
+// a pasta some sozinha quando nenhuma das telas dela está liberada.
+const NAV_GRUPOS={
+  gestao:      ['dashboards','vendas','performance','funil','analises','metas','comissionamento','cobertura'],
+  credenciais: ['acessos','usuarios'],
+  utilidades:  ['depoimentos','links','faq'],
+  operacional: ['cobrancas','reembolsos'],
+};
+
+function fecharGrupos(exceto){
+  document.querySelectorAll('.nav-grupo.aberto').forEach(g=>{
+    if(g.id!=='grp-'+exceto) g.classList.remove('aberto');
+  });
+}
+function abrirGrupo(ev,chave){
+  ev.stopPropagation();
+  const g=document.getElementById('grp-'+chave);
+  const vaiAbrir=!g.classList.contains('aberto');
+  fecharGrupos();
+  if(vaiAbrir) g.classList.add('aberto');
+}
+document.addEventListener('click',()=>fecharGrupos());
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') fecharGrupos(); });
+
 function sp(name,btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab,.nav-item').forEach(t=>t.classList.remove('active'));
   const pg=document.getElementById('page-'+name);
   if(pg) pg.classList.add('active');
   if(btn) btn.classList.add('active');
+  // Estando numa tela de dentro, a pasta acende junto — senão a barra não
+  // mostraria onde a pessoa está.
+  const grupo=btn&&btn.closest&&btn.closest('.nav-grupo');
+  if(grupo) grupo.querySelector('.nav-grupo-btn').classList.add('active');
+  fecharGrupos();
   if(name==='performance'){atualizarLabelPerfMes();renderPerf();}
   if(name==='funil'){atualizarLabelFunilMes();document.getElementById('funilDateNav').style.display=funilPeriodo==='mes'?'':'none';renderFunil();}
   if(name==='time') carregarMural();
