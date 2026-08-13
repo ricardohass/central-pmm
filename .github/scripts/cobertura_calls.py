@@ -79,6 +79,10 @@ BOT = 'meetrox'
 
 DIAS_JANELA = int(os.environ.get('COBERTURA_DIAS', '3'))
 
+# No Actions, faltar credencial é FALHA — sair verde esconde uma execução vazia.
+# Rodando na mão, faltar credencial é modo de conferência e segue imprimindo.
+NO_ACTIONS = os.environ.get('GITHUB_ACTIONS', '').lower() == 'true'
+
 # Modo de leitura da agenda, descoberto sozinho na primeira tentativa:
 #   'compartilhada' — o closer compartilhou a agenda com a conta de serviço
 #   'delegacao'     — delegação em todo o domínio, a conta impersona o closer
@@ -449,6 +453,12 @@ def main():
 
     usa_google = bool(SA_JSON) and TEM_GOOGLE
     if not usa_google:
+        if NO_ACTIONS:
+            # Rodando sozinho, sem credencial, não há auditoria a fazer. Sair
+            # verde aqui faria o GitHub pintar de sucesso uma execução vazia —
+            # que foi exatamente o que aconteceu na primeira rodada real.
+            sys.exit('\nFalta GOOGLE_SA_JSON: sem a agenda não existe cruzamento. '
+                     'Confira o nome do secret em Settings > Secrets and variables > Actions.')
         print('\nSem GOOGLE_SA_JSON: só consigo ver o lado do Meetrox.')
         print('Calls gravadas por closer no período:')
         cont = {}
@@ -559,7 +569,7 @@ def main():
             'meetrox_call_id': c['id'], 'meetrox_url': c.get('url'),
             'gravada': True,
             'duracao_gravacao': int(c['duration']) if c.get('duration') else None,
-            'meet_apurado': presencas is not None,
+            'meet_apurado': False,
             'status': 'fora_da_agenda', 'motivo': 'gravada sem evento correspondente na agenda',
             'atualizado_em': datetime.now(timezone.utc).isoformat(),
         })
@@ -578,6 +588,9 @@ def main():
             print('  %s  %-16s %s' % (l['data'], l['closer'], l['titulo'][:56]))
 
     if not SERVICE_ROLE:
+        if NO_ACTIONS:
+            sys.exit('\nFalta SUPABASE_SERVICE_ROLE: apurei %d linha(s) e não pude '
+                     'gravar nenhuma. Confira o nome do secret.' % len(linhas))
         print('\nSem SUPABASE_SERVICE_ROLE: não gravei nada.')
         return
     if not linhas:
