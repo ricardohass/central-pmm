@@ -202,6 +202,21 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .pe-btn.active { background:var(--green); color:#fff; }
 .pe-nota { font-size:11px; color:var(--muted); margin-top:12px; padding-top:10px; border-top:0.5px solid var(--border); line-height:1.6; }
 .cob-prod-tag { display:inline-block; font-size:10px; line-height:1.5; padding:0 7px; border-radius:10px; border:0.5px solid; margin-left:6px; vertical-align:1px; }
+/* cobertura de gravação */
+.cob-card-sub { font-size:11px; color:var(--muted); margin-top:4px; }
+.cob-vazio { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:36px 28px; text-align:center; }
+.cob-vazio-t { font-size:14px; color:var(--text); margin-bottom:8px; }
+.cob-vazio-s { font-size:12.5px; color:var(--muted); line-height:1.7; max-width:52ch; margin:0 auto; }
+.cob-lista { display:flex; flex-direction:column; gap:1px; background:var(--border); border:0.5px solid var(--border); border-radius:12px; overflow:hidden; }
+.cob-linha { display:flex; align-items:center; gap:16px; background:#fff; padding:13px 16px; }
+.cob-linha-quando { display:flex; flex-direction:column; flex-shrink:0; width:74px; }
+.cob-linha-data { font-size:12.5px; font-weight:600; color:var(--text); font-variant-numeric:tabular-nums; }
+.cob-linha-hora { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.cob-linha-meio { flex:1; min-width:0; }
+.cob-linha-titulo { font-size:13.5px; color:var(--text); margin-bottom:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cob-linha-motivo { font-size:11.5px; color:var(--coral); }
+.cob-linha-closer { font-size:12px; color:var(--muted); flex-shrink:0; }
+.cob-rodape { font-size:11.5px; color:var(--muted); line-height:1.7; margin-top:18px; padding-top:14px; border-top:0.5px solid var(--border); }
 .charts-row { display:grid; grid-template-columns:1fr 240px 240px; gap:12px; margin-bottom:16px; }
 .chart-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:20px; }
 .fat-card { display:flex; flex-direction:column; }
@@ -982,6 +997,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
     <button class="nav-tab" id="tab-depoimentos" onclick="sp('depoimentos',this)">Depoimentos</button>
     <button class="nav-tab" id="tab-links"       onclick="sp('links',this)">Links de venda</button>
     <button class="nav-tab" id="tab-cobrancas"  onclick="sp('cobrancas',this)">Cobranças</button>
+    <button class="nav-tab" id="tab-cobertura"  onclick="sp('cobertura',this)">Cobertura</button>
     <button class="nav-tab" id="tab-reembolsos" onclick="sp('reembolsos',this)">Reembolsos</button>
     <button class="nav-tab" id="tab-comissionamento" onclick="sp('comissionamento',this)">Comissionamento</button>
     <button class="nav-tab" id="tab-faq"        onclick="sp('faq',this)">FAQ</button>
@@ -1570,6 +1586,22 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
         </div>
       </div>
       <div id="comissionamentoContent"><p class="empty-state">Abrindo...</p></div>
+    </div>
+
+    <!-- COBERTURA DE GRAVAÇÃO -->
+    <div id="page-cobertura" class="page">
+      <div class="dash-header">
+        <div>
+          <p class="page-eyebrow">Qualidade da operação</p>
+          <p class="page-title" style="margin-bottom:0;">Cobertura de gravação</p>
+        </div>
+        <div class="date-nav">
+          <button class="date-btn" onclick="mudarCobMes(-1)">&#8249;</button>
+          <span class="date-label" id="cobMesLabel"></span>
+          <button class="date-btn" onclick="mudarCobMes(1)">&#8250;</button>
+        </div>
+      </div>
+      <div id="coberturaContent"><p class="empty-state">Abrindo...</p></div>
     </div>
 
     <!-- DEPOIMENTOS -->
@@ -2448,12 +2480,13 @@ const TODAS_TELAS=[
   {id:'depoimentos',nome:'Depoimentos'},
   {id:'links',nome:'Links de venda'},
   {id:'cobrancas',nome:'Cobranças'},
+  {id:'cobertura',nome:'Cobertura de gravação'},
   {id:'reembolsos',nome:'Reembolsos'},
   {id:'comissionamento',nome:'Comissionamento'},
   {id:'faq',nome:'FAQ'},
 ];
 const PERM_DEFAULT={
-  admin:['dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos','comissionamento','faq'],
+  admin:['dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','cobertura','reembolsos','comissionamento','faq'],
   closer:['performance','analises','metas','links','depoimentos','acessos','faq'],
   sdr:['performance','cobrancas','acessos','faq'],
   social_seller:['performance','acessos','faq'],
@@ -2538,6 +2571,7 @@ const HOME_CARDS={
   depoimentos:{icon:'&#127942;',label:'Depoimentos',sub:'Cases de sucesso do PMM'},
   links:{icon:'&#128279;',label:'Links de venda',sub:'Checkouts e pagamentos'},
   cobrancas:{icon:'&#128197;',label:'Cobranças',sub:'Calendário de cobranças'},
+  cobertura:{icon:'&#127909;',label:'Cobertura',sub:'Calls gravadas x realizadas'},
   reembolsos:{icon:'&#128184;',label:'Reembolsos',sub:'Cancelamentos e desistências'},
   comissionamento:{icon:'&#128176;',label:'Comissionamento',sub:'Fechamento por closer'},
   faq:{icon:'&#10067;',label:'FAQ',sub:'Perguntas frequentes do PMM'},
@@ -2580,7 +2614,7 @@ function aplicarPermissoes(){
   const perms=getPerms();
   const funcao=currentUser.funcao;
   const telasPermitidas=['home',...(perms[funcao]||[])];
-  ['home','dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','reembolsos','comissionamento','faq'].forEach(p=>{
+  ['home','dashboards','vendas','performance','funil','usuarios','metas','acessos','analises','depoimentos','links','cobrancas','cobertura','reembolsos','comissionamento','faq'].forEach(p=>{
     const tab=document.getElementById('tab-'+p);
     if(tab) tab.style.display=telasPermitidas.includes(p)?'':'none';
   });
@@ -2656,6 +2690,7 @@ function sp(name,btn){
   if(name==='depoimentos') carregarDepoimentos();
   if(name==='links') carregarLinks();
   if(name==='cobrancas') carregarCobrancas();
+  if(name==='cobertura') carregarCobertura();
   if(name==='reembolsos') carregarReembolsos();
   if(name==='comissionamento') carregarComissionamento();
   if(name==='faq') renderFaq();
@@ -6195,6 +6230,114 @@ async function carregarCobrancas(){
   }catch(e){
     container.innerHTML='<div style="text-align:center;padding:48px;color:var(--coral);font-size:13px;">Erro ao carregar cobranças.<br><span style="color:var(--muted);font-size:12px;">Verifique se a tabela <code>pagamentos_venda</code> foi criada no Supabase.</span></div>';
   }
+}
+
+// ── COBERTURA DE GRAVAÇÃO ──
+// Lê o que o job cobertura_calls.py (GitHub Actions, 07:30) escreveu. A tela não
+// calcula nada: o cruzamento agenda x Meetrox x Meet acontece fora daqui.
+let cobAno=new Date().getFullYear(), cobMes=new Date().getMonth();
+
+const COB_STATUS={
+  ok:            {rot:'Gravada',              cor:'#2E7D52'},
+  sem_gravacao:  {rot:'Sem gravação',         cor:'#D4572A'},
+  no_show:       {rot:'No-show',              cor:'#B4B2A9'},
+  nao_aconteceu: {rot:'Sala não foi aberta',  cor:'#B4B2A9'},
+  fora_da_agenda:{rot:'Fora da agenda',       cor:'#7C3D8C'},
+  indeterminado: {rot:'Indeterminado',        cor:'#C07A00'},
+};
+
+function mudarCobMes(d){
+  cobMes+=d;
+  if(cobMes>11){cobMes=0;cobAno++;}
+  if(cobMes<0){cobMes=11;cobAno--;}
+  carregarCobertura();
+}
+
+async function carregarCobertura(){
+  const el=document.getElementById('coberturaContent');
+  if(!el) return;
+  const lbl=document.getElementById('cobMesLabel');
+  if(lbl) lbl.textContent=MESES_NOMES[cobMes]+' de '+cobAno;
+  el.innerHTML='<p class="empty-state">Carregando...</p>';
+
+  const p1=cobAno+'-'+String(cobMes+1).padStart(2,'0')+'-01';
+  const p2=cobAno+'-'+String(cobMes+1).padStart(2,'0')+'-'+new Date(cobAno,cobMes+1,0).getDate();
+  let linhas;
+  try{
+    linhas=await supaFetch('cobertura_calls_v?data=gte.'+p1+'&data=lte.'+p2+'&select=*&order=data.desc,inicio.desc');
+  }catch(e){
+    el.innerHTML='<p class="empty-state">Erro ao carregar. A tabela <code>cobertura_calls</code> foi criada no Supabase?</p>';
+    return;
+  }
+  if(!linhas.length){
+    el.innerHTML='<div class="cob-vazio"><p class="cob-vazio-t">Nenhuma call apurada neste mês.</p>'
+      +'<p class="cob-vazio-s">A rotina roda todo dia às 7h30 e olha os últimos 3 dias. '
+      +'Para levantar um período antigo, use o botão <strong>Run workflow</strong> na aba Actions do GitHub, informando as datas.</p></div>';
+    return;
+  }
+
+  // "Aconteceu" é o denominador honesto: no-show e sala vazia não contam contra ninguém.
+  const aconteceu=l=>['ok','sem_gravacao'].includes(l.status_final);
+  const reais=linhas.filter(aconteceu);
+  const gravadas=linhas.filter(l=>l.status_final==='ok');
+  const falhas=linhas.filter(l=>l.status_final==='sem_gravacao');
+  const noShow=linhas.filter(l=>['no_show','nao_aconteceu'].includes(l.status_final));
+  const pct=reais.length?Math.round(gravadas.length/reais.length*100):0;
+
+  // Falha da ferramenta x falha de processo: o bot entrou e mesmo assim não há
+  // gravação. Separar evita cobrar a pessoa errada.
+  const daFerramenta=falhas.filter(l=>(l.motivo||'').includes('bot entraram'));
+
+  const porCloser={};
+  linhas.forEach(l=>{
+    const c=porCloser[l.closer]||(porCloser[l.closer]={ok:0,falha:0,ns:0});
+    if(l.status_final==='ok') c.ok++;
+    else if(l.status_final==='sem_gravacao') c.falha++;
+    else if(['no_show','nao_aconteceu'].includes(l.status_final)) c.ns++;
+  });
+  const closers=Object.keys(porCloser).sort((a,b)=>porCloser[b].falha-porCloser[a].falha);
+
+  el.innerHTML=`
+    <div class="cal-summary">
+      <div class="cob-card"><div class="cob-card-label">Calls realizadas</div><div class="cob-card-value">${reais.length}</div><div class="cob-card-sub">agendadas com cliente e que aconteceram</div></div>
+      <div class="cob-card"><div class="cob-card-label">Gravadas</div><div class="cob-card-value" style="color:#2E7D52;">${gravadas.length}</div><div class="cob-card-sub">${pct}% de cobertura</div></div>
+      <div class="cob-card"><div class="cob-card-label">Sem gravação</div><div class="cob-card-value coral">${falhas.length}</div><div class="cob-card-sub">${daFerramenta.length?daFerramenta.length+' por falha do Meetrox':'aconteceram sem o bot'}</div></div>
+      <div class="cob-card"><div class="cob-card-label">Não aconteceram</div><div class="cob-card-value" style="color:var(--muted);">${noShow.length}</div><div class="cob-card-sub">no-show · fora do denominador</div></div>
+    </div>
+
+    <p class="cob-sec-title" style="margin-top:22px;">Por closer</p>
+    <div class="prod-split">${closers.map(c=>{
+      const v=porCloser[c], base=v.ok+v.falha;
+      const p=base?Math.round(v.ok/base*100):0;
+      const cor=p>=90?'#2E7D52':p>=70?'#C07A00':'#D4572A';
+      return `<div class="ps-card">
+        <div class="ps-head"><span class="ps-dot" style="background:${cor}"></span><p class="ps-name">${escHtml(c)}</p><span class="ps-share">${base} realizada(s)</span></div>
+        <p class="ps-value" style="color:${cor}">${base?p+'%':'—'}</p>
+        <p class="ps-sub">de cobertura</p>
+        <div class="ps-bar"><div class="ps-bar-fill" style="width:${p}%;background:${cor}"></div></div>
+        <div class="ps-grid">
+          <div><p class="ps-l">Sem gravação</p><p class="ps-v${v.falha?' coral':''}">${v.falha}</p></div>
+          <div><p class="ps-l">Não aconteceram</p><p class="ps-v">${v.ns}</p></div>
+        </div>
+      </div>`;}).join('')}</div>
+
+    ${falhas.length?`
+    <p class="cob-sec-title" style="margin-top:26px;">Calls que aconteceram e não foram gravadas</p>
+    <div class="cob-lista">${falhas.map(l=>`
+      <div class="cob-linha">
+        <div class="cob-linha-quando">
+          <span class="cob-linha-data">${fmtDataBR(l.data)}</span>
+          <span class="cob-linha-hora">${l.inicio?new Date(l.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—'}</span>
+        </div>
+        <div class="cob-linha-meio">
+          <p class="cob-linha-titulo">${escHtml(l.titulo||'(sem título)')}</p>
+          <p class="cob-linha-motivo">${escHtml(l.motivo||'')}</p>
+        </div>
+        <span class="cob-linha-closer">${escHtml(l.closer||'')}</span>
+      </div>`).join('')}</div>`:''}
+
+    <p class="cob-rodape">Apurado cruzando a agenda do closer, o registro do Meetrox e quem entrou em cada sala do Meet.
+    No-show e sala vazia ficam fora do cálculo de cobertura de propósito — não são falha de ninguém.</p>`;
 }
 
 // ── FILTRO POR PRODUTO (cobranças) ──
