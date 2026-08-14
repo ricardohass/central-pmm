@@ -1080,9 +1080,9 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
             <p class="snap-sub" id="snap-vendas-sub">carregando...</p>
           </div>
           <div class="snap-card">
-            <p class="snap-label"><span class="hint" tabindex="0" data-hint="fatBruto">Recebido no mês</span></p>
+            <p class="snap-label"><span class="hint" tabindex="0" data-hint="recNovo">Recebido das vendas do mês</span></p>
             <p class="snap-value" id="snap-bruto">—</p>
-            <p class="snap-sub" id="snap-bruto-sub">pagamentos recebidos</p>
+            <p class="snap-sub" id="snap-bruto-sub">do que foi vendido no mês</p>
           </div>
           <div class="snap-card">
             <p class="snap-label">Contratado hoje</p>
@@ -1240,8 +1240,11 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
              um produto novo -->
         <div class="prod-tabs" id="prodTabs"></div>
         <div class="metrics">
-          <div class="mcard"><p class="mcard-label hint" id="lbl-fat-bruto" tabindex="0" data-hint="fatBruto" style="display:inline-block;">Recebido no mês (bruto)</p><p class="mcard-value" id="dash-fat-bruto">—</p><div class="msplit"><p class="msplit-row"><span class="hint" id="lbl-fat-bruto-novo" tabindex="0" data-hint="recNovo">De vendas do mês</span><b id="dash-fat-bruto-novo">—</b></p><p class="msplit-row"><span class="hint" tabindex="0" data-hint="recAntigo">De vendas anteriores</span><b id="dash-fat-bruto-ant">—</b></p></div><p class="mcard-meta" id="dash-fat-bruto-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-bruto" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-bruto">0%</span></div></div>
-          <div class="mcard"><p class="mcard-label hint" id="lbl-fat-liq" tabindex="0" data-hint="fatLiquido" style="display:inline-block;">Recebido no mês (líquido)</p><p class="mcard-value" id="dash-fat-liq">—</p><div class="msplit"><p class="msplit-row"><span class="hint" id="lbl-fat-liq-novo" tabindex="0" data-hint="recNovo">De vendas do mês</span><b id="dash-fat-liq-novo">—</b></p><p class="msplit-row"><span class="hint" tabindex="0" data-hint="recAntigo">De vendas anteriores</span><b id="dash-fat-liq-ant">—</b></p></div><p class="mcard-meta" id="dash-fat-liq-meta">Meta: R$ 1.000.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-liq" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-liq">0%</span></div></div>
+          <!-- O cartão principal é o das VENDAS do mês. Esta tela é de vendas: o que
+               importa é quanto as vendas fechadas no período já trouxeram. O caixa do
+               mês (que soma parcela de venda antiga) vem ao lado, como contexto. -->
+          <div class="mcard"><p class="mcard-label hint" id="lbl-fat-novo" tabindex="0" data-hint="recNovo" style="display:inline-block;">Recebido das vendas do mês</p><p class="mcard-value" id="dash-fat-novo">—</p><div class="msplit"><p class="msplit-row"><span class="hint" tabindex="0" data-hint="liquido">Líquido</span><b id="dash-fat-novo-liq">—</b></p></div><p class="mcard-meta" id="dash-fat-novo-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-novo" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-novo">0%</span></div></div>
+          <div class="mcard"><p class="mcard-label hint" id="lbl-fat-caixa" tabindex="0" data-hint="recCaixa" style="display:inline-block;">Recebido no mês (todas as vendas)</p><p class="mcard-value" id="dash-fat-caixa">—</p><div class="msplit"><p class="msplit-row"><span class="hint" tabindex="0" data-hint="liquido">Líquido</span><b id="dash-fat-caixa-liq">—</b></p><p class="msplit-row"><span class="hint" tabindex="0" data-hint="recAntigo">De vendas anteriores</span><b id="dash-fat-caixa-ant">—</b></p></div></div>
           <div class="mcard"><p class="mcard-label">Total de vendas</p><p class="mcard-value big" id="dash-total-vendas">—</p><p class="mcard-meta">exceto canceladas e reembolsadas</p></div>
           <div class="mcard"><p class="mcard-label"><span class="hint" tabindex="0" data-hint="reembolso">Reembolsos (abatido)</span></p><p class="mcard-value coral" id="dash-reembolsos">—</p><p class="mcard-meta">no mês</p></div>
           <div class="mcard"><p class="mcard-label"><span class="hint" tabindex="0" data-hint="aReceber">A receber</span></p><p class="mcard-value coral" id="dash-a-receber">—</p><p class="mcard-meta">valor restante pendente</p></div>
@@ -2311,8 +2314,9 @@ const CRITERIOS={
   aReceber:'<b>A receber</b> = soma das parcelas ainda pendentes, pelo valor bruto. Some daqui e entra no líquido quando a parcela é marcada como recebida.',
   fatBruto:'Soma do <b>bruto</b> das parcelas recebidas com data de recebimento dentro do período, menos os reembolsos. Segue o dinheiro que entrou, não a data da venda.',
   fatLiquido:'Soma do <b>líquido</b> das parcelas recebidas no período (já sem as taxas), menos os reembolsos. É o que de fato sobrou no caixa.',
-  recNovo:'Parte do recebido que veio de vendas <b>fechadas dentro do próprio período</b> — entrada e parcelas que já caíram das vendas novas. Os reembolsos são abatidos aqui, porque são sempre de venda do período.',
-  recAntigo:'Parte do recebido que veio de vendas <b>fechadas antes do período</b> — parcelamento de meses anteriores caindo agora. É dinheiro do mês, mas não é venda do mês.',
+  recNovo:'Quanto as vendas <b>fechadas dentro do período</b> já trouxeram — entrada e parcelas delas que já caíram, mesmo que a parcela tenha entrado depois. É o número principal desta tela: aqui a pergunta é como o período <b>vendeu</b>, não quanto dinheiro passou pelo caixa. Reembolso do período já vem abatido.',
+  recAntigo:'Parte do caixa do período que veio de vendas <b>fechadas antes</b> — parcelamento de meses anteriores caindo agora. É dinheiro do mês, mas não é venda do mês, e por isso fica de fora do número principal.',
+  recCaixa:'Todo o dinheiro que entrou no período, some a venda de quando for — as vendas do período <b>mais</b> as parcelas de vendas antigas. Serve pra conferir caixa; não serve pra medir o desempenho comercial do período.',
   contrato:'Marcação manual: <b>marque quando as informações do cliente já tiverem sido enviadas ao jurídico</b> para elaboração do contrato. Serve só para acompanhar o que falta — não altera valor, status nem comissão.',
   contratoAssinado:'Marcação manual: <b>marque quando o cliente já tiver assinado o contrato</b>. Serve só para acompanhar o que falta — não altera valor, status nem comissão.',
   reembolso:'Reembolso integral já efetivado conta o valor total do caso; parcial ou em andamento conta só as parcelas de devolução já pagas.',
@@ -2831,7 +2835,9 @@ async function carregarHomeSnapshot(){
     const [todasMes, vendaHoje, pgRecebidosMes, reembMes] = await Promise.all([
       supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=not.in.(cancelada,reembolso)&select=*'),
       supaFetch('vendas?data_venda=eq.'+hojStr+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,valor_restante,produto,closer'),
-      supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=valor_bruto'),
+      // Parcelas já recebidas das vendas DO MÊS — não o caixa do mês. A Home é resumo
+      // comercial: parcela de venda antiga caindo agora não diz nada sobre o mês.
+      supaFetch('pagamentos_venda?status=eq.recebido&select=valor_bruto,vendas!inner(data_venda)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia),
       supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,modalidade,vendas!inner(data_venda,valor_bruto),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
     ]);
 
@@ -2909,7 +2915,9 @@ async function carregarProdEvol(fimIso){
   try{
     const [vs,pg]=await Promise.all([
       supaFetch('vendas?data_venda=gte.'+ini+'&data_venda=lte.'+fim+'&status=not.in.(cancelada,reembolso)&select=data_venda,produto,valor_bruto'),
-      supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+ini+'&data_recebimento=lte.'+fim+'&select=valor_bruto,data_recebimento,vendas!inner(produto)')
+      // Parcelas das vendas de cada mês, sem recorte de data de recebimento: a série
+      // mostra quanto de cada safra de vendas já entrou, não o caixa daquele mês.
+      supaFetch('pagamentos_venda?status=eq.recebido&select=valor_bruto,vendas!inner(produto,data_venda)&vendas.data_venda=gte.'+ini+'&vendas.data_venda=lte.'+fim)
     ]);
     const zerado=()=>{const o={};meses.forEach(m=>o[m]=0);return o;};
     const dados={contratado:{},recebido:{}};
@@ -2919,7 +2927,7 @@ async function carregarProdEvol(fimIso){
       if(dados.contratado[k]&&m in dados.contratado[k]) dados.contratado[k][m]+=Number(v.valor_bruto||0);
     });
     pg.forEach(p=>{
-      const m=(p.data_recebimento||'').slice(0,7), k=prodKeyDe(p.vendas&&p.vendas.produto);
+      const m=((p.vendas&&p.vendas.data_venda)||'').slice(0,7), k=prodKeyDe(p.vendas&&p.vendas.produto);
       if(dados.recebido[k]&&m in dados.recebido[k]) dados.recebido[k][m]+=Number(p.valor_bruto||0);
     });
     _prodEvolCache={ate:ateMes,meses,dados};
@@ -2969,7 +2977,7 @@ function desenharProdEvol(){
   const nota=document.getElementById('prodEvolNota');
   if(nota) nota.textContent=prodEvolMetrica==='contratado'
     ? 'Contratado: valor cheio do contrato, pela data da venda. Aqui o Wonder Prø entra pelo contratado — nos cartões acima ele conta só o que já foi pago, por isso os números não batem.'
-    : 'Recebido: parcelas efetivamente recebidas no mês, pela data de recebimento. Mesma base dos cartões do topo (sem abater reembolso).';
+    : 'Recebido: quanto das vendas de cada mês já entrou, pela data da VENDA — parcela que caiu depois conta no mês em que a venda foi fechada. Mesma base do cartão principal (sem abater reembolso).';
 }
 
 // Quebra do período por produto. Recebe os mesmos dados já carregados pelo dashboard
@@ -2981,11 +2989,14 @@ function renderProdSplit(dados){
   if(!dados){ el.style.display='none'; el.innerHTML=''; return; }
   el.style.display='';
 
-  const {todas,vendas,pgRecebidos,reembImpacto,_valorReemb}=dados;
+  const {todas,vendas,pgRecebidos,reembImpacto,_valorReemb,_novaDoPeriodo}=dados;
   const agg={};
   const bucket=k=>agg[k]||(agg[k]={bruto:0,liq:0,reemb:0,n:0,contratado:0,aReceber:0});
 
-  (pgRecebidos||[]).forEach(p=>{
+  // Só o recebido das VENDAS do período, igual ao cartão principal. Parcela de venda
+  // antiga não entra: aqui a pergunta é como cada produto vendeu no período, não
+  // quanto de caixa ele gerou.
+  (pgRecebidos||[]).filter(p=>!_novaDoPeriodo||_novaDoPeriodo(p)).forEach(p=>{
     const b=bucket(prodKeyDe(p.vendas&&p.vendas.produto));
     b.bruto+=Number(p.valor_bruto||0);
     b.liq+=Number(p.valor_liquido||0);
@@ -3026,7 +3037,7 @@ function renderProdSplit(dados){
     return `<div class="ps-card">
       <div class="ps-head"><span class="ps-dot" style="background:${info.cor}"></span><p class="ps-name">${info.nome}</p><span class="ps-share">${share}% do recebido</span></div>
       <p class="ps-value">${fmtBRL(b.bruto)}</p>
-      <p class="ps-sub">recebido bruto</p>
+      <p class="ps-sub">recebido das vendas do período</p>
       <div class="ps-bar"><div class="ps-bar-fill" style="width:${share}%;background:${info.cor}"></div></div>
       <div class="ps-grid">
         <div><p class="ps-l">Recebido líquido</p><p class="ps-v">${fmtBRL(b.liq)}</p></div>
@@ -3050,11 +3061,9 @@ async function carregarDashboard(){
     primeiroDia=anoMes+'-01';
     ultimoDia=anoMes+'-'+new Date(dashAno,dashMes+1,0).getDate();
   }
-  // Ajusta rótulos "no mês" → "no período" quando há intervalo personalizado
+  // Ajusta rótulos "no mês" → "no período" quando há intervalo personalizado.
+  // Os rótulos dos dois cartões de recebido são escritos mais abaixo, junto dos valores.
   const _periodoSuf=(dashRangeStart&&dashRangeEnd)?'no período':'no mês';
-  const _lblB=document.getElementById('lbl-fat-bruto'), _lblL=document.getElementById('lbl-fat-liq');
-  if(_lblB) _lblB.textContent='Recebido '+_periodoSuf+' (bruto)';
-  if(_lblL) _lblL.textContent='Recebido '+_periodoSuf+' (líquido)';
 
   // Filtro de produto: aplicado direto na venda e, nas tabelas filhas, via join com vendas.
   const _fProd    = dashProduto?('&produto=like.*'+dashProduto+'*'):'';
@@ -3084,12 +3093,12 @@ async function carregarDashboard(){
     const fatLiq=Math.max(0,pgRecebidos.reduce((s,p)=>s+Number(p.valor_liquido||0),0)-totalReemb);
     const aReceber=todas.reduce((s,v)=>s+Number(v.valor_restante||0),0);
 
-    // Quebra do recebido: dinheiro que entrou de venda fechada DENTRO do período x parcela
-    // de venda antiga caindo agora. O KPI de cima continua sendo o total — os dois números
-    // respondem perguntas diferentes e o time precisa dos dois na mesma tela.
-    // O reembolso sai do lado "novo" (só existe reembolso de venda do período nesta query);
-    // o lado "antigo" é o resto, pra soma sempre fechar com o total mesmo quando o reembolso
-    // é maior do que as vendas novas trouxeram.
+    // O número que manda nesta tela é o das VENDAS do período: quanto as vendas
+    // fechadas aqui dentro já trouxeram. O caixa do mês — que soma parcela de venda
+    // antiga caindo agora — é contexto, não protagonista.
+    // O reembolso sai do lado das vendas do período (só existe reembolso de venda do
+    // período nesta query); o "de vendas anteriores" é o resto, pra soma sempre fechar
+    // com o caixa mesmo quando o reembolso passa do que as vendas novas trouxeram.
     const _novaDoPeriodo=p=>{
       const dv=(p.vendas&&p.vendas.data_venda||'').slice(0,10);
       return dv>=primeiroDia&&dv<=ultimoDia;
@@ -3098,43 +3107,39 @@ async function carregarDashboard(){
     const fatBrutoNovo=Math.max(0,_somaSe('valor_bruto',_novaDoPeriodo)-totalReemb);
     const fatLiqNovo=Math.max(0,_somaSe('valor_liquido',_novaDoPeriodo)-totalReemb);
     const fatBrutoAnt=Math.max(0,fatBruto-fatBrutoNovo);
-    const fatLiqAnt=Math.max(0,fatLiq-fatLiqNovo);
 
-    document.getElementById('dash-fat-bruto').textContent=fmtBRL(fatBruto);
-    document.getElementById('dash-fat-liq').textContent=fmtBRL(fatLiq);
-    document.getElementById('dash-fat-bruto-novo').textContent=fmtBRL(fatBrutoNovo);
-    document.getElementById('dash-fat-bruto-ant').textContent=fmtBRL(fatBrutoAnt);
-    document.getElementById('dash-fat-liq-novo').textContent=fmtBRL(fatLiqNovo);
-    document.getElementById('dash-fat-liq-ant').textContent=fmtBRL(fatLiqAnt);
-    ['lbl-fat-bruto-novo','lbl-fat-liq-novo'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(el) el.textContent='De vendas '+(_periodoSuf==='no período'?'do período':'do mês');
-    });
+    document.getElementById('dash-fat-novo').textContent=fmtBRL(fatBrutoNovo);
+    document.getElementById('dash-fat-novo-liq').textContent=fmtBRL(fatLiqNovo);
+    document.getElementById('dash-fat-caixa').textContent=fmtBRL(fatBruto);
+    document.getElementById('dash-fat-caixa-liq').textContent=fmtBRL(fatLiq);
+    document.getElementById('dash-fat-caixa-ant').textContent=fmtBRL(fatBrutoAnt);
+    const _lblNovo=document.getElementById('lbl-fat-novo');
+    if(_lblNovo) _lblNovo.textContent='Recebido das vendas '+(_periodoSuf==='no período'?'do período':'do mês');
+    const _lblCaixa=document.getElementById('lbl-fat-caixa');
+    if(_lblCaixa) _lblCaixa.textContent='Recebido '+_periodoSuf+' (todas as vendas)';
     document.getElementById('dash-total-vendas').textContent=vendas.length;
     document.getElementById('dash-reembolsos').textContent=fmtBRL(totalReemb);
     const reembMeta=document.querySelector('#dash-reembolsos').parentNode.querySelector('.mcard-meta');
     if(reembMeta) reembMeta.textContent=reembCount+' caso(s) · abatido do faturamento';
     document.getElementById('dash-a-receber').textContent=fmtBRL(aReceber);
 
-    const pctB=Math.min(Math.round((fatBruto/1530000)*100),100);
-    const pctL=Math.min(Math.round((fatLiq/1000000)*100),100);
-    document.getElementById('bar-fat-bruto').style.width=pctB+'%';
-    document.getElementById('pct-fat-bruto').textContent=pctB+'%';
-    document.getElementById('bar-fat-liq').style.width=pctL+'%';
-    document.getElementById('pct-fat-liq').textContent=pctL+'%';
+    // A meta acompanha o número principal — o das vendas do período.
+    const pctB=Math.min(Math.round((fatBrutoNovo/1530000)*100),100);
+    document.getElementById('bar-fat-novo').style.width=pctB+'%';
+    document.getElementById('pct-fat-novo').textContent=pctB+'%';
 
     // As metas são da operação inteira — some com elas quando o recorte é de um produto só.
     const _metaVis=dashProduto?'none':'';
-    ['dash-fat-bruto-meta','dash-fat-liq-meta'].forEach(id=>{
+    ['dash-fat-novo-meta'].forEach(id=>{
       const el=document.getElementById(id); if(el) el.style.display=_metaVis;
     });
-    ['bar-fat-bruto','bar-fat-liq'].forEach(id=>{
+    ['bar-fat-novo'].forEach(id=>{
       const el=document.getElementById(id), row=el&&el.closest('.mbar-row');
       if(row) row.style.display=dashProduto?'none':'flex';
     });
 
     // Quebra por produto (só na visão "todos" — no recorte de um produto seria redundante)
-    renderProdSplit(dashProduto?null:{todas,vendas,pgRecebidos,reembImpacto,_valorReemb,fatBruto});
+    renderProdSplit(dashProduto?null:{todas,vendas,pgRecebidos,reembImpacto,_valorReemb,_novaDoPeriodo,fatBruto:fatBrutoNovo});
     carregarProdEvol(ultimoDia); // série de 12 meses; usa cache quando o mês final não muda
 
     // Ranking (usa valor contratado — métrica de performance do closer)
