@@ -1265,7 +1265,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
           <p class="pe-nota" id="prodEvolNota"></p>
         </div>
         <div class="charts-row">
-          <div class="chart-card fat-card"><p class="chart-title">Faturamento por dia</p><div style="position:relative;height:200px;"><canvas id="fatChart"></canvas></div><div class="chart-legend"><div class="cli"><div class="cli-line" style="background:#3D5C4A;height:8px;border-radius:2px;"></div><span class="hint" tabindex="0" data-hint="bruto">Contratado por dia, pela data da venda</span></div></div><div class="fat-resumo" id="fatResumo"></div></div>
+          <div class="chart-card fat-card"><p class="chart-title">Faturamento por dia</p><div style="position:relative;height:200px;"><canvas id="fatChart"></canvas></div><div class="chart-legend"><div class="cli"><div class="cli-line" style="background:rgba(61,92,74,0.2);height:8px;border-radius:2px;"></div><span class="hint" tabindex="0" data-hint="bruto">Contratado</span></div><div class="cli"><div class="cli-line" style="background:#3D5C4A;"></div><span class="hint" tabindex="0" data-hint="recebidoVenda">Já recebido</span></div></div><div class="fat-resumo" id="fatResumo"></div></div>
           <div class="chart-card pie-wrap">
             <p class="chart-title" style="align-self:flex-start;">Vendas por origem</p>
             <canvas id="pieChart" width="160" height="160" style="max-width:160px;"></canvas>
@@ -2309,8 +2309,8 @@ const MESES_NOMES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho'
 // Textos únicos: se a regra de cálculo mudar, muda aqui e vale na Central inteira.
 const CRITERIOS={
   bruto:'<b>Bruto</b> = valor cheio que o cliente paga, já somando juros de parcelamento e demais acréscimos, e antes de descontar as taxas do gateway. Independe do que já foi pago.',
-  liquido:'<b>Líquido</b> = bruto − taxas, contando só o que o cliente <b>já pagou</b> (parcelas marcadas como recebidas). Parcela pendente não entra aqui — entra em "A receber".',
-  aReceber:'<b>A receber</b> = soma das parcelas ainda pendentes, pelo valor bruto. Some daqui e entra no líquido quando a parcela é marcada como recebida.',
+  recebidoVenda:'<b>Já recebido</b> = o contratado menos o que ainda falta receber, ou seja, o que o cliente já pagou de fato. Sem desconto de taxa de gateway: a Central mostra o valor que o cliente pagou, não o que sobrou depois da plataforma.',
+  aReceber:'<b>A receber</b> = soma das parcelas ainda pendentes, pelo valor bruto. Some daqui e entra em "já recebido" quando a parcela é marcada como recebida.',
   fatBruto:'Soma do <b>bruto</b> das parcelas recebidas com data de recebimento dentro do período, menos os reembolsos. Segue o dinheiro que entrou, não a data da venda.',
   recNovo:'Quanto as vendas <b>fechadas dentro do período</b> já trouxeram — entrada e parcelas delas que já caíram, mesmo que a parcela tenha entrado depois. É o número principal desta tela: aqui a pergunta é como o período <b>vendeu</b>, não quanto dinheiro passou pelo caixa. Reembolso do período já vem abatido.',
   recAntigo:'Parte do caixa do período que veio de vendas <b>fechadas antes</b> — parcelamento de meses anteriores caindo agora. É dinheiro do mês, mas não é venda do mês, e por isso fica de fora do número principal.',
@@ -2322,7 +2322,7 @@ const CRITERIOS={
   reembPendente:'<b>Pendente</b> = "A reembolsar" menos o que já foi devolvido. É o que ainda tem que sair do caixa. Reembolso parcial concluído fica zerado aqui, mesmo que o cliente tenha pago mais do que recebeu de volta.',
   reembRetido:'<b>Valor retido</b> = a parte que o cliente pagou e a empresa fica, por acordo jurídico (multa, taxa ou negociação). Não é dívida e não entra em "A reembolsar" nem em "Pendente". No reembolso parcial ele é calculado sozinho: o que o cliente pagou menos o que volta pra ele.',
   reembVolta:'<b>Valor que volta pro cliente</b> = quanto a empresa devolve de fato. Não é o quanto o cliente pagou — no reembolso <b>parcial</b> é só a parte acordada com o jurídico. É esse valor que as parcelas do reembolso têm que somar, e é ele que aparece em "A reembolsar".',
-  parcBruto:'Valor cheio desta parcela, com os juros do parcelamento já embutidos, antes das taxas do gateway.',
+  parcBruto:'Valor cheio desta parcela, com os juros do parcelamento já embutidos.',
   parcPago:'Quanto o cliente desembolsou nesta parcela, com os juros do parcelamento embutidos. É o que entra no faturamento e no caixa.',
   negociacao:'<b>Valor da negociação</b> = o preço fechado com o cliente, sem os juros do parcelamento. É referência do financeiro. Não precisa bater com a soma da coluna <b>Comissiona (R$)</b> — os juros são parte do que o cliente pagou, e o que comissiona é decisão de quem cadastra.',
   parcComissiona:'Quanto desta parcela entra na base de comissão. É <b>digitado à mão</b>, parcela por parcela: não existe regra automática, nem rateio, nem dedução de juros. O que estiver aqui é o que o closer comissiona quando esta parcela entrar. Em branco = zero.',
@@ -2330,7 +2330,6 @@ const CRITERIOS={
   pctTravado:'Percentual <b>travado na venda</b>. Sai da faixa que o closer atingiu no mês de competência da venda e acompanha todas as parcelas dela até a quitação — mesmo virando o ano ou mudando a tabela de faixas. Enquanto o mês não fecha aparece como <b>prov.</b> (provisório, projetado pelo contratado até agora).',
   competencia:'Mês em que a venda entra na apuração da faixa. É o mês do <b>primeiro pagamento</b> (a entrada), não o do fechamento nem o da assinatura do contrato. Venda fechada em 31/08 com entrada paga em 02/09 tem competência de setembro.',
   faixaVolume:'A faixa vem do <b>valor contratado bruto</b> das vendas novas do mês, apurado individualmente por closer: até R$ 100.000,00 → 2% · de R$ 100.000,01 a R$ 199.999,99 → 3% · R$ 200.000,00 ou mais → 4%. Não existe faixa de time nem proporcional para quem entrou no meio do mês.',
-  parcLiquido:'Quanto sobra desta parcela depois das taxas. Só entra no líquido da venda quando o status vira "Recebido".'
 };
 // Bolha única reaproveitada — position:fixed pra não ser cortada por tabela com scroll.
 (function(){
@@ -2818,8 +2817,10 @@ function ajustarWonderPago(arr){
     if(!((v.produto||'').includes('Wonder'))) return;
     const b=Number(v.valor_bruto||0);
     const pago=Math.max(0,b-Number(v.valor_restante||0));
+    // Guarda o recebido ANTES de mexer no bruto: depois daqui bruto já é o pago, e
+    // recebidoDe() faria bruto − restante, descontando o restante duas vezes.
+    v._recebido=pago;
     v.valor_bruto=pago;
-    // valor_liquido já é só o recebido — não prorratear de novo, senão desconta duas vezes.
   });
 }
 async function carregarHomeSnapshot(){
@@ -3084,10 +3085,8 @@ async function carregarDashboard(){
     };
     const totalReemb=(reembImpacto||[]).reduce((s,r)=>s+_valorReemb(r),0);
     const reembCount=(reembImpacto||[]).length;
-    // Esta aba trabalha só em BRUTO. O líquido (bruto − taxa de gateway) é conversa de
-    // financeiro e vivia lado a lado com o bruto aqui, gerando dois números parecidos
-    // pra mesma coisa. Ele continua no cadastro da venda, em Cobranças e no
-    // Comissionamento, onde a taxa importa de verdade.
+    // Sem desconto de taxa de gateway em lugar nenhum: o número é o que o cliente
+    // pagou. O que a plataforma retém é conversa de financeiro, não de tela comercial.
     const fatBruto=Math.max(0,pgRecebidos.reduce((s,p)=>s+Number(p.valor_bruto||0),0)-totalReemb);
     const aReceber=todas.reduce((s,v)=>s+Number(v.valor_restante||0),0);
 
@@ -3168,7 +3167,7 @@ async function carregarDashboard(){
 
     // Pizza origens
     const origens={};
-    vendas.forEach(v=>{const o=v.origem||'Outros';if(!origens[o])origens[o]={n:0,bruto:0};origens[o].n++;origens[o].bruto+=Number(v.valor_bruto||0);});
+    vendas.forEach(v=>{const o=v.origem||'Outros';if(!origens[o])origens[o]={n:0,rec:0};origens[o].n++;origens[o].rec+=recebidoDe(v);});
     const origKeys=Object.keys(origens).sort((a,b)=>origens[b].n-origens[a].n);
     const origVals=origKeys.map(k=>origens[k].n);
     if(window._pieChart) window._pieChart.destroy();
@@ -3179,12 +3178,12 @@ async function carregarDashboard(){
     });
     const total=origVals.reduce((a,b)=>a+b,0);
     document.getElementById('pieLegend').innerHTML=origKeys.length
-      ?origKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${origens[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">${fmtBRL(origens[k].bruto)}</span></div><span class="pie-pct">${total>0?Math.round((origens[k].n/total)*100):0}%</span></div>`).join('')
+      ?origKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${origens[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">Recebido ${fmtBRL(origens[k].rec)}</span></div><span class="pie-pct">${total>0?Math.round((origens[k].n/total)*100):0}%</span></div>`).join('')
       :'<p style="font-size:12px;color:var(--muted);">Sem dados</p>';
 
     // Pizza gateways
     const gateways={};
-    vendas.forEach(v=>{const g=v.gateway||'Outros';if(!gateways[g])gateways[g]={n:0,bruto:0};gateways[g].n++;gateways[g].bruto+=Number(v.valor_bruto||0);});
+    vendas.forEach(v=>{const g=v.gateway||'Outros';if(!gateways[g])gateways[g]={n:0,rec:0};gateways[g].n++;gateways[g].rec+=recebidoDe(v);});
     const gwKeys=Object.keys(gateways).sort((a,b)=>gateways[b].n-gateways[a].n);
     const gwVals=gwKeys.map(k=>gateways[k].n);
     if(window._pieGateway) window._pieGateway.destroy();
@@ -3195,7 +3194,7 @@ async function carregarDashboard(){
     });
     const gwTotal=gwVals.reduce((a,b)=>a+b,0);
     document.getElementById('pieLegendGateway').innerHTML=gwKeys.length
-      ?gwKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${gateways[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">${fmtBRL(gateways[k].bruto)}</span></div><span class="pie-pct">${gwTotal>0?Math.round((gateways[k].n/gwTotal)*100):0}%</span></div>`).join('')
+      ?gwKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${gateways[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">Recebido ${fmtBRL(gateways[k].rec)}</span></div><span class="pie-pct">${gwTotal>0?Math.round((gateways[k].n/gwTotal)*100):0}%</span></div>`).join('')
       :'<p style="font-size:12px;color:var(--muted);">Sem dados</p>';
 
     // Gráfico por dia
@@ -3203,15 +3202,17 @@ async function carregarDashboard(){
     vendas.forEach(v=>{
       const d=v.data_venda?v.data_venda.split('T')[0]:'';
       if(!d)return;
-      if(!porDia[d]) porDia[d]={bruto:0};
+      if(!porDia[d]) porDia[d]={bruto:0,rec:0};
       porDia[d].bruto+=Number(v.valor_bruto||0);
+      porDia[d].rec+=recebidoDe(v);
     });
     const dias=Object.keys(porDia).sort();
     if(window._fatChart) window._fatChart.destroy();
     window._fatChart=new Chart(document.getElementById('fatChart'),{
       type:'bar',
       data:{labels:dias.map(d=>{const[y,m,dd]=d.split('-');return dd+'/'+m;}),datasets:[
-        {type:'bar',data:dias.map(d=>porDia[d].bruto),backgroundColor:'#3D5C4A',borderColor:'transparent',borderRadius:3}
+        {type:'bar',data:dias.map(d=>porDia[d].bruto),backgroundColor:'rgba(61,92,74,0.12)',borderColor:'transparent',borderRadius:2,order:2},
+        {type:'line',data:dias.map(d=>porDia[d].rec),borderColor:'#3D5C4A',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:0.4,order:1}
       ]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
         scales:{x:{grid:{display:false},ticks:{font:{size:10},color:'#aaa',maxTicksLimit:12}},
@@ -3222,19 +3223,19 @@ async function carregarDashboard(){
     const fr=document.getElementById('fatResumo');
     if(fr){
       const nDias=dias.length;
-      const totalDia=dias.reduce((s,d)=>s+porDia[d].bruto,0);
+      const totalDia=dias.reduce((s,d)=>s+porDia[d].rec,0);
       const mediaDia=nDias?totalDia/nDias:0;
       let melhorDia=null,melhorVal=-1;
-      dias.forEach(d=>{ if(porDia[d].bruto>melhorVal){melhorVal=porDia[d].bruto;melhorDia=d;} });
-      const totalVendas=vendas.reduce((s,v)=>s+Number(v.valor_bruto||0),0);
+      dias.forEach(d=>{ if(porDia[d].rec>melhorVal){melhorVal=porDia[d].rec;melhorDia=d;} });
+      const totalVendas=vendas.reduce((s,v)=>s+recebidoDe(v),0);
       const ticket=vendas.length?totalVendas/vendas.length:0;
       const melhorLabel=melhorDia?(()=>{const[y,m,dd]=melhorDia.split('-');return dd+'/'+m;})():'—';
       fr.innerHTML=nDias===0
         ?'<p style="grid-column:1/-1;font-size:13px;color:var(--muted);text-align:center;padding:8px 0;">Sem faturamento no período.</p>'
         :`<div class="fr-tile"><p class="fr-label">Melhor dia</p><p class="fr-value">${fmtBRL(melhorVal)}</p><p class="fr-sub">${melhorLabel}</p></div>
-          <div class="fr-tile"><p class="fr-label">Média por dia</p><p class="fr-value">${fmtBRL(mediaDia)}</p><p class="fr-sub">${nDias} dia(s) com venda</p></div>
-          <div class="fr-tile"><p class="fr-label">Ticket médio</p><p class="fr-value">${fmtBRL(ticket)}</p><p class="fr-sub">contratado por venda</p></div>
-          <div class="fr-tile"><p class="fr-label">Total no período</p><p class="fr-value">${fmtBRL(totalVendas)}</p><p class="fr-sub">${vendas.length} venda(s)</p></div>`;
+          <div class="fr-tile"><p class="fr-label">Média por dia</p><p class="fr-value">${fmtBRL(mediaDia)}</p><p class="fr-sub">recebido · ${nDias} dia(s) com venda</p></div>
+          <div class="fr-tile"><p class="fr-label">Ticket médio</p><p class="fr-value">${fmtBRL(ticket)}</p><p class="fr-sub">recebido por venda</p></div>
+          <div class="fr-tile"><p class="fr-label">Total no período</p><p class="fr-value">${fmtBRL(totalVendas)}</p><p class="fr-sub">recebido · ${vendas.length} venda(s)</p></div>`;
     }
   }catch(e){console.error(e);}
 }
@@ -3434,13 +3435,13 @@ async function salvarVenda(){
   // O campo sem juros virou referência do financeiro — não comissiona mais nada.
   const _colB=await colBaseLegado();
   pagamentos.forEach(p=>{ p[_colB]=p._baseLegado; delete p._baseLegado; });
-  // Líquido deixou de ser digitado: sai da taxa do gateway (só a Cispay cobra, 3%).
-  pagamentos.forEach(p=>{ p.valor_liquido=Math.round(p.valor_bruto*(1-taxaGateway(p.gateway))*100)/100; });
+  // A taxa do gateway saiu da conta: parcela vale o que o cliente pagou.
+  pagamentos.forEach(p=>{ p.valor_liquido=p.valor_bruto; });
 
   const totalBruto=pagamentos.reduce((s,p)=>s+p.valor_bruto,0);
-  // Líquido = só o dinheiro que JÁ entrou (parcelas marcadas como recebidas).
-  // Parcela pendente não vira líquido — vira "a receber".
-  const totalLiquido=pagamentos.filter(p=>p.status==='recebido').reduce((s,p)=>s+p.valor_liquido,0);
+  // Recebido = só o dinheiro que JÁ entrou (parcelas marcadas como recebidas).
+  // Parcela pendente não vira recebido — vira "a receber".
+  const totalLiquido=pagamentos.filter(p=>p.status==='recebido').reduce((s,p)=>s+p.valor_bruto,0);
   const totalRestante=pagamentos.filter(p=>p.status==='pendente').reduce((s,p)=>s+p.valor_bruto,0);
   const primeiroGateway=pagamentos.find(p=>p.gateway)?.gateway||null;
   const maxCartaoParcelas=Math.max(1,...pagamentos.filter(p=>p.metodo==='Cartão').map(p=>p.parcelas||1));
@@ -3578,7 +3579,7 @@ function abrirDetalheVenda(v){
       <div><span style="color:var(--muted);">Closer:</span> <strong>${v.closer||'—'}</strong></div>
       <div><span style="color:var(--muted);">Gateway:</span> <strong>${v.gateway||'—'}</strong></div>
       <div><span class="hint" tabindex="0" data-hint="bruto" style="color:var(--muted);">Valor bruto:</span> <strong>${fmtBRL(v.valor_bruto)}</strong></div>
-      <div><span class="hint" tabindex="0" data-hint="liquido" style="color:var(--muted);">Líquido recebido:</span> <strong>${fmtBRL(v.valor_liquido)}</strong></div>
+      <div><span class="hint" tabindex="0" data-hint="recebidoVenda" style="color:var(--muted);">Já recebido:</span> <strong>${fmtBRL(recebidoDe(v))}</strong></div>
       <div><span style="color:var(--muted);">A receber:</span> <strong style="color:var(--coral);">${Number(v.valor_restante||0)>0?fmtBRL(v.valor_restante):'—'}</strong></div>
       <div><span style="color:var(--muted);">Pagamento:</span> <strong>${v.forma_pagamento==='parcelado'&&v.parcelas?v.parcelas+'x':'À vista'}</strong></div>
       ${v.origem?`<div><span style="color:var(--muted);">Origem:</span> <strong>${v.origem}</strong></div>`:''}
@@ -3667,9 +3668,15 @@ const CLOSERS_LIST=['Lígia Oliveira','Gabriel Rocha','Caroline Neiva','Gabriel 
 const AV_COLORS={'Lígia Oliveira':'#4E7260','Gabriel Rocha':'#D4572A','Caroline Neiva':'#854F0B','Gabriel Mor':'#3D5C4A','Janaina Xavier':'#7C5CBF','Amanda Duarte':'#1565C0','Bruno Martins':'#0F766E'};
 const INITIALS=n=>n.split(' ').map(w=>w[0]).slice(0,2).join('');
 
-// Taxa que o gateway desconta. Conferido na base: só a Cispay cobra, e cobra 3% cravado.
-const TAXA_GATEWAY={'Cispay':0.03};
-function taxaGateway(gw){ return TAXA_GATEWAY[gw]||0; }
+// Quanto de uma venda já entrou: o contratado menos o que ainda falta receber. Serve
+// pra qualquer venda, inclusive as antigas que entraram na base sem parcela cadastrada.
+// Substituiu o "líquido" (bruto − taxa do gateway), que não é assunto de tela comercial.
+// function declarada de propósito: é usada em blocos que aparecem antes daqui no
+// arquivo, e `const` não é içado.
+function recebidoDe(v){
+  if(v&&v._recebido!==undefined) return Number(v._recebido);
+  return Math.max(0,Number((v&&v.valor_bruto)||0)-Number((v&&v.valor_restante)||0));
+}
 // Quanto desta parcela comissiona: o valor DIGITADO na coluna "Comissiona (R$)" do cadastro
 // da venda. Não existe regra automática — nem rateio pelo negociado, nem dedução de juros:
 // quem decide é quem cadastra, parcela por parcela. O sistema só lê o que está gravado.
@@ -4062,9 +4069,9 @@ async function getDadosCloser(closer,ano,mes){
   try{
     const primeiroDia=anoMes+'-01';
     const ultimoDia=anoMes+'-'+new Date(ano,mes,0).getDate();
-    const vendas=await supaFetch('vendas?closer=eq.'+encodeURIComponent(closer)+'&data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,valor_liquido');
+    const vendas=await supaFetch('vendas?closer=eq.'+encodeURIComponent(closer)+'&data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,valor_restante');
     const bruto=vendas.reduce((s,v)=>s+Number(v.valor_bruto||0),0);
-    const liq=vendas.reduce((s,v)=>s+Number(v.valor_liquido||0),0);
+    const liq=vendas.reduce((s,v)=>s+recebidoDe(v),0);
     pctLiquidez=bruto>0?((liq/bruto)*100):0;
   }catch(e){}
   return{pctConversao,pctComparec,pctLiquidez,totAgend,totReun,totVendas};
@@ -4475,7 +4482,7 @@ async function getFunilDados(de,ate){
   const [funil,perf,vendas]=await Promise.all([
     supaFetch('funil_prevendas?data=gte.'+de+'&data=lte.'+ate+'&select=*'),
     supaFetch('registros_performance?data=gte.'+de+'&data=lte.'+ate+'&select=agendamentos,reunioes,vendas'),
-    supaFetch('vendas?data_venda=gte.'+de+'&data_venda=lte.'+ate+'&select=valor_bruto,valor_liquido,valor_restante,produto,status')
+    supaFetch('vendas?data_venda=gte.'+de+'&data_venda=lte.'+ate+'&select=valor_bruto,valor_restante,produto,status')
   ]);
   ajustarWonderPago(vendas); // Wonder conta só o pago no faturamento realizado
   const soma=(arr,k)=>arr.reduce((s,r)=>s+(+r[k]||0),0);
@@ -4494,7 +4501,7 @@ async function getFunilDados(de,ate){
     agenda:soma(perf,'agendamentos'),
     calls:soma(perf,'reunioes'),
     nVendas:vendasValidas.length,
-    faturamento:vendasValidas.reduce((s,v)=>s+(+v.valor_liquido||0),0)
+    faturamento:vendasValidas.reduce((s,v)=>s+recebidoDe(v),0)
   };
 }
 
@@ -4990,10 +4997,10 @@ async function getDadosMes(closer,ano,mes){
   const p1=am+'-01', p2=am+'-'+ultimoDia(ano,mes);
   let bruto=0,liq=0,nVendas=0;
   try{
-    const vs=await supaFetch('vendas?closer=eq.'+encodeURIComponent(closer)+'&data_venda=gte.'+p1+'&data_venda=lte.'+p2+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,valor_liquido');
+    const vs=await supaFetch('vendas?closer=eq.'+encodeURIComponent(closer)+'&data_venda=gte.'+p1+'&data_venda=lte.'+p2+'&status=not.in.(cancelada,reembolso)&select=valor_bruto,valor_restante');
     nVendas=vs.length;
     bruto=vs.reduce((s,v)=>s+Number(v.valor_bruto||0),0);
-    liq=vs.reduce((s,v)=>s+Number(v.valor_liquido||0),0);
+    liq=vs.reduce((s,v)=>s+recebidoDe(v),0);
   }catch(e){}
   const liqPct=bruto>0?(liq/bruto)*100:0;
   return{conv,comp,liqPct,agend,reun,vdp,bruto,liq,nVendas};
@@ -6110,7 +6117,7 @@ async function migrarVendasQuebradas(){
       pagamentos.sort((a,b)=>a.data_prevista.localeCompare(b.data_prevista));
 
       const totalBruto=pagamentos.reduce((s,p)=>s+p.valor_bruto,0);
-      const totalLiquido=pagamentos.filter(p=>p.status==='recebido').reduce((s,p)=>s+p.valor_liquido,0);
+      const totalLiquido=pagamentos.filter(p=>p.status==='recebido').reduce((s,p)=>s+p.valor_bruto,0);
       const totalRestante=pagamentos.filter(p=>p.status==='pendente').reduce((s,p)=>s+p.valor_bruto,0);
 
       // Atualiza o registro principal
@@ -6884,11 +6891,11 @@ function mostrarDetalheCalDia(dateStr){
 
 // Recalcula os totais da venda a partir das parcelas reais no banco.
 // Busca no Supabase (e não em todosPagamentos) porque o cache local só traz
-// as pendentes + as recebidas do mês corrente — somar por ali zeraria o líquido de meses anteriores.
+// as pendentes + as recebidas do mês corrente — somar por ali zeraria o recebido de meses anteriores.
 async function recalcTotaisVenda(vendaId){
   const parcelas=await supaFetch('pagamentos_venda?venda_id=eq.'+vendaId+'&select=*&order=data_prevista.asc,id.asc');
   if(!parcelas.length) return;
-  const liquido=parcelas.filter(p=>p.status==='recebido').reduce((s,p)=>s+Number(p.valor_liquido||0),0);
+  const liquido=parcelas.filter(p=>p.status==='recebido').reduce((s,p)=>s+Number(p.valor_bruto||0),0);
   const restante=parcelas.filter(p=>p.status==='pendente').reduce((s,p)=>s+Number(p.valor_bruto||0),0);
   await supaFetch('vendas?id=eq.'+vendaId,{method:'PATCH',body:JSON.stringify({valor_liquido:liquido,valor_restante:restante})});
 }
@@ -6924,7 +6931,7 @@ async function marcarRecebido(id,dateStr){
     const p=todosPagamentos.find(x=>x.id===id);
     if(p){
       p.status='recebido'; p.data_recebimento=hoje;
-      // Atualiza valor_restante e valor_liquido na venda (líquido = só o que já entrou)
+      // Atualiza valor_restante e valor_liquido na venda (= só o que já entrou, sem taxa)
       if(p.vendas?.id){ await recalcTotaisVenda(p.vendas.id);
         // Se esta foi a entrada, é ela que define a competência da venda.
         await marcarCompetencia(p.vendas.id); }
