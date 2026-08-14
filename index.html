@@ -402,7 +402,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .vt-full th:nth-child(4){ width:10%; }  /* Gateway */
 .vt-full th:nth-child(5){ width:12%; }  /* Infos ao jurídico */
 .vt-full th:nth-child(6){ width:12%; }  /* Contrato assinado */
-.vt-full th:nth-child(7){ width:12%; }  /* SDR */
+.vt-full th:nth-child(7){ width:12%; }  /* Agendou a call (SDR ou social seller) */
 .vt-full th:nth-child(8){ width:12%; }  /* Status */
 .vt-full th:nth-child(9){ width:8%;  }  /* Ações */
 /* nada quebra linha: nome comprido corta com reticências (o nome cheio fica no
@@ -1354,7 +1354,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
       </div>
       <div class="vendas-table-wrap">
         <table class="vendas-table vt-full">
-          <thead><tr><th>Data</th><th>Cliente</th><th>Closer</th><th>Gateway</th><th><span class="hint" tabindex="0" data-hint="contrato">Infos ao jurídico</span></th><th><span class="hint" tabindex="0" data-hint="contratoAssinado">Contrato assinado</span></th><th>SDR</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Cliente</th><th>Closer</th><th>Gateway</th><th><span class="hint" tabindex="0" data-hint="contrato">Infos ao jurídico</span></th><th><span class="hint" tabindex="0" data-hint="contratoAssinado">Contrato assinado</span></th><th>Agendou a call</th><th>Status</th><th></th></tr></thead>
           <tbody id="vendasTbody"></tbody>
         </table>
       </div>
@@ -3259,7 +3259,7 @@ function filtrarVendas(){
       <td>${v.gateway||'—'}</td>
       <td>${checkContratoFlag(v,'contrato_enviado')}</td>
       <td>${checkContratoFlag(v,'contrato_assinado')}</td>
-      <td>${v.sdr||'—'}</td>
+      <td title="${escHtml(quemAgendouTitle(v))}">${quemAgendou(v)}</td>
       <td><span class="status-badge s-${v.status||'confirmada'}">${v.status==='reembolso'?'Reembolsada':cap(v.status||'confirmada')}</span>${(v.status!=='reembolso'&&reembParcialVendas.has(v.id))?' <span class="status-badge reemb-badge" title="Reembolso parcial — a venda segue contando, abatido só o valor devolvido">↩ parcial</span>':''}</td>
       <td>
         ${(()=>{const lp=v.links_pagamento?(Array.isArray(v.links_pagamento)?v.links_pagamento:JSON.parse(v.links_pagamento||'[]')):[];return lp.length>0?`<span title="${lp.length} comprovante(s)" style="color:var(--green);font-size:13px;margin-right:4px;">📎</span>`:''})()}
@@ -3271,6 +3271,23 @@ function filtrarVendas(){
 }
 
 function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
+
+// Quem agendou a call da venda: pode ter vindo de SDR ou de social seller.
+// Mostra o nome de quem estiver preenchido (os dois, se a call teve as duas mãos).
+function quemAgendouLista(v){
+  const l=[];
+  if(v.sdr) l.push({nome:v.sdr,papel:'SDR'});
+  if(v.social_seller) l.push({nome:v.social_seller,papel:'Social seller'});
+  return l;
+}
+function quemAgendou(v){
+  const l=quemAgendouLista(v);
+  return l.length?l.map(p=>p.nome).join(' · '):'—';
+}
+// Fica no title da célula: o nome sozinho não diz de qual time a pessoa é.
+function quemAgendouTitle(v){
+  return quemAgendouLista(v).map(p=>p.nome+' ('+p.papel+')').join(' · ');
+}
 
 // Destaca em verde só os filtros preenchidos e mostra o "Limpar" quando há algum ativo.
 function marcarFiltrosAtivos(){
@@ -3525,7 +3542,7 @@ function abrirDetalheVenda(v){
       <div style="grid-column:1/-1;display:flex;align-items:center;gap:7px;">
         ${checkContratoFlag(v,'contrato_assinado')}<span class="hint" tabindex="0" data-hint="contratoAssinado" style="color:var(--muted);">Contrato assinado pelo cliente</span>
       </div>
-      ${v.sdr?`<div><span style="color:var(--muted);">SDR:</span> <strong>${v.sdr}</strong></div>`:''}
+      ${quemAgendouLista(v).map(p=>`<div><span style="color:var(--muted);">Agendou a call (${p.papel}):</span> <strong>${p.nome}</strong></div>`).join('')}
       ${v.observacoes?`<div style="grid-column:1/-1;"><span style="color:var(--muted);">Obs:</span> ${v.observacoes}</div>`:''}
     </div>`;
   const links=v.links_pagamento?(Array.isArray(v.links_pagamento)?v.links_pagamento:JSON.parse(v.links_pagamento||'[]')):[];
