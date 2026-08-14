@@ -639,8 +639,8 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .link-copy-btn:hover { background:var(--green-light); }
 .link-copy-btn.copied { background:#2E7D52; }
 .link-inativo-badge { font-size:10px; font-weight:500; background:#FEE2E2; color:#991B1B; padding:2px 8px; border-radius:20px; }
-/* Links de venda — padrão único de tabela. Toda oferta (PMM e Wonder) usa as
-   mesmas colunas, larguras e estilos, para que os blocos fiquem alinhados. */
+/* Links de venda — padrão único de tabela. Toda oferta (PMM, Wonder e 2M) usa
+   as mesmas colunas, larguras e estilos, para que os blocos fiquem alinhados. */
 .lk-produto { font-family:'Playfair Display',serif; font-size:20px; color:var(--green); margin:0 0 6px; }
 .lk-produto-linha { height:0.5px; background:var(--border); margin-bottom:22px; }
 .lk-bloco { margin-bottom:48px; }
@@ -1235,11 +1235,10 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
         </div>
       </div>
       <div id="dash-admin-view">
-        <div class="prod-tabs" id="prodTabs">
-          <button class="prod-tab active" data-prod="" onclick="setDashProduto('')">Todos os produtos</button>
-          <button class="prod-tab" data-prod="PMM" onclick="setDashProduto('PMM')">PMM</button>
-          <button class="prod-tab" data-prod="Wonder" onclick="setDashProduto('Wonder')">Wonder Prø</button>
-        </div>
+        <!-- botões montados a partir de PRODUTOS_DASH, igual às abas de cobranças
+             e reembolsos — estavam fixos aqui e ficaram pra trás quando entrou
+             um produto novo -->
+        <div class="prod-tabs" id="prodTabs"></div>
         <div class="metrics">
           <div class="mcard"><p class="mcard-label hint" id="lbl-fat-bruto" tabindex="0" data-hint="fatBruto" style="display:inline-block;">Recebido no mês (bruto)</p><p class="mcard-value" id="dash-fat-bruto">—</p><div class="msplit"><p class="msplit-row"><span class="hint" id="lbl-fat-bruto-novo" tabindex="0" data-hint="recNovo">De vendas do mês</span><b id="dash-fat-bruto-novo">—</b></p><p class="msplit-row"><span class="hint" tabindex="0" data-hint="recAntigo">De vendas anteriores</span><b id="dash-fat-bruto-ant">—</b></p></div><p class="mcard-meta" id="dash-fat-bruto-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-bruto" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-bruto">0%</span></div></div>
           <div class="mcard"><p class="mcard-label hint" id="lbl-fat-liq" tabindex="0" data-hint="fatLiquido" style="display:inline-block;">Recebido no mês (líquido)</p><p class="mcard-value" id="dash-fat-liq">—</p><div class="msplit"><p class="msplit-row"><span class="hint" id="lbl-fat-liq-novo" tabindex="0" data-hint="recNovo">De vendas do mês</span><b id="dash-fat-liq-novo">—</b></p><p class="msplit-row"><span class="hint" tabindex="0" data-hint="recAntigo">De vendas anteriores</span><b id="dash-fat-liq-ant">—</b></p></div><p class="mcard-meta" id="dash-fat-liq-meta">Meta: R$ 1.000.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-liq" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-liq">0%</span></div></div>
@@ -1335,6 +1334,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
             <option value="">Produto: todos</option>
             <option value="PMM">PMM</option>
             <option value="Wonder">Wonder Prø</option>
+            <option value="2M">Aceleração 2M</option>
           </select>
           <select class="filtro-input" id="f-closer" onchange="filtrarVendas()">
             <option value="">Closer: todos</option>
@@ -1804,6 +1804,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
             <option value="">Selecione o produto</option>
             <option value="[PMM] Programa Multiplique e Monetize">[PMM] Programa Multiplique e Monetize</option>
             <option value="[Wonder] Wonder Prø">[Wonder] Wonder Prø</option>
+            <option value="[2M] Programa de Aceleração 2M">[2M] Programa de Aceleração 2M</option>
           </select>
         </div>
         <div class="vf-field"><label>Data da venda *</label><input type="date" id="vfData"></div>
@@ -2364,10 +2365,20 @@ let dashRangeStart=null, dashRangeEnd=null;
 
 // ── SEGMENTAÇÃO POR PRODUTO (dashboard) ──
 // A chave é o trecho que identifica o produto dentro de vendas.produto
-// ("[PMM] Programa Multiplique e Monetize", "[Wonder] Wonder Prø").
+// ("[PMM] Programa Multiplique e Monetize", "[Wonder] Wonder Prø",
+// "[2M] Programa de Aceleração 2M").
+//
+// Esta lista é a única fonte de produto da Central: as abas de filtro do
+// dashboard, de cobranças e de reembolsos, o gráfico de evolução e a quebra por
+// produto saem todas daqui. Produto novo entra nesta lista e no <select> de
+// cadastro de venda (vfProduto) — mais nada.
+//
+// A chave tem que ser um trecho que não apareça no nome dos outros produtos:
+// prodKeyDe casa por includes() e devolve o primeiro da lista que bater.
 const PRODUTOS_DASH=[
-  {key:'PMM',    nome:'PMM',        cor:'#3D5C4A'},
-  {key:'Wonder', nome:'Wonder Prø', cor:'#D4572A'}
+  {key:'PMM',    nome:'PMM',            cor:'#3D5C4A'},
+  {key:'Wonder', nome:'Wonder Prø',     cor:'#D4572A'},
+  {key:'2M',     nome:'Aceleração 2M',  cor:'#7C3D8C'}
 ];
 let dashProduto=''; // '' = todos os produtos
 function prodKeyDe(p){
@@ -2377,6 +2388,13 @@ function prodKeyDe(p){
 }
 function prodInfo(k){
   return PRODUTOS_DASH.find(x=>x.key===k)||{key:k,nome:k,cor:'#B4B2A9'};
+}
+function renderProdTabs(){
+  const el=document.getElementById('prodTabs');
+  if(!el) return;
+  el.innerHTML=[{key:'',nome:'Todos os produtos'}].concat(PRODUTOS_DASH).map(x=>
+    `<button class="prod-tab${dashProduto===x.key?' active':''}" data-prod="${x.key}" `
+    +`onclick="setDashProduto('${x.key}')">${x.nome}</button>`).join('');
 }
 function setDashProduto(k){
   dashProduto=k;
@@ -3021,6 +3039,7 @@ function renderProdSplit(dados){
 }
 
 async function carregarDashboard(){
+  renderProdTabs();
   atualizarLabelMes();
   // Período: intervalo personalizado (se definido) ou mês selecionado
   let primeiroDia, ultimoDia;
