@@ -4,7 +4,7 @@
 Responde uma pergunta só: toda call que aconteceu foi gravada? E quando não foi,
 foi falha do bot ou o lead não apareceu?
 
-    python3 cobertura_calls.py                        # últimos 3 dias até ontem
+    python3 cobertura_calls.py                        # últimos 3 dias, incluindo hoje
     python3 cobertura_calls.py 2026-07-20 2026-08-13  # intervalo manual (backfill)
 
 O bot do Meetrox espera 5 minutos na sala e sai. Se o lead atrasa, cabe ao closer
@@ -550,7 +550,12 @@ def janela(argv):
         d0 = date.fromisoformat(args[0])
         d1 = date.fromisoformat(args[1])
     else:
-        d1 = date.today() - timedelta(days=1)
+        # Termina HOJE, não ontem: a rotina roda de 2 em 2 horas até 21:30, e a
+        # graça é a aba Cobertura mostrar a call que acabou de acontecer. Como
+        # cada rodada reapura a janela inteira, o dia vai se completando sozinho.
+        # E a data é a de São Paulo — o runner do Actions roda em UTC, então
+        # date.today() já vira amanhã às 21h daqui e pularia o dia corrente.
+        d1 = datetime.now(SP).date()
         d0 = d1 - timedelta(days=DIAS_JANELA - 1)
     t0 = datetime.combine(d0, time.min, SP).astimezone(timezone.utc)
     t1 = datetime.combine(d1, time.max, SP).astimezone(timezone.utc)
