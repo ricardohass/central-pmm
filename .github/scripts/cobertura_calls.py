@@ -464,17 +464,34 @@ def uniformizar(linha):
     return saida
 
 
-def cliente_do_titulo(titulo):
-    """Nomes prováveis do cliente no título, pra reconhecer o mesmo lead.
+# Palavras que aparecem no título sem identificar ninguém.
+_RUIDO = {'call', 'calll', 'analise', 'aplicacao', 'cis', 'estrategista', 'reuniao',
+          'com', 'para', 'dra', 'sra'}
 
-    Os títulos seguem dois formatos pro mesmo encontro: 'Call — Fulano' e
-    '[Análise] Closer & Fulano'. Tirando o prefixo e o nome do closer, sobra
-    o cliente nos dois.
+
+def palavras_do_titulo(titulo, nome_closer):
+    """Palavras que identificam o cliente, pra reconhecer o mesmo lead.
+
+    Comparar o trecho inteiro não serve: o mesmo cliente aparece como
+    'Frankilane melo santos' num evento e 'Frankilane melo santos bomfim' no
+    outro, e 'Calll- Clarisse' com três L quebra qualquer regex de prefixo.
+    Palavra a palavra sobrevive a sobrenome extra e a erro de digitação.
     """
-    t = re.sub(r'^\s*\[[^\]]*\]\s*', '', titulo or '')
-    t = re.sub(r'(?i)^\s*call\s*[—\-]\s*', '', t)
-    partes = re.split(r'(?i)\s*[&x]\s*|\s+e\s+', t)
-    return {sem_acento(p).strip() for p in partes if len(sem_acento(p).strip()) > 3}
+    t = re.sub(r'^\s*\[[^\]]*\]\s*', ' ', titulo or '')
+    palavras = {p for p in re.split(r'[^a-z0-9]+', sem_acento(t)) if len(p) > 3}
+    return palavras - _RUIDO - set(re.split(r'\s+', sem_acento(nome_closer)))
+
+
+def mesmo_cliente(a, b):
+    """Dois títulos falam do mesmo lead?
+
+    Duas palavras em comum bastam ('clarisse' + 'coutinho'). Uma só vale
+    quando é longa — cliente de nome único, tipo 'Jemima'. O risco de juntar
+    errado é baixo: teria que ser outro cliente, com o mesmo nome, do mesmo
+    closer, no mesmo horário exato.
+    """
+    comum = a & b
+    return len(comum) >= 2 or any(len(p) >= 6 for p in comum)
 
 
 # Quando a call acontece, a sala que importa é a que teve gente. A ordem diz
@@ -502,9 +519,8 @@ def remover_duplicatas(linhas, nomes_closers):
     for (closer, _), grupo in grupos.items():
         if len(grupo) < 2:
             continue
-        proprio = sem_acento(closer).split()
-        nomes = [cliente_do_titulo(l['titulo']) - set(proprio) for l in grupo]
-        if not set.intersection(*nomes):
+        nomes = [palavras_do_titulo(l['titulo'], closer) for l in grupo]
+        if not all(mesmo_cliente(nomes[0], n) for n in nomes[1:]):
             continue                       # clientes diferentes: agenda dupla
         grupo.sort(key=lambda l: _PESO.get(l['status'], 0), reverse=True)
         for perdedora in grupo[1:]:
