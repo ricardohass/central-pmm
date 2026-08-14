@@ -275,7 +275,6 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .rank-sub { font-size:11px; color:var(--muted); }
 .rank-values { text-align:right; }
 .rank-bruto { font-size:13px; font-weight:500; color:var(--text); }
-.rank-liq { font-size:11px; color:var(--muted); }
 
 /* PERFORMANCE */
 .perf-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
@@ -1243,8 +1242,8 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
           <!-- O cartão principal é o das VENDAS do mês. Esta tela é de vendas: o que
                importa é quanto as vendas fechadas no período já trouxeram. O caixa do
                mês (que soma parcela de venda antiga) vem ao lado, como contexto. -->
-          <div class="mcard"><p class="mcard-label hint" id="lbl-fat-novo" tabindex="0" data-hint="recNovo" style="display:inline-block;">Recebido das vendas do mês</p><p class="mcard-value" id="dash-fat-novo">—</p><div class="msplit"><p class="msplit-row"><span class="hint" tabindex="0" data-hint="liquido">Líquido</span><b id="dash-fat-novo-liq">—</b></p></div><p class="mcard-meta" id="dash-fat-novo-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-novo" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-novo">0%</span></div></div>
-          <div class="mcard"><p class="mcard-label hint" id="lbl-fat-caixa" tabindex="0" data-hint="recCaixa" style="display:inline-block;">Recebido no mês (todas as vendas)</p><p class="mcard-value" id="dash-fat-caixa">—</p><div class="msplit"><p class="msplit-row"><span class="hint" tabindex="0" data-hint="liquido">Líquido</span><b id="dash-fat-caixa-liq">—</b></p><p class="msplit-row"><span class="hint" tabindex="0" data-hint="recAntigo">De vendas anteriores</span><b id="dash-fat-caixa-ant">—</b></p></div></div>
+          <div class="mcard"><p class="mcard-label hint" id="lbl-fat-novo" tabindex="0" data-hint="recNovo" style="display:inline-block;">Recebido das vendas do mês</p><p class="mcard-value" id="dash-fat-novo">—</p><p class="mcard-meta" id="dash-fat-novo-meta">Meta: R$ 1.530.000</p><div class="mbar-row"><div class="mbar-track"><div class="mbar-fill" id="bar-fat-novo" style="width:0%"></div></div><span class="mbar-pct" id="pct-fat-novo">0%</span></div></div>
+          <div class="mcard"><p class="mcard-label hint" id="lbl-fat-caixa" tabindex="0" data-hint="recCaixa" style="display:inline-block;">Recebido no mês (todas as vendas)</p><p class="mcard-value" id="dash-fat-caixa">—</p><div class="msplit"><p class="msplit-row"><span class="hint" tabindex="0" data-hint="recAntigo">De vendas anteriores</span><b id="dash-fat-caixa-ant">—</b></p></div></div>
           <div class="mcard"><p class="mcard-label">Total de vendas</p><p class="mcard-value big" id="dash-total-vendas">—</p><p class="mcard-meta">exceto canceladas e reembolsadas</p></div>
           <div class="mcard"><p class="mcard-label"><span class="hint" tabindex="0" data-hint="reembolso">Reembolsos (abatido)</span></p><p class="mcard-value coral" id="dash-reembolsos">—</p><p class="mcard-meta">no mês</p></div>
           <div class="mcard"><p class="mcard-label"><span class="hint" tabindex="0" data-hint="aReceber">A receber</span></p><p class="mcard-value coral" id="dash-a-receber">—</p><p class="mcard-meta">valor restante pendente</p></div>
@@ -1266,7 +1265,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
           <p class="pe-nota" id="prodEvolNota"></p>
         </div>
         <div class="charts-row">
-          <div class="chart-card fat-card"><p class="chart-title">Faturamento por dia</p><div style="position:relative;height:200px;"><canvas id="fatChart"></canvas></div><div class="chart-legend"><div class="cli"><div class="cli-line" style="background:rgba(61,92,74,0.2);height:8px;border-radius:2px;"></div><span class="hint" tabindex="0" data-hint="fatBruto">Fat. bruto</span></div><div class="cli"><div class="cli-line" style="background:#3D5C4A;"></div><span class="hint" tabindex="0" data-hint="fatLiquido">Fat. líquido</span></div></div><div class="fat-resumo" id="fatResumo"></div></div>
+          <div class="chart-card fat-card"><p class="chart-title">Faturamento por dia</p><div style="position:relative;height:200px;"><canvas id="fatChart"></canvas></div><div class="chart-legend"><div class="cli"><div class="cli-line" style="background:#3D5C4A;height:8px;border-radius:2px;"></div><span class="hint" tabindex="0" data-hint="bruto">Contratado por dia, pela data da venda</span></div></div><div class="fat-resumo" id="fatResumo"></div></div>
           <div class="chart-card pie-wrap">
             <p class="chart-title" style="align-self:flex-start;">Vendas por origem</p>
             <canvas id="pieChart" width="160" height="160" style="max-width:160px;"></canvas>
@@ -2313,7 +2312,6 @@ const CRITERIOS={
   liquido:'<b>Líquido</b> = bruto − taxas, contando só o que o cliente <b>já pagou</b> (parcelas marcadas como recebidas). Parcela pendente não entra aqui — entra em "A receber".',
   aReceber:'<b>A receber</b> = soma das parcelas ainda pendentes, pelo valor bruto. Some daqui e entra no líquido quando a parcela é marcada como recebida.',
   fatBruto:'Soma do <b>bruto</b> das parcelas recebidas com data de recebimento dentro do período, menos os reembolsos. Segue o dinheiro que entrou, não a data da venda.',
-  fatLiquido:'Soma do <b>líquido</b> das parcelas recebidas no período (já sem as taxas), menos os reembolsos. É o que de fato sobrou no caixa.',
   recNovo:'Quanto as vendas <b>fechadas dentro do período</b> já trouxeram — entrada e parcelas delas que já caíram, mesmo que a parcela tenha entrado depois. É o número principal desta tela: aqui a pergunta é como o período <b>vendeu</b>, não quanto dinheiro passou pelo caixa. Reembolso do período já vem abatido.',
   recAntigo:'Parte do caixa do período que veio de vendas <b>fechadas antes</b> — parcelamento de meses anteriores caindo agora. É dinheiro do mês, mas não é venda do mês, e por isso fica de fora do número principal.',
   recCaixa:'Todo o dinheiro que entrou no período, some a venda de quando for — as vendas do período <b>mais</b> as parcelas de vendas antigas. Serve pra conferir caixa; não serve pra medir o desempenho comercial do período.',
@@ -2991,7 +2989,7 @@ function renderProdSplit(dados){
 
   const {todas,vendas,pgRecebidos,reembImpacto,_valorReemb,_novaDoPeriodo}=dados;
   const agg={};
-  const bucket=k=>agg[k]||(agg[k]={bruto:0,liq:0,reemb:0,n:0,contratado:0,aReceber:0});
+  const bucket=k=>agg[k]||(agg[k]={bruto:0,reemb:0,n:0,contratado:0,aReceber:0});
 
   // Só o recebido das VENDAS do período, igual ao cartão principal. Parcela de venda
   // antiga não entra: aqui a pergunta é como cada produto vendeu no período, não
@@ -2999,7 +2997,6 @@ function renderProdSplit(dados){
   (pgRecebidos||[]).filter(p=>!_novaDoPeriodo||_novaDoPeriodo(p)).forEach(p=>{
     const b=bucket(prodKeyDe(p.vendas&&p.vendas.produto));
     b.bruto+=Number(p.valor_bruto||0);
-    b.liq+=Number(p.valor_liquido||0);
   });
   (reembImpacto||[]).forEach(r=>{
     bucket(prodKeyDe(r.vendas&&r.vendas.produto)).reemb+=_valorReemb(r);
@@ -3015,7 +3012,6 @@ function renderProdSplit(dados){
   // Reembolso é abatido do recebido, igual ao KPI do topo.
   Object.values(agg).forEach(b=>{
     b.bruto=Math.max(0,b.bruto-b.reemb);
-    b.liq=Math.max(0,b.liq-b.reemb);
   });
 
   const keys=Object.keys(agg).sort((a,b)=>agg[b].bruto-agg[a].bruto||agg[b].n-agg[a].n);
@@ -3040,7 +3036,6 @@ function renderProdSplit(dados){
       <p class="ps-sub">recebido das vendas do período</p>
       <div class="ps-bar"><div class="ps-bar-fill" style="width:${share}%;background:${info.cor}"></div></div>
       <div class="ps-grid">
-        <div><p class="ps-l">Recebido líquido</p><p class="ps-v">${fmtBRL(b.liq)}</p></div>
         <div><p class="ps-l">Vendas</p><p class="ps-v">${b.n}</p></div>
         <div title="${ticketTip}"><p class="ps-l">Ticket médio</p><p class="ps-v">${fmtBRL(ticket)}</p></div>
         <div><p class="ps-l">A receber</p><p class="ps-v coral">${fmtBRL(b.aReceber)}</p></div>
@@ -3074,7 +3069,7 @@ async function carregarDashboard(){
   try{
     const [todas, pgRecebidos, reembImpacto]=await Promise.all([
       supaFetch('vendas?data_venda=gte.'+primeiroDia+'&data_venda=lte.'+ultimoDia+'&select=*'+_fProd),
-      supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=valor_bruto,valor_liquido,vendas!inner(produto,data_venda)'+_fProdEmb),
+      supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+primeiroDia+'&data_recebimento=lte.'+ultimoDia+'&select=valor_bruto,vendas!inner(produto,data_venda)'+_fProdEmb),
       supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,modalidade,vendas!inner(data_venda,valor_bruto,produto),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia+_fProdEmb).catch(()=>[])
     ]);
     ajustarWonderPago(todas); // Wonder conta só o valor pago (ranking, origem, gateway, gráfico)
@@ -3089,8 +3084,11 @@ async function carregarDashboard(){
     };
     const totalReemb=(reembImpacto||[]).reduce((s,r)=>s+_valorReemb(r),0);
     const reembCount=(reembImpacto||[]).length;
+    // Esta aba trabalha só em BRUTO. O líquido (bruto − taxa de gateway) é conversa de
+    // financeiro e vivia lado a lado com o bruto aqui, gerando dois números parecidos
+    // pra mesma coisa. Ele continua no cadastro da venda, em Cobranças e no
+    // Comissionamento, onde a taxa importa de verdade.
     const fatBruto=Math.max(0,pgRecebidos.reduce((s,p)=>s+Number(p.valor_bruto||0),0)-totalReemb);
-    const fatLiq=Math.max(0,pgRecebidos.reduce((s,p)=>s+Number(p.valor_liquido||0),0)-totalReemb);
     const aReceber=todas.reduce((s,v)=>s+Number(v.valor_restante||0),0);
 
     // O número que manda nesta tela é o das VENDAS do período: quanto as vendas
@@ -3105,13 +3103,10 @@ async function carregarDashboard(){
     };
     const _somaSe=(campo,filtro)=>pgRecebidos.reduce((s,p)=>s+(filtro(p)?Number(p[campo]||0):0),0);
     const fatBrutoNovo=Math.max(0,_somaSe('valor_bruto',_novaDoPeriodo)-totalReemb);
-    const fatLiqNovo=Math.max(0,_somaSe('valor_liquido',_novaDoPeriodo)-totalReemb);
     const fatBrutoAnt=Math.max(0,fatBruto-fatBrutoNovo);
 
     document.getElementById('dash-fat-novo').textContent=fmtBRL(fatBrutoNovo);
-    document.getElementById('dash-fat-novo-liq').textContent=fmtBRL(fatLiqNovo);
     document.getElementById('dash-fat-caixa').textContent=fmtBRL(fatBruto);
-    document.getElementById('dash-fat-caixa-liq').textContent=fmtBRL(fatLiq);
     document.getElementById('dash-fat-caixa-ant').textContent=fmtBRL(fatBrutoAnt);
     const _lblNovo=document.getElementById('lbl-fat-novo');
     if(_lblNovo) _lblNovo.textContent='Recebido das vendas '+(_periodoSuf==='no período'?'do período':'do mês');
@@ -3146,36 +3141,34 @@ async function carregarDashboard(){
     const ranking={};
     vendas.forEach(v=>{
       if(!v.closer)return;
-      if(!ranking[v.closer]) ranking[v.closer]={bruto:0,liq:0,n:0};
+      if(!ranking[v.closer]) ranking[v.closer]={bruto:0,n:0};
       ranking[v.closer].bruto+=Number(v.valor_bruto||0);
-      ranking[v.closer].liq+=Number(v.valor_liquido||0);
       ranking[v.closer].n++;
     });
     const sorted=Object.entries(ranking).sort((a,b)=>b[1].bruto-a[1].bruto);
     document.getElementById('rankingList').innerHTML=sorted.length===0
       ?'<p style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma venda no período.</p>'
-      :sorted.map((e,i)=>`<div class="ranking-row"><span class="rank-num">${i+1}</span><div class="rank-info"><p class="rank-name">${e[0]}</p><p class="rank-sub">${e[1].n} venda(s)</p></div><div class="rank-values"><p class="rank-bruto hint" data-hint="bruto">${fmtBRL(e[1].bruto)}</p><p class="rank-liq hint" data-hint="liquido">Liq. ${fmtBRL(e[1].liq)}</p></div></div>`).join('');
+      :sorted.map((e,i)=>`<div class="ranking-row"><span class="rank-num">${i+1}</span><div class="rank-info"><p class="rank-name">${e[0]}</p><p class="rank-sub">${e[1].n} venda(s)</p></div><div class="rank-values"><p class="rank-bruto hint" data-hint="bruto">${fmtBRL(e[1].bruto)}</p></div></div>`).join('');
 
     // Ranking de SDRs (vendas com SDR atribuído)
     const rankingSdr={};
     vendas.forEach(v=>{
       if(!v.sdr)return;
-      if(!rankingSdr[v.sdr]) rankingSdr[v.sdr]={bruto:0,liq:0,n:0};
+      if(!rankingSdr[v.sdr]) rankingSdr[v.sdr]={bruto:0,n:0};
       rankingSdr[v.sdr].bruto+=Number(v.valor_bruto||0);
-      rankingSdr[v.sdr].liq+=Number(v.valor_liquido||0);
       rankingSdr[v.sdr].n++;
     });
     const sortedSdr=Object.entries(rankingSdr).sort((a,b)=>b[1].bruto-a[1].bruto);
     const sdrEl=document.getElementById('rankingSdrList');
     if(sdrEl) sdrEl.innerHTML=sortedSdr.length===0
       ?'<p style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma venda com SDR no período.</p>'
-      :sortedSdr.map((e,i)=>`<div class="ranking-row"><span class="rank-num">${i+1}</span><div class="rank-info"><p class="rank-name">${e[0]}</p><p class="rank-sub">${e[1].n} venda(s)</p></div><div class="rank-values"><p class="rank-bruto hint" data-hint="bruto">${fmtBRL(e[1].bruto)}</p><p class="rank-liq hint" data-hint="liquido">Liq. ${fmtBRL(e[1].liq)}</p></div></div>`).join('');
+      :sortedSdr.map((e,i)=>`<div class="ranking-row"><span class="rank-num">${i+1}</span><div class="rank-info"><p class="rank-name">${e[0]}</p><p class="rank-sub">${e[1].n} venda(s)</p></div><div class="rank-values"><p class="rank-bruto hint" data-hint="bruto">${fmtBRL(e[1].bruto)}</p></div></div>`).join('');
 
     const CORES=['#3D5C4A','#D4572A','#4E9E75','#B4B2A9','#7C3D8C','#1565C0','#C07A00','#0277BD'];
 
     // Pizza origens
     const origens={};
-    vendas.forEach(v=>{const o=v.origem||'Outros';if(!origens[o])origens[o]={n:0,liq:0};origens[o].n++;origens[o].liq+=Number(v.valor_liquido||0);});
+    vendas.forEach(v=>{const o=v.origem||'Outros';if(!origens[o])origens[o]={n:0,bruto:0};origens[o].n++;origens[o].bruto+=Number(v.valor_bruto||0);});
     const origKeys=Object.keys(origens).sort((a,b)=>origens[b].n-origens[a].n);
     const origVals=origKeys.map(k=>origens[k].n);
     if(window._pieChart) window._pieChart.destroy();
@@ -3186,12 +3179,12 @@ async function carregarDashboard(){
     });
     const total=origVals.reduce((a,b)=>a+b,0);
     document.getElementById('pieLegend').innerHTML=origKeys.length
-      ?origKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${origens[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">Líq. ${fmtBRL(origens[k].liq)}</span></div><span class="pie-pct">${total>0?Math.round((origens[k].n/total)*100):0}%</span></div>`).join('')
+      ?origKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${origens[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">${fmtBRL(origens[k].bruto)}</span></div><span class="pie-pct">${total>0?Math.round((origens[k].n/total)*100):0}%</span></div>`).join('')
       :'<p style="font-size:12px;color:var(--muted);">Sem dados</p>';
 
     // Pizza gateways
     const gateways={};
-    vendas.forEach(v=>{const g=v.gateway||'Outros';if(!gateways[g])gateways[g]={n:0,liq:0};gateways[g].n++;gateways[g].liq+=Number(v.valor_liquido||0);});
+    vendas.forEach(v=>{const g=v.gateway||'Outros';if(!gateways[g])gateways[g]={n:0,bruto:0};gateways[g].n++;gateways[g].bruto+=Number(v.valor_bruto||0);});
     const gwKeys=Object.keys(gateways).sort((a,b)=>gateways[b].n-gateways[a].n);
     const gwVals=gwKeys.map(k=>gateways[k].n);
     if(window._pieGateway) window._pieGateway.destroy();
@@ -3202,7 +3195,7 @@ async function carregarDashboard(){
     });
     const gwTotal=gwVals.reduce((a,b)=>a+b,0);
     document.getElementById('pieLegendGateway').innerHTML=gwKeys.length
-      ?gwKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${gateways[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">Líq. ${fmtBRL(gateways[k].liq)}</span></div><span class="pie-pct">${gwTotal>0?Math.round((gateways[k].n/gwTotal)*100):0}%</span></div>`).join('')
+      ?gwKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${gateways[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">${fmtBRL(gateways[k].bruto)}</span></div><span class="pie-pct">${gwTotal>0?Math.round((gateways[k].n/gwTotal)*100):0}%</span></div>`).join('')
       :'<p style="font-size:12px;color:var(--muted);">Sem dados</p>';
 
     // Gráfico por dia
@@ -3210,40 +3203,38 @@ async function carregarDashboard(){
     vendas.forEach(v=>{
       const d=v.data_venda?v.data_venda.split('T')[0]:'';
       if(!d)return;
-      if(!porDia[d]) porDia[d]={bruto:0,liq:0};
+      if(!porDia[d]) porDia[d]={bruto:0};
       porDia[d].bruto+=Number(v.valor_bruto||0);
-      porDia[d].liq+=Number(v.valor_liquido||0);
     });
     const dias=Object.keys(porDia).sort();
     if(window._fatChart) window._fatChart.destroy();
     window._fatChart=new Chart(document.getElementById('fatChart'),{
       type:'bar',
       data:{labels:dias.map(d=>{const[y,m,dd]=d.split('-');return dd+'/'+m;}),datasets:[
-        {type:'bar',data:dias.map(d=>porDia[d].bruto),backgroundColor:'rgba(61,92,74,0.12)',borderColor:'transparent',borderRadius:2,order:2},
-        {type:'line',data:dias.map(d=>porDia[d].liq),borderColor:'#3D5C4A',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:0.4,order:1}
+        {type:'bar',data:dias.map(d=>porDia[d].bruto),backgroundColor:'#3D5C4A',borderColor:'transparent',borderRadius:3}
       ]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
         scales:{x:{grid:{display:false},ticks:{font:{size:10},color:'#aaa',maxTicksLimit:12}},
           y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:10},color:'#aaa',callback:v=>v>=1000?'R$'+(v/1000)+'k':'R$'+v}}}}
     });
 
-    // Resumo do período (KPIs abaixo do gráfico) — baseado no faturamento líquido por dia
+    // Resumo do período (KPIs abaixo do gráfico) — contratado bruto por dia
     const fr=document.getElementById('fatResumo');
     if(fr){
       const nDias=dias.length;
-      const totalLiqDia=dias.reduce((s,d)=>s+porDia[d].liq,0);
-      const mediaDia=nDias?totalLiqDia/nDias:0;
+      const totalDia=dias.reduce((s,d)=>s+porDia[d].bruto,0);
+      const mediaDia=nDias?totalDia/nDias:0;
       let melhorDia=null,melhorVal=-1;
-      dias.forEach(d=>{ if(porDia[d].liq>melhorVal){melhorVal=porDia[d].liq;melhorDia=d;} });
-      const totalLiqVendas=vendas.reduce((s,v)=>s+Number(v.valor_liquido||0),0);
-      const ticket=vendas.length?totalLiqVendas/vendas.length:0;
+      dias.forEach(d=>{ if(porDia[d].bruto>melhorVal){melhorVal=porDia[d].bruto;melhorDia=d;} });
+      const totalVendas=vendas.reduce((s,v)=>s+Number(v.valor_bruto||0),0);
+      const ticket=vendas.length?totalVendas/vendas.length:0;
       const melhorLabel=melhorDia?(()=>{const[y,m,dd]=melhorDia.split('-');return dd+'/'+m;})():'—';
       fr.innerHTML=nDias===0
         ?'<p style="grid-column:1/-1;font-size:13px;color:var(--muted);text-align:center;padding:8px 0;">Sem faturamento no período.</p>'
         :`<div class="fr-tile"><p class="fr-label">Melhor dia</p><p class="fr-value">${fmtBRL(melhorVal)}</p><p class="fr-sub">${melhorLabel}</p></div>
-          <div class="fr-tile"><p class="fr-label">Média por dia</p><p class="fr-value">${fmtBRL(mediaDia)}</p><p class="fr-sub">líquido · ${nDias} dia(s) com venda</p></div>
-          <div class="fr-tile"><p class="fr-label">Ticket médio</p><p class="fr-value">${fmtBRL(ticket)}</p><p class="fr-sub">líquido por venda</p></div>
-          <div class="fr-tile"><p class="fr-label">Total no período</p><p class="fr-value">${fmtBRL(totalLiqVendas)}</p><p class="fr-sub">líquido · ${vendas.length} venda(s)</p></div>`;
+          <div class="fr-tile"><p class="fr-label">Média por dia</p><p class="fr-value">${fmtBRL(mediaDia)}</p><p class="fr-sub">${nDias} dia(s) com venda</p></div>
+          <div class="fr-tile"><p class="fr-label">Ticket médio</p><p class="fr-value">${fmtBRL(ticket)}</p><p class="fr-sub">contratado por venda</p></div>
+          <div class="fr-tile"><p class="fr-label">Total no período</p><p class="fr-value">${fmtBRL(totalVendas)}</p><p class="fr-sub">${vendas.length} venda(s)</p></div>`;
     }
   }catch(e){console.error(e);}
 }
