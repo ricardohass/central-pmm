@@ -5,9 +5,15 @@ name: Cobertura de calls
 
 on:
   schedule:
-    # 10:30 UTC = 07:30 em São Paulo. Meia hora antes da daily de propósito:
-    # o agendador do Actions atrasa quando a fila está cheia.
-    - cron: '30 10 * * *'
+    # De 2 em 2 horas, 07:30 às 21:30 em São Paulo. A primeira é meia hora antes
+    # da daily de propósito: o agendador do Actions atrasa quando a fila está
+    # cheia. As demais existem pra aba Cobertura mostrar as calls do próprio dia
+    # — com uma execução só, de manhã, ela sempre mostrava até o dia anterior.
+    # A última, 21:30, pega as calls da noite, que é onde o no-show se concentra.
+    # Cada execução reapura os últimos 3 dias, então call classificada depois que
+    # a rotina passou entra na rodada seguinte.
+    - cron: '30 10-23/2 * * *'
+    - cron: '30 0 * * *'
   workflow_dispatch:
     inputs:
       de:
