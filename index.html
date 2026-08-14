@@ -6452,7 +6452,7 @@ function renderCobertura(){
       <div class="cob-linha">
         <div class="cob-linha-quando">
           <span class="cob-linha-data">${fmtDataBR(l.data)}</span>
-          <span class="cob-linha-hora">${l.inicio?new Date(l.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—'}</span>
+          <span class="cob-linha-hora">${l.inicio?new Date(l.inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'}):'—'}</span>
         </div>
         <div class="cob-linha-meio">
           <p class="cob-linha-titulo">${escHtml(l.titulo||'(sem título)')}</p>

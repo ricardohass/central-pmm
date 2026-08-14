@@ -256,14 +256,16 @@ def com_traco(cod):
     return '%s-%s-%s' % (c[:3], c[3:7], c[7:]) if len(c) == 10 else c
 
 
-def quem_entrou(email_closer, cod, quando):
+def quem_entrou(email_closer, cod):
     """Participantes de uma sala do Meet. None quando não dá pra apurar.
 
     Chamada só para as calls SEM gravação — que são as ambíguas. Para as
     gravadas o Meetrox já respondeu, e consultar seria gastar requisição à toa.
 
-    `quando` desempata sala recorrente: o mesmo código pode ter várias
-    conferências, e a que interessa é a do dia do evento.
+    Não recebe horário de propósito: a Meet API devolve `startTime` SEM fuso, e
+    comparar isso com um horário com fuso daria resultado diferente no Mac
+    (São Paulo) e no runner do Actions (UTC). Como junta os participantes de
+    todas as conferências do código, não há o que desempatar.
     """
     tok = token_google(email_closer, ESCOPO_MEET)
     h = {'Authorization': 'Bearer ' + tok}
@@ -297,11 +299,6 @@ def quem_entrou(email_closer, cod, quando):
     return saida
 
 
-def _ts(iso):
-    try:
-        return datetime.fromisoformat((iso or '').replace('Z', '+00:00')).timestamp()
-    except Exception:
-        return 0.0
 
 
 def calls_do_meetrox(t0, t1):
@@ -676,7 +673,7 @@ def main():
             pres = None
             if not mrx and usa_meet:
                 try:
-                    pres = quem_entrou(email, cod, _ts(ini))
+                    pres = quem_entrou(email, cod)
                 except Exception as e:
                     if not _avisou_meet:
                         print('  Meet API indisponível (%s) — os casos sem gravação '
