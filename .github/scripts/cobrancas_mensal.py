@@ -177,7 +177,10 @@ def avisar_falha(erro):
                            f'<hr/>Rodar de novo em GitHub → central-pmm → Actions → '
                            f'"Cobranças mensal" → Run workflow.</body>', hoje.isoformat())
     except Exception:
-        pass  # sem Asana não dá pra avisar — o job falha e o GitHub manda e-mail
+        # Sem Asana não dá pra avisar por tarefa, mas engolir calado esconde a
+        # causa: foi assim que o 400 do <p> passou horas sem ninguém ver por quê.
+        print('avisar_falha não conseguiu abrir a tarefa:\n' + traceback.format_exc(),
+              file=sys.stderr)
 
 
 def main():

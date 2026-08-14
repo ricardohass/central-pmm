@@ -173,7 +173,10 @@ def avisar_falha(erro):
                            f'<hr/>Rodar de novo em GitHub → central-pmm → Actions → '
                            f'"Cobranças 25d+" → Run workflow.</body>', hoje.isoformat())
     except Exception:
-        pass  # sem Asana não dá pra avisar — o job falha e o GitHub manda e-mail
+        # Sem Asana não dá pra avisar por tarefa, mas engolir calado esconde a
+        # causa: foi assim que o 400 do <p> passou horas sem ninguém ver por quê.
+        print('avisar_falha não conseguiu abrir a tarefa:\n' + traceback.format_exc(),
+              file=sys.stderr)
 
 
 def main():
@@ -207,31 +210,12 @@ def main():
         print(f"! reembolso em aberto, não vira cobrança: {i['cliente']} ({i['atraso']}d)")
 
 
-def carona_cancelamentos():
-    """Roda a rotina de cancelamento nos gateways de carona neste workflow.
-
-    O workflow dela (.github/workflows/cancelamentos-gateway.yml) não subiu: o
-    token do Mac não tem escopo `workflow`, e o GitHub rejeita o push de
-    qualquer arquivo em .github/workflows/. Script em .github/scripts/ passa
-    normal — então, enquanto o .yml não sobe pela interface web, a rotina pega
-    carona aqui e roda uma vez por dia em vez de a cada 2 horas.
-
-    Isolada de propósito: subprocess separado e except largo, pra que uma falha
-    lá não derrube o levantamento de cobranças, que é o dono deste job.
-    """
-    import subprocess
-    irmao = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                         'cancelamentos_gateway.py')
-    if not os.path.exists(irmao):
-        return
-    print('\n--- carona: cancelamento nos gateways ---')
-    try:
-        r = subprocess.run([sys.executable, irmao], capture_output=True, text=True, timeout=300)
-        print(r.stdout, end='')
-        if r.returncode:
-            print(r.stderr[-2000:], file=sys.stderr)
-    except Exception:
-        print(traceback.format_exc(), file=sys.stderr)
+# A rotina de cancelamento nos gateways já rodou de carona aqui, na época em que
+# o .yml dela não subia (o token do Mac não tinha escopo `workflow`). O workflow
+# próprio está no ar desde 13/08 e roda de 2 em 2 horas — a carona virou execução
+# duplicada, e pior: engolia o returncode, então uma falha lá deixava este job
+# verde. Removida. Se precisar rodar na mão:
+#     python3 .github/scripts/cancelamentos_gateway.py
 
 
 if __name__ == '__main__':
@@ -241,6 +225,4 @@ if __name__ == '__main__':
         erro = traceback.format_exc()
         print(erro, file=sys.stderr)
         avisar_falha(erro)
-        carona_cancelamentos()  # cobrança quebrou, mas o cancelamento é independente
         sys.exit(1)
-    carona_cancelamentos()
