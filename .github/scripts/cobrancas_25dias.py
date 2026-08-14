@@ -169,7 +169,7 @@ def avisar_falha(erro):
         if nome in nomes_no_projeto():
             return
         criar_tarefa(nome, f'<body><strong>A rotina diária não conseguiu rodar.</strong>'
-                           f'<p>Erro:</p><pre>{esc(erro[:1500])}</pre>'
+                           f'\n<strong>Erro:</strong><pre>{esc(erro[:1500])}</pre>'
                            f'<hr/>Rodar de novo em GitHub → central-pmm → Actions → '
                            f'"Cobranças 25d+" → Run workflow.</body>', hoje.isoformat())
     except Exception:

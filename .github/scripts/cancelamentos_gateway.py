@@ -134,7 +134,13 @@ def levantar(todos):
 
 
 def montar(i):
-    """Nome (determinístico, serve de chave de dedup) + html_notes da tarefa."""
+    """Nome (determinístico, serve de chave de dedup) + html_notes da tarefa.
+
+    O Asana só aceita um punhado de tags no html_notes: body, strong, em, u, s,
+    code, ol, ul, li, a, blockquote, pre e (só em tarefa) h1, h2, hr. Qualquer
+    outra — <p> e <br> inclusive — devolve 400 xml_parsing_error, mesmo o XML
+    sendo bem formado. Pra separar bloco, use \\n; não reintroduza <p>.
+    """
     nome = (f"🚫 Cancelar cobrança nas plataformas — {i['cliente']} · "
             f"{' + '.join(i['plataformas'])} · aberto {br(i['aberto_em'])[:5]}")
 
@@ -144,14 +150,14 @@ def montar(i):
             f"<strong>{esc(p['gateway'])}</strong>"
             f"{' (já cancelada na Central)' if p['status'] == 'cancelada' else ''}</li>"
             for p in i['abertas'])
-        bloco = (f"<p><strong>{i['abertas_n']} cobrança(s) ainda não recebida(s) — "
-                 f"{rs(i['abertas_valor'])}:</strong></p><ul>{linhas}</ul>")
+        bloco = (f"\n<strong>{i['abertas_n']} cobrança(s) ainda não recebida(s) — "
+                 f"{rs(i['abertas_valor'])}:</strong><ul>{linhas}</ul>")
     elif i['tem_venda']:
-        bloco = ("<p><strong>Nenhuma parcela em aberto na Central</strong> — mesmo assim vale "
-                 "conferir na plataforma se sobrou recorrência ativa.</p>")
+        bloco = ("\n<strong>Nenhuma parcela em aberto na Central</strong> — mesmo assim vale "
+                 "conferir na plataforma se sobrou recorrência ativa.\n")
     else:
-        bloco = ("<p><strong>Caso sem venda vinculada na Central</strong> — não dá pra listar as "
-                 "parcelas. Conferir direto na plataforma.</p>")
+        bloco = ("\n<strong>Caso sem venda vinculada na Central</strong> — não dá pra listar as "
+                 "parcelas. Conferir direto na plataforma.\n")
 
     plats = ', '.join(i['plataformas'])
     notes = (
@@ -221,7 +227,7 @@ def avisar_falha(erro):
         if nome in nomes_no_projeto():
             return
         criar_tarefa(nome, f'<body><strong>A rotina não conseguiu rodar.</strong>'
-                           f'<p>Erro:</p><pre>{esc(erro[:1500])}</pre>'
+                           f'\n<strong>Erro:</strong><pre>{esc(erro[:1500])}</pre>'
                            f'<hr/>Rodar de novo em GitHub → central-pmm → Actions → '
                            f'"Cancelamento nos gateways" → Run workflow.</body>', hoje.isoformat())
     except Exception:
