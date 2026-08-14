@@ -233,6 +233,17 @@ html,body { height:100%; font-family:'Inter',sans-serif; background:var(--cream)
 .cob-linha-motivo { font-size:11.5px; color:var(--coral); }
 .cob-linha-closer { font-size:12px; color:var(--muted); flex-shrink:0; }
 .cob-rodape { font-size:11.5px; color:var(--muted); line-height:1.7; margin-top:18px; padding-top:14px; border-top:0.5px solid var(--border); }
+/* dia a dia clicável */
+.cob-diaria tbody tr { cursor:pointer; }
+.cob-diaria td { font-variant-numeric:tabular-nums; }
+.cob-diaria tr.sel td { background:var(--cream2); }
+.cob-diaria tr.sel td:first-child { box-shadow:inset 3px 0 0 var(--coral); }
+.cob-dia-sem { font-size:11px; color:var(--muted); margin-left:4px; }
+.cob-td-falha { color:var(--coral); font-weight:600; }
+.cob-filtro { display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--cream2);
+  border:0.5px solid var(--border); border-radius:9px; padding:9px 14px; margin-bottom:14px; font-size:13px; color:var(--text); }
+.cob-filtro button { font-family:'Inter',sans-serif; font-size:12px; color:var(--coral); background:none;
+  border:none; cursor:pointer; text-decoration:underline; padding:0; }
 .charts-row { display:grid; grid-template-columns:1fr 240px 240px; gap:12px; margin-bottom:16px; }
 .chart-card { background:#fff; border:0.5px solid var(--border); border-radius:12px; padding:20px; }
 .fat-card { display:flex; flex-direction:column; }
@@ -6323,37 +6334,55 @@ function mudarCobMes(d){
   carregarCobertura();
 }
 
+let _cobLinhas=[];
+let cobDia='';   // '' = mês inteiro; senão AAAA-MM-DD
+
 async function carregarCobertura(){
   const el=document.getElementById('coberturaContent');
   if(!el) return;
   const lbl=document.getElementById('cobMesLabel');
   if(lbl) lbl.textContent=MESES_NOMES[cobMes]+' de '+cobAno;
   el.innerHTML='<p class="empty-state">Carregando...</p>';
+  cobDia='';
 
   const p1=cobAno+'-'+String(cobMes+1).padStart(2,'0')+'-01';
   const p2=cobAno+'-'+String(cobMes+1).padStart(2,'0')+'-'+new Date(cobAno,cobMes+1,0).getDate();
-  let linhas;
   try{
-    linhas=await supaFetch('cobertura_calls_v?data=gte.'+p1+'&data=lte.'+p2+'&select=*&order=data.desc,inicio.desc');
+    _cobLinhas=await supaFetch('cobertura_calls_v?data=gte.'+p1+'&data=lte.'+p2+'&select=*&order=data.desc,inicio.desc');
   }catch(e){
     el.innerHTML='<p class="empty-state">Erro ao carregar. A tabela <code>cobertura_calls</code> foi criada no Supabase?</p>';
     return;
   }
-  if(!linhas.length){
+  renderCobertura();
+}
+
+function setCobDia(d){
+  cobDia=(cobDia===d)?'':d;   // clicar de novo no mesmo dia volta pro mês
+  renderCobertura();
+}
+
+// "Aconteceu" é o denominador honesto: no-show e sala vazia não contam contra ninguém.
+const cobAconteceu=l=>['ok','sem_gravacao'].includes(l.status_final);
+
+function renderCobertura(){
+  const el=document.getElementById('coberturaContent');
+  if(!el) return;
+  if(!_cobLinhas.length){
     el.innerHTML='<div class="cob-vazio"><p class="cob-vazio-t">Nenhuma call apurada neste mês.</p>'
       +'<p class="cob-vazio-s">A rotina roda todo dia às 7h30 e olha os últimos 3 dias. '
       +'Para levantar um período antigo, use o botão <strong>Run workflow</strong> na aba Actions do GitHub, informando as datas.</p></div>';
     return;
   }
 
-  // "Aconteceu" é o denominador honesto: no-show e sala vazia não contam contra ninguém.
-  const aconteceu=l=>['ok','sem_gravacao'].includes(l.status_final);
-  const reais=linhas.filter(aconteceu);
+  // O dia a dia é montado com o mês inteiro; o resto respeita o dia selecionado.
+  const diario=montarCobDiario(_cobLinhas);
+  const linhas=cobDia?_cobLinhas.filter(l=>l.data===cobDia):_cobLinhas;
+
+  const reais=linhas.filter(cobAconteceu);
   const gravadas=linhas.filter(l=>l.status_final==='ok');
   const falhas=linhas.filter(l=>l.status_final==='sem_gravacao');
   const noShow=linhas.filter(l=>['no_show','nao_aconteceu'].includes(l.status_final));
   const pct=reais.length?Math.round(gravadas.length/reais.length*100):0;
-
   // Falha da ferramenta x falha de processo: o bot entrou e mesmo assim não há
   // gravação. Separar evita cobrar a pessoa errada.
   const daFerramenta=falhas.filter(l=>(l.motivo||'').includes('bot entraram'));
@@ -6368,7 +6397,13 @@ async function carregarCobertura(){
   });
   const closers=Object.keys(porCloser).sort((a,b)=>porCloser[b].falha-porCloser[a].falha);
 
+  const rotuloPeriodo=cobDia
+    ? fmtDataBR(cobDia)
+    : MESES_NOMES[cobMes]+' de '+cobAno;
+
   el.innerHTML=`
+    ${cobDia?`<div class="cob-filtro">Mostrando só <b>${fmtDataBR(cobDia)}</b>
+      <button onclick="setCobDia('')">ver o mês inteiro</button></div>`:''}
     <div class="cal-summary">
       <div class="cob-card"><div class="cob-card-label">Calls realizadas</div><div class="cob-card-value">${reais.length}</div><div class="cob-card-sub">agendadas com cliente e que aconteceram</div></div>
       <div class="cob-card"><div class="cob-card-label">Gravadas</div><div class="cob-card-value" style="color:#2E7D52;">${gravadas.length}</div><div class="cob-card-sub">${pct}% de cobertura</div></div>
@@ -6376,7 +6411,25 @@ async function carregarCobertura(){
       <div class="cob-card"><div class="cob-card-label">Não aconteceram</div><div class="cob-card-value" style="color:var(--muted);">${noShow.length}</div><div class="cob-card-sub">no-show · fora do denominador</div></div>
     </div>
 
-    <p class="cob-sec-title" style="margin-top:22px;">Por closer</p>
+    <p class="cob-sec-title" style="margin-top:22px;">Dia a dia — clique num dia para filtrar</p>
+    <div class="perf-table-wrap">
+      <table class="perf-table cob-diaria">
+        <thead><tr><th>Data</th><th>Realizadas</th><th>Gravadas</th><th>Sem gravação</th><th>Cobertura</th><th>Não aconteceram</th></tr></thead>
+        <tbody>${diario.map(d=>{
+          const p=d.base?Math.round(d.ok/d.base*100):null;
+          const cor=p===null?'var(--muted)':p>=90?'#2E7D52':p>=70?'#C07A00':'#D4572A';
+          return `<tr class="${cobDia===d.data?'sel':''}" onclick="setCobDia('${d.data}')">
+            <td><b>${fmtDataBR(d.data)}</b> <span class="cob-dia-sem">${d.semana}</span></td>
+            <td>${d.base}</td>
+            <td>${d.ok}</td>
+            <td class="${d.falha?'cob-td-falha':''}">${d.falha||'—'}</td>
+            <td style="color:${cor};font-weight:600;">${p===null?'—':p+'%'}</td>
+            <td style="color:var(--muted);">${d.ns||'—'}</td>
+          </tr>`;}).join('')}</tbody>
+      </table>
+    </div>
+
+    <p class="cob-sec-title" style="margin-top:26px;">Por closer · ${rotuloPeriodo}</p>
     <div class="prod-split">${closers.map(c=>{
       const v=porCloser[c], base=v.ok+v.falha;
       const p=base?Math.round(v.ok/base*100):0;
@@ -6394,7 +6447,7 @@ async function carregarCobertura(){
       </div>`;}).join('')}</div>
 
     ${falhas.length?`
-    <p class="cob-sec-title" style="margin-top:26px;">Calls que aconteceram e não foram gravadas</p>
+    <p class="cob-sec-title" style="margin-top:26px;">Calls que aconteceram e não foram gravadas · ${rotuloPeriodo}</p>
     <div class="cob-lista">${falhas.map(l=>`
       <div class="cob-linha">
         <div class="cob-linha-quando">
@@ -6410,6 +6463,28 @@ async function carregarCobertura(){
 
     <p class="cob-rodape">Apurado cruzando a agenda do closer, o registro do Meetrox e quem entrou em cada sala do Meet.
     No-show e sala vazia ficam fora do cálculo de cobertura de propósito — não são falha de ninguém.</p>`;
+}
+
+// Um dia por linha, do mais recente pro mais antigo. Dia sem nenhuma call
+// apurada não aparece: linha vazia só ocupa espaço.
+const COB_SEMANA=['dom','seg','ter','qua','qui','sex','sáb'];
+function montarCobDiario(linhas){
+  const por={};
+  linhas.forEach(l=>{
+    const d=por[l.data]||(por[l.data]={data:l.data,ok:0,falha:0,ns:0,fora:0});
+    if(l.status_final==='ok') d.ok++;
+    else if(l.status_final==='sem_gravacao') d.falha++;
+    else if(['no_show','nao_aconteceu'].includes(l.status_final)) d.ns++;
+    else if(l.status_final==='fora_da_agenda') d.fora++;
+  });
+  return Object.values(por)
+    .map(d=>{
+      const [a,m,dd]=d.data.split('-').map(Number);
+      d.base=d.ok+d.falha;
+      d.semana=COB_SEMANA[new Date(a,m-1,dd).getDay()];
+      return d;
+    })
+    .sort((x,y)=>y.data.localeCompare(x.data));
 }
 
 // ── FILTRO POR PRODUTO (cobranças) ──
