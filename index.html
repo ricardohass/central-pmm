@@ -2855,7 +2855,12 @@ async function carregarHomeSnapshot(){
       supaFetch('reembolsos?venda_id=not.is.null&select=valor_total,status_reembolso,modalidade,vendas!inner(data_venda,valor_bruto),reembolsos_pagamentos(valor,status)&vendas.data_venda=gte.'+primeiroDia+'&vendas.data_venda=lte.'+ultimoDia).catch(()=>[])
     ]);
 
-    ajustarWonderPago(todasMes); ajustarWonderPago(vendaHoje); // Wonder conta só o pago
+    // A home trata os três produtos com a mesma régua: PMM, Aceleração 2M e Wonder Prø
+    // entram todos pelo valor CHEIO do contrato, na data da venda. Wonder já contou só
+    // o valor pago aqui (por ser recorrência de 12 meses), e isso escondia o peso real
+    // dele — dois contratos de R$ 96.000 apareciam como R$ 8.000 cada e derrubavam a
+    // closer do lugar dela no ranking. O ajuste segue valendo nas outras telas, onde a
+    // pergunta é outra; aqui a pergunta é quanto o mês vendeu.
     const totalReembMes=(reembMes||[]).reduce((s,r)=>{
       const pago=(r.reembolsos_pagamentos||[]).filter(p=>p.status==='pago').reduce((a,p)=>a+Number(p.valor||0),0);
       const integral=r.modalidade?r.modalidade==='integral':(Number((r.vendas&&r.vendas.valor_bruto)||0)>0&&Number(r.valor_total||0)>=Number(r.vendas.valor_bruto||0)-0.01);
