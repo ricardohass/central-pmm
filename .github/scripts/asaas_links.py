@@ -60,6 +60,14 @@ TOLERANCIA_VALOR = 0.01      # centavo de arredondamento
 VAZIOS = {'de', 'da', 'do', 'dos', 'das', 'e', 'di', 'du', 'del', 'la', 'ltda',
           'me', 'epp', 'eireli', 'sa', 'ss', 'mei', 'cnpj', 'nota', 'no', 'na'}
 
+# Cliente que cobra na razão social da empresa: nenhum algoritmo tira "Marcia
+# Donadussi" de "MD Clínica Médica Dermatológica", isso é conhecimento de quem
+# vende. Escrito à mão, nome normalizado dos dois lados (sem acento, minúsculo).
+#     'nome na Central': 'nome do cadastro no Asaas'
+APELIDOS_MANUAIS = {
+    'marcia donadussi': 'md clinica medica dermatologica',
+}
+
 DRY = '--dry' in sys.argv
 
 
@@ -94,6 +102,14 @@ def resolver_nomes(centrais, asaas):
     Por isso todo nível exige o primeiro nome MAIS um segundo token de verdade.
     """
     par, sobra_c, sobra_a = {}, set(centrais), set(asaas)
+
+    # Apelido escrito à mão vence qualquer heurística e sai do jogo antes das rodadas,
+    # pra não competir com nome parecido nem ser roubado por ele.
+    for c, a in APELIDOS_MANUAIS.items():
+        if c in sobra_c and a in sobra_a:
+            par[c] = a
+            sobra_c.discard(c)
+            sobra_a.discard(a)
 
     def rodada(criterio):
         achados = []
