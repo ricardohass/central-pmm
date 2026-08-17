@@ -44,13 +44,21 @@ TOKEN = os.environ.get('ASAAS_TOKEN', '').strip()
 # Cobrança viva no Asaas: ainda dá pra pagar, logo ainda tem link pra mandar.
 STATUS_ABERTOS = ('PENDING', 'OVERDUE', 'AWAITING_RISK_ANALYSIS')
 
-# Parcela com gateway de outra plataforma não recebe link do Asaas, mesmo que o
-# nome bata. Cliente que comprou na Cispay e depois no Asaas tem parcela nos dois.
-GATEWAY_ASAAS = 'Asaas'
+# O campo `gateway` da Central é o da VENDA, não o da parcela do mês: cliente que
+# fechou na Cispay e teve a recorrência migrada pro Asaas fica marcado como Cispay
+# e mesmo assim tem cobrança aberta no Asaas (Michelle Soares, Márcio Isabella,
+# Adriana Lima e Juliano Amantea são exatamente isso). Filtrar por gateway
+# derrubava casamento bom, então ele não filtra nada — quem separa é vencimento
+# e valor, que é evidência de verdade.
 
 TOLERANCIA_DIAS = 7          # nível 3: vencimento remarcado de um lado só
 TOLERANCIA_UNICA_DIAS = 45   # nível 4: janela do "sobrou uma de cada"
 TOLERANCIA_VALOR = 0.01      # centavo de arredondamento
+
+# Partículas de nome que não identificam ninguém e sufixos de razão social. Ficam
+# de fora da conta de "token em comum": 'de' e 'ltda' batendo não significam nada.
+VAZIOS = {'de', 'da', 'do', 'dos', 'das', 'e', 'di', 'du', 'del', 'la', 'ltda',
+          'me', 'epp', 'eireli', 'sa', 'ss', 'mei', 'cnpj', 'nota', 'no', 'na'}
 
 DRY = '--dry' in sys.argv
 
@@ -66,6 +74,55 @@ def norm(s):
     s = ''.join(c for c in s if not unicodedata.combining(c))
     s = ''.join(c if c.isalnum() else ' ' for c in s.lower())
     return ' '.join(s.split())
+
+
+def uteis(nome):
+    """Tokens que realmente identificam alguém — sem 'de', 'da', 'ltda' e afins."""
+    return {t for t in nome.split() if t not in VAZIOS}
+
+
+def resolver_nomes(centrais, asaas):
+    """Liga o nome curto da Central ao nome completo do cadastro do Asaas.
+
+    A Central digita como se chama o cliente ('Germana Araújo'); o Asaas guarda o
+    nome do documento ('Germana Gabriella Pereira da Costa Araujo'). Comparar
+    string com string acha só uma fração, então a ligação é por token, em três
+    níveis, e cada nível só fecha o par que é único NOS DOIS SENTIDOS.
+
+    O primeiro nome sozinho não basta e não pode bastar: a base tem 'Juliano
+    Amantea' e 'Juliano Alarcon Fabricio', 'Marina Cominetti' e 'Marina Alves'.
+    Por isso todo nível exige o primeiro nome MAIS um segundo token de verdade.
+    """
+    par, sobra_c, sobra_a = {}, set(centrais), set(asaas)
+
+    def rodada(criterio):
+        achados = []
+        for c in sobra_c:
+            cs = [a for a in sobra_a if criterio(c, a)]
+            if len(cs) == 1:
+                # a volta também tem que ser única, senão dois nomes da Central
+                # apontam pro mesmo cadastro do Asaas e o desempate seria sorteio
+                se = [x for x in sobra_c if criterio(x, cs[0])]
+                if len(se) == 1:
+                    achados.append((c, cs[0]))
+        for c, a in achados:
+            par[c] = a
+            sobra_c.discard(c)
+            sobra_a.discard(a)
+
+    prim = lambda n: (n.split() or [''])[0]
+    ult = lambda n: (n.split() or [''])[-1]
+
+    # 1. o nome está escrito igual dos dois lados.
+    rodada(lambda c, a: c == a)
+    # 2. primeiro e último nome iguais — 'Taise Torres' ↔ 'Taise Deodora dos Santos Torres'.
+    rodada(lambda c, a: prim(c) == prim(a) and ult(c) == ult(a) and prim(c))
+    # 3. primeiro nome igual e mais um sobrenome em comum — pega 'Camilla Santana'
+    #    ↔ 'Camilla Santana Estil da Camara', e recusa 'Juliano Amantea' ↔
+    #    'Juliano Alarcon Fabricio', que só compartilham o primeiro nome.
+    rodada(lambda c, a: prim(c) == prim(a) and prim(c)
+           and len(uteis(c) & uteis(a)) >= 2)
+    return par
 
 
 def dia(s):
@@ -142,8 +199,11 @@ def casar(parcelas, cobrancas):
     porNome = {}
     for c in cobrancas:
         porNome.setdefault(c['_nome'], []).append(c)
+    # O nome da Central quase nunca é igual ao do cadastro do Asaas: resolve antes,
+    # e só então compara vencimento e valor dentro do cliente já identificado.
+    apelido = resolver_nomes({p['_nome'] for p in parcelas}, set(porNome))
     for p in parcelas:
-        p['_cands'] = porNome.get(p['_nome'], [])
+        p['_cands'] = porNome.get(apelido.get(p['_nome'], ''), [])
 
     pares, usadas = [], set()
 
@@ -178,7 +238,7 @@ def casar(parcelas, cobrancas):
     livres = rodada(livres, lambda p, c: perto(p, c, TOLERANCIA_UNICA_DIAS), 'unica')
 
     disponiveis = lambda p: sum(1 for c in p['_cands'] if id(c) not in usadas)
-    return pares, [(p, disponiveis(p)) for p in livres]
+    return pares, [(p, disponiveis(p)) for p in livres], apelido
 
 
 def main():
@@ -203,11 +263,6 @@ def main():
     parcelas = []
     for p in todas:
         v = vendas.get(p.get('venda_id')) or {}
-        gw = p.get('gateway') or v.get('gateway') or ''
-        # gateway em branco entra (muita parcela antiga não tem o campo preenchido);
-        # gateway de outra plataforma fica de fora.
-        if gw and gw != GATEWAY_ASAAS:
-            continue
         if (p.get('link_origem') or '') == 'manual':
             continue  # link colado à mão manda: o job não escreve por cima
         venc = dia(p.get('data_prevista'))
@@ -219,7 +274,7 @@ def main():
         p['_cliente'] = v.get('nome_cliente')
         parcelas.append(p)
 
-    pares, ambiguas = casar(parcelas, cobrancas)
+    pares, ambiguas, apelido = casar(parcelas, cobrancas)
 
     # ── gravação ──
     agora = datetime.now(timezone.utc).isoformat()
@@ -248,16 +303,33 @@ def main():
                                 'link_origem': None, 'link_atualizado_em': agora})
             limpas.append({'parcela': p['id'], 'cliente': p['_cliente']})
 
+    # Nome que a Central escreve diferente do cadastro do Asaas sai no relatório de
+    # propósito: é a única parte do casamento que ninguém consegue conferir de
+    # cabeça, e é onde um erro colocaria o boleto de um cliente no card de outro.
+    ligados = sorted((c, a) for c, a in apelido.items() if c != a)
+
+    # Cliente que tem cobrança aberta no Asaas e nenhuma parcela pendente na Central.
+    # Não é falha do casamento: é venda que não está cadastrada (ou já quitada aqui).
+    orfaos = {}
+    for c in cobrancas:
+        if c['_nome'] not in set(apelido.values()):
+            orfaos[c['_nome']] = orfaos.get(c['_nome'], 0) + 1
+
     print(json.dumps({
         'data': str(hoje_sp()),
         'dry': DRY,
         'cobrancas_abertas_asaas': len(cobrancas),
         'parcelas_candidatas': len(parcelas),
+        'clientes_ligados': len(apelido),
         'casadas': len(pares),
         'ja_estavam_certas': iguais,
         'gravadas': len(escritas),
         'limpas': len(limpas),
         'sem_casamento': len(ambiguas),
+        'nomes_ligados_por_aproximacao': [{'central': c, 'asaas': a} for c, a in ligados],
+        'asaas_sem_parcela_na_central': sorted(
+            ({'nome': n, 'cobrancas': q} for n, q in orfaos.items()),
+            key=lambda x: -x['cobrancas']),
         'detalhe_gravadas': escritas,
         'detalhe_sem_casamento': [
             {'cliente': p['_cliente'], 'venc': str(p['_venc']), 'valor': p['_valor'],
