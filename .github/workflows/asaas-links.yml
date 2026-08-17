@@ -1,0 +1,31 @@
+name: Links de cobrança (Asaas)
+
+# Casa as cobranças em aberto no Asaas com as parcelas pendentes da Central e
+# grava o link de pagamento em pagamentos_venda.link_cobranca, pra operadora
+# copiar direto da aba Cobranças.
+#
+# Roda no GitHub por dois motivos: a chave do Asaas não pode ir pro index.html
+# (página estática e pública), e a sandbox dos agentes na nuvem tem proxy com
+# allowlist que bloqueia o Supabase (403).
+
+on:
+  schedule:
+    - cron: '20 10 * * *'   # 10:20 UTC = 07:20 em São Paulo, antes do time abrir
+    - cron: '20 16 * * *'   # 16:20 UTC = 13:20 — pega cobrança emitida de manhã
+  workflow_dispatch:        # botão "Run workflow" pra rodar na hora
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Casar cobranças do Asaas com as parcelas
+        env:
+          ASAAS_TOKEN: ${{ secrets.ASAAS_TOKEN }}
+        run: python3 .github/scripts/asaas_links.py

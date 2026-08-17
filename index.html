@@ -994,6 +994,21 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-venc-input:focus { border-color:#2E4A2E; background:#fff; box-shadow:0 0 0 2px rgba(46,74,46,.12); }
 .cob-venc-input::-webkit-calendar-picker-indicator { cursor:pointer; opacity:.75; }
 .cob-venc-input:hover::-webkit-calendar-picker-indicator { opacity:1; }
+
+/* Link de cobrança (Asaas) — a operadora copia daqui em vez de entrar no gateway.
+   Preenchido pelo job asaas_links.py; o campo aceita colar à mão quando não casou. */
+.cob-lanc-link { display:flex; align-items:center; gap:7px; margin-top:9px; padding-top:9px; border-top:0.5px dashed #E0D8C4; }
+.cob-link-ico { font-size:12px; opacity:.65; flex-shrink:0; }
+.cob-link-input { flex:1; min-width:0; font-family:'Inter',sans-serif; font-size:12px; color:#1F2E1D; border:1px solid #C7BDA6; border-radius:7px; background:#FFFDF7; padding:4px 9px; outline:none; text-overflow:ellipsis; transition:border-color .12s,background .12s,box-shadow .12s; }
+.cob-link-input::placeholder { color:#A39B8A; }
+.cob-link-input:hover { border-color:#2E4A2E; background:#fff; }
+.cob-link-input:focus { border-color:#2E4A2E; background:#fff; box-shadow:0 0 0 2px rgba(46,74,46,.12); }
+.cob-btn-link { flex-shrink:0; display:inline-flex; align-items:center; gap:5px; background:#DCE8CE; color:#2E4A2E; border:0.5px solid #B9CDA4; border-radius:999px; padding:5px 13px; font-family:'Inter',sans-serif; font-size:12px; font-weight:500; cursor:pointer; white-space:nowrap; transition:background .12s,border-color .12s; }
+.cob-btn-link:hover { background:#CFE0BC; border-color:#3B5A22; }
+.cob-btn-link.copied { background:#2E4A2E; border-color:#2E4A2E; color:#FAF6EC; }
+.cob-link-abrir { flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:999px; border:0.5px solid #D9D1BE; background:#FAF6EC; color:#6B6355; font-size:12px; cursor:pointer; transition:background .12s,border-color .12s,color .12s; }
+.cob-link-abrir:hover { background:#fff; border-color:#2E4A2E; color:#2E4A2E; }
+.cob-link-tag { flex-shrink:0; font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:#6B6355; background:#F1EADA; border:0.5px solid #E0D8C4; border-radius:999px; padding:2px 7px; cursor:help; }
 </style>
 </head>
 <body>
@@ -6769,6 +6784,58 @@ function iconeMetodoCob(metodo){
   return '';
 }
 
+// ── LINK DE COBRANÇA ──
+// O link sai preenchido pelo job .github/scripts/asaas_links.py (GitHub Actions),
+// que casa a parcela com a cobrança aberta no Asaas e grava o invoiceUrl. A chave
+// do Asaas não pode vir pra cá: esta página é estática e o fonte é público.
+//
+// O campo continua editável de propósito. O casamento é por nome + vencimento +
+// valor (a venda não guarda CPF nem e-mail), então o que fica ambíguo não casa —
+// e link de cobrança errado na mão da operadora é pior que link nenhum. O que
+// sobrar, cola-se aqui: vira link_origem='manual' e o job não escreve por cima.
+function linhaLinkCob(p,dateStr){
+  const url=p.link_cobranca||'';
+  const auto=p.link_origem==='asaas';
+  return `<div class="cob-lanc-link">
+    <span class="cob-link-ico">🔗</span>
+    <input type="url" class="cob-link-input" id="clink_${p.id}" value="${escHtml(url)}" placeholder="Colar link de cobrança" onchange="salvarLinkCobranca('${p.id}',this.value,'${dateStr}')">
+    ${auto?`<span class="cob-link-tag" title="Puxado da cobrança aberta no Asaas. Se você editar, o campo passa a ser seu e o robô não mexe mais nele.">auto</span>`:''}
+    ${url?`<button class="cob-btn-link" id="cbtn_cob_${p.id}" onclick="copiarLinkCob('${p.id}')">Copiar link</button>
+    <button class="cob-link-abrir" onclick="abrirLinkCob('${p.id}')" title="Abrir a cobrança numa aba nova">↗</button>`:''}
+  </div>`;
+}
+
+function copiarLinkCob(id){
+  const el=document.getElementById('clink_'+id);
+  const url=el?el.value.trim():'';
+  if(url) copiarLink(url,'cob_'+id); // reaproveita o feedback de "✓ Copiado!" da aba Links
+}
+
+function abrirLinkCob(id){
+  const el=document.getElementById('clink_'+id);
+  const url=el?el.value.trim():'';
+  if(/^https?:\/\//i.test(url)) window.open(url,'_blank','noopener');
+}
+
+async function salvarLinkCobranca(id,url,dateStr){
+  url=(url||'').trim();
+  if(url&&!/^https?:\/\//i.test(url)){
+    pmmAlert('O link precisa começar com http:// ou https://.','🔗','Link de cobrança');
+    return;
+  }
+  const p=todosPagamentos.find(x=>x.id===id);
+  if(p&&(p.link_cobranca||'')===url) return;
+  // Esvaziar o campo devolve a parcela pro robô: sem origem manual, ele volta a preencher.
+  const corpo=url
+    ? {link_cobranca:url, link_origem:'manual', asaas_payment_id:null, link_atualizado_em:new Date().toISOString()}
+    : {link_cobranca:null, link_origem:null, asaas_payment_id:null, link_atualizado_em:new Date().toISOString()};
+  try{
+    await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify(corpo)});
+    if(p) Object.assign(p,corpo);
+    mostrarDetalheCalDia(dateStr);
+  }catch(e){pmmAlert('Erro ao salvar o link: '+e.message,'❌','Erro');}
+}
+
 function mostrarDetalheCalDia(dateStr){
   const detail=document.getElementById('calDetail');
   const header=document.getElementById('calDetailHeader');
@@ -6855,6 +6922,9 @@ function mostrarDetalheCalDia(dateStr){
       const mIcon=iconeMetodoCob(p.metodo);
       const vencHtml=recebido?`Venc. ${fmtDataBR(dataAtual)}`:`<span class="cob-venc-lbl">Venc.</span><input type="date" class="cob-venc-input" value="${dataAtual}" title="Editar vencimento" onchange="atualizarDataPagamento('${p.id}',this.value,'${dateStr}')">`;
       const nMarc=[p.cobranca_1,p.cobranca_2,p.cobranca_3].filter(Boolean).length;
+      // Link de cobrança: só faz sentido no que ainda está em aberto. O que já entrou
+      // não precisa de link, e mostrar um ali só polui a linha.
+      const linkHtml=recebido?'':linhaLinkCob(p,dateStr);
       return`<div class="cob-lanc${recebido?' is-recebido':''}">
         <div class="cob-lanc-top">
           <div class="cob-lanc-id">
@@ -6882,6 +6952,7 @@ function mostrarDetalheCalDia(dateStr){
               : `<button class="cob-btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Marcar como recebido</button>`}
           </div>
         </div>
+        ${linkHtml}
       </div>`;
     }).join('');
   }
