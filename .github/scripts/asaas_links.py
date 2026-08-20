@@ -8,6 +8,10 @@ parcela correspondente em `pagamentos_venda` e grava o `invoiceUrl` na coluna
 Roda aqui e não no navegador porque a chave do Asaas não pode encostar no
 index.html: a Central é página estática e pública, o fonte fica exposto.
 
+Grava também, em `asaas_orfas`, as cobranças abertas no Asaas que não casam com
+nenhuma parcela da Central — dinheiro sendo cobrado no gateway sem contrapartida
+no controle comercial. Antes essa lista só existia no log desta execução.
+
     python3 asaas_links.py          # casa e grava
     python3 asaas_links.py --dry    # só imprime o que casaria, não escreve
 
@@ -175,6 +179,33 @@ def patch(pid, corpo):
     urllib.request.urlopen(req).read()
 
 
+def upsert(tabela, linhas):
+    """POST com merge-duplicates: cria o que é novo, atualiza o que já existe.
+
+    `primeira_vez_em` fica fora do corpo de propósito. Coluna que não vai no
+    payload não é tocada pelo ON CONFLICT DO UPDATE, então o carimbo original
+    sobrevive às regravações e vira a idade do buraco.
+    """
+    req = urllib.request.Request(
+        f'{SUPA}{tabela}', data=json.dumps(linhas).encode(), method='POST',
+        headers={'apikey': KEY, 'Authorization': 'Bearer ' + KEY,
+                 'Content-Type': 'application/json',
+                 'Prefer': 'resolution=merge-duplicates,return=minimal'})
+    urllib.request.urlopen(req).read()
+
+
+def apagar_orfas_antigas(agora):
+    """Tira da tabela o que não apareceu nesta rodada — cobrança paga, excluída
+    ou finalmente cadastrada na Central. É o que faz `asaas_orfas` ser retrato do
+    agora, e não um depósito que só cresce."""
+    req = urllib.request.Request(
+        f'{SUPA}asaas_orfas?apurado_em=lt.{urllib.parse.quote(agora)}',
+        method='DELETE',
+        headers={'apikey': KEY, 'Authorization': 'Bearer ' + KEY,
+                 'Prefer': 'return=minimal'})
+    urllib.request.urlopen(req).read()
+
+
 # ── ASAAS ──
 
 def asaas(recurso, **params):
@@ -324,12 +355,57 @@ def main():
     # cabeça, e é onde um erro colocaria o boleto de um cliente no card de outro.
     ligados = sorted((c, a) for c, a in apelido.items() if c != a)
 
-    # Cliente que tem cobrança aberta no Asaas e nenhuma parcela pendente na Central.
-    # Não é falha do casamento: é venda que não está cadastrada (ou já quitada aqui).
+    # ── órfãs: cobrança aberta no Asaas sem parcela pendente que case ──
+    # Não é falha do casamento — é venda que não está cadastrada, ou está sem
+    # cronograma. Até 20/08/2026 isso só saía no log e evaporava; agora vai pra
+    # `asaas_orfas` (sql/003), pra dar pra consultar sem abrir o Actions e pra
+    # medir se o buraco cresce ou fecha.
+    casados_asaas = set(apelido.values())
+    orfas = [c for c in cobrancas if c['_nome'] not in casados_asaas]
+
+    # Segunda passada de nomes, agora contra TODAS as vendas e não só as que têm
+    # parcela pendente. É o que separa "venda existe mas sem cronograma" de "não
+    # existe venda nenhuma" — duas conclusões que dão trabalho bem diferente.
+    nomes_venda = {norm(v.get('nome_cliente')): v.get('nome_cliente')
+                   for v in vendas.values() if norm(v.get('nome_cliente'))}
+    liga = resolver_nomes(set(nomes_venda), {c['_nome'] for c in orfas})
+    venda_por_asaas = {a: c for c, a in liga.items()}
+
+    linhas = []
+    for c in orfas:
+        central = venda_por_asaas.get(c['_nome'])
+        linhas.append({
+            'asaas_payment_id': c['id'],
+            'nome_asaas': clientes.get(c.get('customer')) or c['_nome'],
+            'asaas_customer_id': c.get('customer'),
+            'valor': c['_valor'],
+            'vencimento': str(c['_venc']),
+            'status_asaas': c.get('status'),
+            'descricao': (c.get('description') or '')[:500] or None,
+            'invoice_url': c.get('invoiceUrl'),
+            'tem_venda_na_central': bool(central),
+            'nome_na_central': nomes_venda.get(central) if central else None,
+            'apurado_em': agora,
+        })
+
+    # Gravar as órfãs é acessório: se `asaas_orfas` ainda não existir (migração
+    # sql/003 não rodada) ou o Supabase engasgar, o job NÃO pode cair — o serviço
+    # principal é o link de pagamento na mão da operadora, e ele já foi gravado
+    # acima. O erro sai no relatório em vez de derrubar a rodada.
+    erro_orfas = None
+    if not DRY:
+        try:
+            # Grava antes de apagar: se a rodada morrer no meio, sobra linha velha
+            # (denunciada pelo apurado_em) em vez de tabela vazia mentindo que zerou.
+            if linhas:
+                upsert('asaas_orfas', linhas)
+            apagar_orfas_antigas(agora)
+        except Exception as e:
+            erro_orfas = f'{type(e).__name__}: {e}'
+
     orfaos = {}
-    for c in cobrancas:
-        if c['_nome'] not in set(apelido.values()):
-            orfaos[c['_nome']] = orfaos.get(c['_nome'], 0) + 1
+    for c in orfas:
+        orfaos[c['_nome']] = orfaos.get(c['_nome'], 0) + 1
 
     print(json.dumps({
         'data': str(hoje_sp()),
@@ -343,9 +419,16 @@ def main():
         'limpas': len(limpas),
         'sem_casamento': len(ambiguas),
         'nomes_ligados_por_aproximacao': [{'central': c, 'asaas': a} for c, a in ligados],
+        'orfas_gravadas': 0 if (DRY or erro_orfas) else len(linhas),
+        'erro_ao_gravar_orfas': erro_orfas,
         'asaas_sem_parcela_na_central': sorted(
             ({'nome': n, 'cobrancas': q} for n, q in orfaos.items()),
             key=lambda x: -x['cobrancas']),
+        'detalhe_orfas': sorted(
+            ({'nome': l['nome_asaas'], 'venc': l['vencimento'], 'valor': l['valor'],
+              'status': l['status_asaas'], 'tem_venda': l['tem_venda_na_central'],
+              'na_central': l['nome_na_central'], 'asaas': l['asaas_payment_id']}
+             for l in linhas), key=lambda x: (x['venc'] or '', x['nome'])),
         'detalhe_gravadas': escritas,
         'detalhe_sem_casamento': [
             {'cliente': p['_cliente'], 'venc': str(p['_venc']), 'valor': p['_valor'],
