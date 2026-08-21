@@ -82,7 +82,13 @@ def main():
     alvo = cru(NOME)
     achados = [c for c in asaas('customers') if alvo in cru(c.get('name'))]
     if not achados:
-        raise SystemExit(f'Nenhum cliente no Asaas com "{NOME}" no nome.')
+        # Resposta legítima da consulta, não falha: o cliente pode estar cadastrado
+        # com outro nome (a Marcia Donadussi está como "MD Clínica Médica
+        # Dermatológica"). Sair com erro aqui pintava a execução de vermelho no
+        # Actions e disparava e-mail de "Run failed" pra uma busca que funcionou.
+        print(f'Nenhum cliente no Asaas com "{NOME}" no nome.')
+        print('Pode estar cadastrado como empresa: tente um pedaço do CNPJ ou do e-mail.')
+        return
 
     for c in achados:
         print(f'\n=== {c.get("name")}  ({c["id"]})')
