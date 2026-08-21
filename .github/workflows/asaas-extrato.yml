@@ -1,0 +1,33 @@
+name: Extrato de cliente (Asaas)
+
+# Consulta manual: imprime no log TODAS as cobranças de um cliente no Asaas,
+# inclusive as já pagas — que a rotina de links não enxerga, porque ela só busca
+# cobrança viva. Serve pra responder "esse cliente já pagou alguma parcela?"
+# antes de cadastrar a venda na Central.
+#
+# Não escreve em lugar nenhum: é leitura. Roda aqui porque a chave do Asaas é
+# secret do repo e não pode encostar no index.html, que é público.
+
+on:
+  workflow_dispatch:
+    inputs:
+      nome:
+        description: 'Pedaço do nome do cliente (sem acento e case não importam)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  extrato:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Extrato do cliente no Asaas
+        env:
+          ASAAS_TOKEN: ${{ secrets.ASAAS_TOKEN }}
+          NOME: ${{ inputs.nome }}
+        run: python3 .github/scripts/asaas_extrato.py
