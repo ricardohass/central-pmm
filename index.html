@@ -1371,6 +1371,8 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
             <option value="Método CIS">Método CIS</option>
             <option value="Gratuidade">Gratuidade</option>
             <option value="Mentoria Prø">Mentoria Prø</option>
+            <option value="Tráfego Pago">Tráfego Pago</option>
+            <option value="PCE">PCE</option>
           </select>
         </div>
       </div>
@@ -1835,6 +1837,8 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
             <option value="Método CIS">Método CIS</option>
             <option value="Gratuidade">Gratuidade</option>
             <option value="Mentoria Prø">Mentoria Prø</option>
+            <option value="Tráfego Pago">Tráfego Pago</option>
+            <option value="PCE">PCE</option>
           </select>
         </div>
         <div class="vf-field"><label>Status *</label>
@@ -3184,6 +3188,10 @@ async function carregarDashboard(){
       :sortedSdr.map((e,i)=>`<div class="ranking-row"><span class="rank-num">${i+1}</span><div class="rank-info"><p class="rank-name">${e[0]}</p><p class="rank-sub">${e[1].n} venda(s)</p></div><div class="rank-values"><p class="rank-bruto hint" data-hint="bruto">${fmtBRL(e[1].bruto)}</p></div></div>`).join('');
 
     const CORES=['#3D5C4A','#D4572A','#4E9E75','#B4B2A9','#7C3D8C','#1565C0','#C07A00','#0277BD'];
+    // A paleta tem 8 cores e as origens agora podem passar disso (são 9 no
+    // cadastro, mais 'Outros' pra venda antiga sem origem): sem o resto da
+    // divisão a fatia extra saía sem cor e a bolinha da legenda, invisível.
+    const cor=i=>CORES[i%CORES.length];
 
     // Pizza origens
     const origens={};
@@ -3193,12 +3201,12 @@ async function carregarDashboard(){
     if(window._pieChart) window._pieChart.destroy();
     window._pieChart=new Chart(document.getElementById('pieChart'),{
       type:'doughnut',
-      data:{labels:origKeys,datasets:[{data:origVals.length?origVals:[1],backgroundColor:origVals.length?CORES.slice(0,origKeys.length):['#EDE7DA'],borderWidth:3,borderColor:'#fff'}]},
+      data:{labels:origKeys,datasets:[{data:origVals.length?origVals:[1],backgroundColor:origVals.length?origKeys.map((_,i)=>cor(i)):['#EDE7DA'],borderWidth:3,borderColor:'#fff'}]},
       options:{responsive:false,plugins:{legend:{display:false}},cutout:'50%'}
     });
     const total=origVals.reduce((a,b)=>a+b,0);
     document.getElementById('pieLegend').innerHTML=origKeys.length
-      ?origKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${origens[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">Recebido ${fmtBRL(origens[k].rec)}</span></div><span class="pie-pct">${total>0?Math.round((origens[k].n/total)*100):0}%</span></div>`).join('')
+      ?origKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${cor(i)}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${origens[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">Recebido ${fmtBRL(origens[k].rec)}</span></div><span class="pie-pct">${total>0?Math.round((origens[k].n/total)*100):0}%</span></div>`).join('')
       :'<p style="font-size:12px;color:var(--muted);">Sem dados</p>';
 
     // Pizza gateways
@@ -3209,12 +3217,12 @@ async function carregarDashboard(){
     if(window._pieGateway) window._pieGateway.destroy();
     window._pieGateway=new Chart(document.getElementById('pieGateway'),{
       type:'doughnut',
-      data:{labels:gwKeys,datasets:[{data:gwVals.length?gwVals:[1],backgroundColor:gwVals.length?CORES.slice(0,gwKeys.length):['#EDE7DA'],borderWidth:3,borderColor:'#fff'}]},
+      data:{labels:gwKeys,datasets:[{data:gwVals.length?gwVals:[1],backgroundColor:gwVals.length?gwKeys.map((_,i)=>cor(i)):['#EDE7DA'],borderWidth:3,borderColor:'#fff'}]},
       options:{responsive:false,plugins:{legend:{display:false}},cutout:'50%'}
     });
     const gwTotal=gwVals.reduce((a,b)=>a+b,0);
     document.getElementById('pieLegendGateway').innerHTML=gwKeys.length
-      ?gwKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${CORES[i]}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${gateways[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">Recebido ${fmtBRL(gateways[k].rec)}</span></div><span class="pie-pct">${gwTotal>0?Math.round((gateways[k].n/gwTotal)*100):0}%</span></div>`).join('')
+      ?gwKeys.map((k,i)=>`<div class="pie-li"><div class="pie-dot" style="background:${cor(i)}"></div><div style="flex:1;min-width:0;"><span style="font-size:12px;color:var(--text);">${k}</span><div style="display:flex;align-items:center;gap:6px;margin-top:1px;"><span style="font-size:11px;color:var(--muted);">${gateways[k].n} venda(s)</span></div><span style="font-size:11px;color:var(--green);font-weight:500;">Recebido ${fmtBRL(gateways[k].rec)}</span></div><span class="pie-pct">${gwTotal>0?Math.round((gateways[k].n/gwTotal)*100):0}%</span></div>`).join('')
       :'<p style="font-size:12px;color:var(--muted);">Sem dados</p>';
 
     // Gráfico por dia
@@ -4454,7 +4462,7 @@ async function salvarMetas(){
 }
 
 // ── FUNIL COMERCIAL ──
-const FUNIL_CANAIS=['Aplicação','Social Selling','Febracis','Indicação','Método CIS','Gratuidade','Mentoria Prø'];
+const FUNIL_CANAIS=['Aplicação','Social Selling','Febracis','Indicação','Método CIS','Gratuidade','Mentoria Prø','Tráfego Pago','PCE'];
 let funilAno=new Date().getFullYear();
 let funilMes=new Date().getMonth(); // 0-indexed
 let funilPeriodo='mes'; // 'mes' | 'semana'
