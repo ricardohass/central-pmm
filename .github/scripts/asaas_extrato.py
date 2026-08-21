@@ -82,28 +82,39 @@ def main():
         print(f'    cpfCnpj={c.get("cpfCnpj") or "—"}  email={c.get("email") or "—"}'
               f'  criado={dia(c.get("dateCreated"))}')
 
-        pgs = sorted(asaas('payments', customer=c['id']),
-                     key=lambda p: p.get('dueDate') or '')
+        # Cobrança EXCLUÍDA no Asaas some da listagem normal — e some justamente
+        # nos casos que mais interessam aqui, os de alguém ter apagado cobrança
+        # boa achando que era duplicata (Marcia Donadussi, 20/08/2026). O
+        # `deletedOnly` traz de volta esse pedaço da história.
+        pgs = asaas('payments', customer=c['id'])
+        for p in asaas('payments', customer=c['id'], deletedOnly='true'):
+            p['_excluida'] = True
+            pgs.append(p)
+        pgs.sort(key=lambda p: p.get('dueDate') or '')
         if not pgs:
             print('    sem nenhuma cobrança registrada.')
             continue
 
         for p in pgs:
             pago = dia(p.get('paymentDate') or p.get('clientPaymentDate'))
+            marca = 'EXCLUÍDA/' if p.get('_excluida') else ''
             print(f'    {dia(p.get("dueDate")):>10}  R$ {br(p.get("value") or 0):>10}'
-                  f'  {p.get("status"):<18} pago em {pago:>10}'
+                  f'  {marca + p.get("status"):<18} pago em {pago:>10}'
                   f'  {p.get("billingType"):<10} {(p.get("description") or "—")[:40]}')
 
         soma = lambda f: sum(p.get('value') or 0 for p in pgs if f(p))
         conta = lambda f: sum(1 for p in pgs if f(p))
-        pago_f = lambda p: p.get('status') in PAGOS
-        aberto_f = lambda p: p.get('status') in ABERTOS
-        outro_f = lambda p: p.get('status') not in PAGOS + ABERTOS
+        # Excluída não conta como aberta nem como paga: não é dinheiro a receber
+        # nem dinheiro recebido, é cobrança que deixou de existir.
+        pago_f = lambda p: p.get('status') in PAGOS and not p.get('_excluida')
+        aberto_f = lambda p: p.get('status') in ABERTOS and not p.get('_excluida')
+        outro_f = lambda p: not pago_f(p) and not aberto_f(p)
         print(f'    ── {len(pgs)} cobranças · R$ {br(soma(lambda p: True))} no total')
         print(f'       pagas:    {conta(pago_f):>3} · R$ {br(soma(pago_f))}')
         print(f'       abertas:  {conta(aberto_f):>3} · R$ {br(soma(aberto_f))}')
         if conta(outro_f):
-            mortos = sorted({p.get('status') for p in pgs if outro_f(p)})
+            mortos = sorted({('EXCLUÍDA/' if p.get('_excluida') else '') + p.get('status')
+                             for p in pgs if outro_f(p)})
             print(f'       outras:   {conta(outro_f):>3} · R$ {br(soma(outro_f))}'
                   f'  ({", ".join(mortos)})')
 
