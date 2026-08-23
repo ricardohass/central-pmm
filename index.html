@@ -5676,11 +5676,12 @@ function linhas35K(){
 // PMM no cartão pela Cispay — um link por valor cheio, fora do parcelamento do
 // Asaas. O de R$ 31.600 é o mesmo total do 2x da oferta 30K, agora também no
 // cartão; o de R$ 32.000 é valor negociado que não existe em nenhuma tabela.
-// Por isso ficam listados pelo valor, e não por número de parcelas: o que
-// identifica o link aqui é quanto o cliente paga.
+// Por isso ficam listados pelo valor, e não por número de parcelas: nos dois o
+// cliente escolhe de 1 a 12x no checkout, como nos demais links da Cispay, e o
+// que identifica o link é quanto ele paga no total.
 const OFERTA_PMM_CISPAY = [
-  {cond:'R$ 31.600', sub:'Cartão', total:31600, gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmt4fycqr000102l59fzzfb35', copyId:'pmc0'},
-  {cond:'R$ 32.000', sub:'Cartão', total:32000, gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshwhur1000c02ji5idlbvtw', copyId:'pmc1'},
+  {cond:'R$ 31.600', sub:'1a a 12x', total:31600, gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmt4fycqr000102l59fzzfb35', copyId:'pmc0'},
+  {cond:'R$ 32.000', sub:'1a a 12x', total:32000, gateway:'Cispay', url:'https://checkout2.cispay.com.br/cmshwhur1000c02ji5idlbvtw', copyId:'pmc1'},
 ];
 
 // Programa de Aceleração 2M — produto separado do PMM
@@ -5845,7 +5846,7 @@ async function carregarLinks(){
         ${produtoTituloHTML('PMM')}
         ${lkOfertaHTML('Oferta 30K',{rotulo:'Valor base',valor:'R$ 30.000'},linhas30K())}
         ${lkOfertaHTML('Oferta 35K',{rotulo:'À vista',valor:'R$ 35.000'},linhas35K())}
-        ${lkOfertaHTML('Cartão — Cispay',{rotulo:'Valores',valor:'R$ 31.600 e R$ 32.000'},OFERTA_PMM_CISPAY)}
+        ${lkOfertaHTML('Cartão até 12x — Cispay',{rotulo:'Valores',valor:'R$ 31.600 e R$ 32.000'},OFERTA_PMM_CISPAY)}
         <div>
           <button onclick="toggleLinksBacklog()" id="backlogToggleBtn" class="lk-backlog-btn">
             <span id="backlogToggleIcon" class="lk-backlog-icon">▶</span>
