@@ -17,9 +17,11 @@ REGRA (acordada com o Ricardo em 24/08/2026):
                 da conta de no-show do mesmo jeito, mas fica visível — é aqui
                 que mora a agenda suja (evento cancelado que ninguém apagou).
 
-O lead é identificado pelo E-MAIL do convidado externo, não pelo título. Título
-repete ("Call — Priscila" são duas pessoas diferentes em agosto) e não sobrevive
-a quem escreve o nome de outro jeito na remarcação.
+O lead é identificado pelo E-MAIL do convidado externo. O título entra só como
+segunda chave, e apertado: primeiro nome igual MAIS outro token igual. Sozinho o
+título erra feio ("Priscila Barreto dos Santos" casaria com "Cristiano dos
+Santos"), mas sem ele escapam as remarcações em que o lead volta com outro
+e-mail ou o convite não tem convidado externo — foram 3 em agosto/2026.
 
 Procura a remarcação até 30 dias DEPOIS do fim da janela: call de 20/08 remarcada
 pro dia 05/09 continua sendo remarcação.
@@ -27,6 +29,7 @@ pro dia 05/09 continua sendo remarcação.
 Não escreve nada: imprime o relatório. Precisa das mesmas credenciais do
 cobertura_calls.py (GOOGLE_SA_JSON, e o Meetrox só pra saber quem é da casa).
 """
+import re
 import sys
 from collections import defaultdict
 from datetime import datetime, time, timedelta
@@ -48,6 +51,39 @@ def emails_externos(ev):
         and a['email'].lower() not in internos and not a.get('resource')})
 
 
+# Ruído do título: prefixo de origem, nome dos closers e a palavra do cargo.
+# Sem tirar isso, "[CIS] Fulano & Lígia" casa com qualquer call da Lígia.
+RUIDO = {'call', 'analise', 'aplicacao', 'cis', 'pce', 'ss', 'estrategista',
+         'amanda', 'duarte', 'caroline', 'neiva', 'gabriel', 'rocha',
+         'janaina', 'xavier', 'ligia', 'oliveira'}
+_PREFIXO = re.compile(r'^\s*(call\s*[—-]\s*)?(\[[^\]]+\]\s*)?'
+                      r'(call\s*[—-]\s*)?(\[[^\]]+\]\s*)?')
+
+
+def nome_do_titulo(titulo):
+    """Tokens do nome do lead no título. Lista vazia quando não dá pra isolar."""
+    t = _PREFIXO.sub('', cc.sem_acento(titulo or ''))
+    candidatos = []
+    for parte in re.split(r'\s*&\s*', t):
+        toks = [w for w in re.findall(r'[a-z]+', parte)
+                if len(w) > 2 and w not in RUIDO]
+        if toks:
+            candidatos.append(toks)
+    return max(candidatos, key=len) if candidatos else []
+
+
+def mesmo_lead_pelo_nome(a, b):
+    """Primeiro nome igual E pelo menos mais um token em comum.
+
+    O primeiro nome sozinho junta gente demais; dois tokens quaisquer casam por
+    sobrenome comum. Exigir os dois derruba "Priscila Barreto dos Santos" x
+    "Cristiano dos Santos" e mantém "Marcela Grape" x "Marcela Grape e Sarah".
+    """
+    if len(a) < 2 or len(b) < 2 or a[0] != b[0]:
+        return False
+    return len(set(a) & set(b)) >= 2
+
+
 def inicio_do_evento(ev):
     s = (ev.get('start') or {}).get('dateTime') or (ev.get('start') or {}).get('date')
     if not s:
@@ -55,6 +91,26 @@ def inicio_do_evento(ev):
     if len(s) == 10:                       # evento de dia inteiro
         return datetime.combine(datetime.fromisoformat(s).date(), time(0), cc.SP)
     return datetime.fromisoformat(s).astimezone(cc.SP)
+
+
+def remarcacao(call, ini, lead_do_evento, calls_do_lead, agenda_toda):
+    """A próxima call do mesmo lead depois desta, se existir.
+
+    Devolve (inicio, chave que casou) ou None. E-mail primeiro; o nome do título
+    só entra quando o e-mail não resolve.
+    """
+    eid = call['evento_id']
+    leads = lead_do_evento.get(eid) or []
+    depois = [i for e in leads for i, outro in calls_do_lead[e]
+              if i > ini and outro != eid]
+    if depois:
+        return min(depois), 'e-mail'
+    nome = nome_do_titulo(call.get('titulo'))
+    if not nome:
+        return None
+    porNome = [i for i, outro, toks in agenda_toda
+               if i > ini and outro != eid and mesmo_lead_pelo_nome(nome, toks)]
+    return (min(porNome), 'nome') if porNome else None
 
 
 def main():
@@ -75,6 +131,7 @@ def main():
     # ── agenda: evento_id → e-mails do lead, e a linha do tempo de cada lead ──
     lead_do_evento = {}
     calls_do_lead = defaultdict(list)     # e-mail do lead → [(inicio, evento_id)]
+    agenda_toda = []                      # (inicio, evento_id, tokens do nome)
     for cl in closers:
         evs = cc.eventos_da_agenda(cl['email'], t0, t1 + JANELA_REMARCACAO)
         for ev in evs:
@@ -89,6 +146,7 @@ def main():
             lead_do_evento[ev['id']] = leads
             for e in leads:
                 calls_do_lead[e].append((ini, ev['id']))
+            agenda_toda.append((ini, ev['id'], nome_do_titulo(ev.get('summary'))))
         print('  %-18s %4d eventos lidos' % (cl['nome'], len(evs)))
     print('Eventos com lead identificado: %d · leads distintos: %d'
           % (len(lead_do_evento), len(calls_do_lead)))
@@ -109,30 +167,23 @@ def main():
         if st != 'nao_aconteceu':
             # Curiosidade útil: no-show real que ainda assim foi remarcado depois.
             if st == 'no_show':
-                leads = lead_do_evento.get(c['evento_id']) or []
                 ini = datetime.fromisoformat(c['inicio']).astimezone(cc.SP)
-                if any(i > ini and eid != c['evento_id']
-                       for e in leads for i, eid in calls_do_lead[e]):
+                if remarcacao(c, ini, lead_do_evento, calls_do_lead, agenda_toda):
                     por_closer[closer]['_noshow_remarcado'] += 1
             continue
 
-        leads = lead_do_evento.get(c['evento_id'])
-        if not leads:
-            # Sem e-mail não dá pra afirmar remarcação. Fica como vazia e sai na
-            # lista — é o limite honesto do método, não um empate a favor.
-            por_closer[closer]['_vazia'] += 1
-            sem_lead.append(c)
-            continue
         ini = datetime.fromisoformat(c['inicio']).astimezone(cc.SP)
-        depois = [(i, eid) for e in leads for i, eid in calls_do_lead[e]
-                  if i > ini and eid != c['evento_id']]
-        if depois:
+        achado = remarcacao(c, ini, lead_do_evento, calls_do_lead, agenda_toda)
+        if achado:
+            prox, via = achado
             por_closer[closer]['_remarcada'] += 1
-            prox = min(depois)[0]
+            leads = lead_do_evento.get(c['evento_id']) or ['—']
             remarcadas_det.append((closer, c['data'], prox.date().isoformat(),
-                                   c['titulo'], leads[0]))
+                                   c['titulo'], leads[0], via))
         else:
             por_closer[closer]['_vazia'] += 1
+            if not lead_do_evento.get(c['evento_id']):
+                sem_lead.append(c)
 
     # ── relatório ────────────────────────────────────────────────────────────
     cab = ('%-18s %6s %6s %8s %7s %9s %8s' %
@@ -160,8 +211,8 @@ def main():
     print('\nno-show real que mesmo assim foi remarcado depois: %d '
           '(segue contando como no-show: o closer esperou)' % tot['nsr'])
     if sem_lead:
-        print('\n%d calls "ninguém entrou" sem e-mail de lead na agenda '
-              '(contadas como vazia):' % len(sem_lead))
+        print('\n%d calls "ninguém entrou" sem e-mail de lead na agenda e sem '
+              'remarcação pelo nome (contadas como vazia):' % len(sem_lead))
         for c in sem_lead[:25]:
             print('   %s  %-18s %s' % (c['data'], c['closer'], (c['titulo'] or '')[:52]))
         if len(sem_lead) > 25:
@@ -169,9 +220,9 @@ def main():
 
     print('\nRemarcações encontradas (%d) — call que não aconteceu → próxima do '
           'mesmo lead:' % len(remarcadas_det))
-    for closer, de, para, titulo, email in sorted(remarcadas_det):
-        print('   %-18s %s → %s  %-42s %s'
-              % (closer, de, para, (titulo or '')[:42], email))
+    for closer, de, para, titulo, email, via in sorted(remarcadas_det):
+        print('   %-18s %s → %s  %-42s %-34s (%s)'
+              % (closer, de, para, (titulo or '')[:42], email[:34], via))
 
 
 if __name__ == '__main__':
