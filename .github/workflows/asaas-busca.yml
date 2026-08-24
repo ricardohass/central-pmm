@@ -1,0 +1,40 @@
+name: Busca ampla de cliente (Asaas)
+
+# Consulta manual pra quando o nome não acha o cliente: cruza por pedaço de
+# nome/e-mail/CPF, por telefone e por valor exato de cobrança. Complementa o
+# "Extrato de cliente (Asaas)", que só sabe buscar por nome.
+#
+# Não escreve em lugar nenhum: é leitura. Roda aqui porque a chave do Asaas é
+# secret do repo e não pode encostar no index.html, que é público.
+
+on:
+  workflow_dispatch:
+    inputs:
+      termo:
+        description: 'Pedaços de nome/e-mail/CPF, separados por vírgula'
+        required: false
+      telefone:
+        description: 'Telefone do cliente (só os dígitos importam)'
+        required: false
+      valor:
+        description: 'Valores exatos de cobrança, separados por vírgula (ex: 3300,39600)'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  busca:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Busca ampla no Asaas
+        env:
+          ASAAS_TOKEN: ${{ secrets.ASAAS_TOKEN }}
+          TERMO: ${{ inputs.termo }}
+          TELEFONE: ${{ inputs.telefone }}
+          VALOR: ${{ inputs.valor }}
+        run: python3 .github/scripts/asaas_busca.py
