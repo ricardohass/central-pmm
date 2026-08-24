@@ -1,0 +1,38 @@
+name: No-show real x remarcação
+
+# Reclassifica o no-show da cobertura: "ninguém entrou na sala" só conta como
+# falta se o lead não tiver outra call marcada depois. Cruza pelo e-mail do
+# convidado externo, lido da agenda do Google.
+#
+# Consulta manual, não escreve nada — o resultado sai no log.
+
+on:
+  workflow_dispatch:
+    inputs:
+      de:
+        description: 'Data inicial (AAAA-MM-DD)'
+        required: true
+      ate:
+        description: 'Data final (AAAA-MM-DD)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  reagendamentos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar google-auth
+        run: pip install --quiet google-auth
+      - name: Apurar no-show real
+        working-directory: .github/scripts
+        env:
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          GOOGLE_ADMIN_EMAIL: ${{ secrets.GOOGLE_ADMIN_EMAIL }}
+          MEETROX_API_KEY: ${{ secrets.MEETROX_API_KEY }}
+        run: python3 reagendamentos.py "${{ inputs.de }}" "${{ inputs.ate }}"
