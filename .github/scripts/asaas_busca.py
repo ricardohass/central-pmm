@@ -13,8 +13,10 @@ reembolso dizendo "não existe no Asaas".
 Todos os campos são opcionais e somam: cada um é uma frente de busca própria.
   TERMO    — pedaços de nome/e-mail/CPF-CNPJ, separados por vírgula
   TELEFONE — só os dígitos importam; casa com phone e mobilePhone
-  VALOR    — valores exatos de cobrança, separados por vírgula (usa o filtro
-             `value` da API, que é exato: 3300 não acha 3.300,50)
+  VALOR    — valores exatos de cobrança, separados por vírgula. Filtrado AQUI,
+             não na API: testado em 24/08/2026, o Asaas ignora `value` em
+             /payments e devolve a lista inteira — o que faz qualquer valor
+             parecer que "achou". Comparação exata em centavos.
 
 Não escreve nada: é leitura pra decidir. Mesma cegueira do extrato — cobrança
 EXCLUÍDA no Asaas não aparece por API, só na tela, no filtro de excluídas.
@@ -124,14 +126,20 @@ def main():
         print()
 
     # --- frente 3: valor exato da cobrança ------------------------------------
-    for v in VALORES:
-        print(f'== por VALOR (R$ {v})')
-        pgs = sorted(asaas('payments', value=v), key=lambda p: p.get('dueDate') or '')
-        if not pgs:
-            print('   nenhuma cobrança com esse valor exato.')
-        for p in pgs:
-            linha_pagamento(p, nomes.get(p.get('customer'), p.get('customer')))
-        print()
+    if VALORES:
+        todas = asaas('payments')
+        print(f'{len(todas)} cobranças na conta (o filtro de valor é aplicado aqui).\n')
+        for v in VALORES:
+            print(f'== por VALOR (R$ {v})')
+            alvo = round(float(v) * 100)
+            pgs = sorted((p for p in todas
+                          if round((p.get('value') or 0) * 100) == alvo),
+                         key=lambda p: p.get('dueDate') or '')
+            if not pgs:
+                print('   nenhuma cobrança com esse valor exato.')
+            for p in pgs:
+                linha_pagamento(p, nomes.get(p.get('customer'), p.get('customer')))
+            print()
 
 
 if __name__ == '__main__':
