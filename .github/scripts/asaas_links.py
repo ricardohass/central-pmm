@@ -72,9 +72,17 @@ VAZIOS = {'de', 'da', 'do', 'dos', 'das', 'e', 'di', 'du', 'del', 'la', 'ltda',
 # Cliente que cobra na razão social da empresa: nenhum algoritmo tira "Marcia
 # Donadussi" de "MD Clínica Médica Dermatológica", isso é conhecimento de quem
 # vende. Escrito à mão, nome normalizado dos dois lados (sem acento, minúsculo).
+# A chave é o nome NA CENTRAL, e como cada venda só é procurada na conta do seu
+# produto, um apelido daqui nunca é testado contra o CNPJ da outra conta.
 #     'nome na Central': 'nome do cadastro no Asaas'
 APELIDOS_MANUAIS = {
     'marcia donadussi': 'md clinica medica dermatologica',
+    # Wonder, 25/08/2026 — as três primeiras cobranças da conta da Wonder eram
+    # PJ e nenhuma casava por nome. Evidência de cada uma:
+    #   Zero Grau: mesma data (31/08) e mesmo valor (R$ 4.000) da parcela.
+    #   Studio CS: o e-mail do cadastro é anacarolina.alonso@icloud.com.
+    'gabriel zero grau': 'zero grau industria e comercio ltda',
+    'ana carolina alonso': 'studio cs arquitetura e design ltda',
 }
 
 DRY = '--dry' in sys.argv
