@@ -19,6 +19,12 @@ on:
       valor:
         description: 'Valores exatos de cobrança, separados por vírgula (ex: 3300,39600)'
         required: false
+      conta:
+        description: 'Em qual Asaas procurar'
+        required: false
+        default: ambas
+        type: choice
+        options: [ambas, pmm, wonder]
 
 permissions:
   contents: read
@@ -34,7 +40,9 @@ jobs:
       - name: Busca ampla no Asaas
         env:
           ASAAS_TOKEN: ${{ secrets.ASAAS_TOKEN }}
+          ASAAS_TOKEN_WONDER: ${{ secrets.ASAAS_TOKEN_WONDER }}
           TERMO: ${{ inputs.termo }}
           TELEFONE: ${{ inputs.telefone }}
           VALOR: ${{ inputs.valor }}
+          CONTA: ${{ inputs.conta }}
         run: python3 .github/scripts/asaas_busca.py

@@ -5,6 +5,14 @@ Roda pelo GitHub Actions: lê as cobranças em aberto no Asaas, casa cada uma co
 parcela correspondente em `pagamentos_venda` e grava o `invoiceUrl` na coluna
 `link_cobranca`. A operadora abre a aba Cobranças e copia o link direto de lá.
 
+DUAS CONTAS: o grupo cobra em dois Asaas — o do Grupo Prø (PMM e 2M) e o da
+Wonder, no CNPJ da Wonder Prø. Cada venda é procurada SÓ na conta do seu produto
+(`asaas_contas.conta_da_venda`), e cada conta roda o casamento inteiro por conta
+própria: nome de cliente só compete com nome da mesma conta, e link de um CNPJ
+nunca cai na parcela do outro. Conta sem chave no ambiente é PULADA por inteiro —
+as parcelas dela não são casadas nem limpas, porque não olhar não é o mesmo que
+olhar e não achar.
+
 Roda aqui e não no navegador porque a chave do Asaas não pode encostar no
 index.html: a Central é página estática e pública, o fonte fica exposto.
 
@@ -15,7 +23,9 @@ no controle comercial. Antes essa lista só existia no log desta execução.
     python3 asaas_links.py          # casa e grava
     python3 asaas_links.py --dry    # só imprime o que casaria, não escreve
 
-Precisa de ASAAS_TOKEN no ambiente (secret do repo). Sem ele, para na hora.
+Precisa de ASAAS_TOKEN (Grupo Prø) e ASAAS_TOKEN_WONDER (Wonder) no ambiente,
+secrets do repo. Sem chave nenhuma, para na hora; com uma só, roda a que tem e
+diz no relatório qual ficou de fora.
 
 CASAMENTO — a Central só guarda `nome_cliente` (não tem CPF nem e-mail), então a
 chave é nome + vencimento + valor, em três níveis de confiança. Parcela ambígua
@@ -25,13 +35,13 @@ no card, e o manual nunca é sobrescrito.
 """
 import base64
 import json
-import os
 import sys
 import unicodedata
-import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import date, datetime, timedelta, timezone
+
+from asaas_contas import CONTAS, asaas, conta_da_venda, contas_ativas
 
 SUPA = 'https://ebcydqqhvdapruhnwbce.supabase.co/rest/v1/'
 KEY = base64.b64decode(
@@ -39,11 +49,6 @@ KEY = base64.b64decode(
     'SmxaaUk2SW1WaVkzbGtjWEZvZG1SaGNISjFhRzUzWW1ObElpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlP'
     'akUzTnprNU9ETXlOaklzSW1WNGNDSTZNakE1TlRVMU9USTJNbjAuME9SaTlGUlpWU3Q2V09iM1EzVnhWWXoy'
     'VWtYR1JDYlptcTJCVTUwWEpGMA==').decode()
-
-ASAAS = 'https://api.asaas.com/v3/'
-# .strip() porque token colado no secret costuma vir com quebra de linha junto,
-# e aí o header sai malformado e o Asaas devolve 401
-TOKEN = os.environ.get('ASAAS_TOKEN', '').strip()
 
 # Cobrança viva no Asaas: ainda dá pra pagar, logo ainda tem link pra mandar.
 STATUS_ABERTOS = ('PENDING', 'OVERDUE', 'AWAITING_RISK_ANALYSIS')
@@ -194,39 +199,21 @@ def upsert(tabela, linhas):
     urllib.request.urlopen(req).read()
 
 
-def apagar_orfas_antigas(agora):
+def apagar_orfas_antigas(agora, conta):
     """Tira da tabela o que não apareceu nesta rodada — cobrança paga, excluída
     ou finalmente cadastrada na Central. É o que faz `asaas_orfas` ser retrato do
-    agora, e não um depósito que só cresce."""
+    agora, e não um depósito que só cresce.
+
+    Só apaga o que é DESTA conta: rodada que consultou apenas o Grupo Prø não
+    pode limpar as órfãs da Wonder, ou o relatório da conta não consultada zera
+    sozinho e o buraco parece resolvido."""
     req = urllib.request.Request(
-        f'{SUPA}asaas_orfas?apurado_em=lt.{urllib.parse.quote(agora)}',
+        f'{SUPA}asaas_orfas?apurado_em=lt.{urllib.parse.quote(agora)}'
+        f'&conta=eq.{urllib.parse.quote(conta)}',
         method='DELETE',
         headers={'apikey': KEY, 'Authorization': 'Bearer ' + KEY,
                  'Prefer': 'return=minimal'})
     urllib.request.urlopen(req).read()
-
-
-# ── ASAAS ──
-
-def asaas(recurso, **params):
-    """GET paginado. O Asaas devolve {data, hasMore, limit, offset}, limit máx 100."""
-    out, off = [], 0
-    while True:
-        p = dict(params, limit=100, offset=off)
-        url = f'{ASAAS}{recurso}?' + urllib.parse.urlencode(p, doseq=True)
-        req = urllib.request.Request(url, headers={
-            'access_token': TOKEN,
-            'User-Agent': 'central-pmm',        # o Asaas exige User-Agent próprio
-            'Content-Type': 'application/json'})
-        try:
-            d = json.load(urllib.request.urlopen(req))
-        except urllib.error.HTTPError as e:
-            corpo = e.read().decode('utf-8', 'replace')[:400]
-            raise SystemExit(f'Asaas {recurso} devolveu HTTP {e.code}: {corpo}')
-        out += d.get('data', [])
-        if not d.get('hasMore'):
-            return out
-        off += 100
 
 
 # ── CASAMENTO ──
@@ -288,43 +275,32 @@ def casar(parcelas, cobrancas):
     return pares, [(p, disponiveis(p)) for p in livres], apelido
 
 
-def main():
-    if not TOKEN:
-        raise SystemExit('ASAAS_TOKEN ausente — sem chave não há o que buscar.')
-
-    # ── lado Asaas ──
-    clientes = {c['id']: c.get('name') or '' for c in asaas('customers')}
+def carregar_asaas(conta):
+    """Cadastros e cobranças vivas de uma conta, já normalizados pro casamento."""
+    clientes = {c['id']: c.get('name') or '' for c in asaas(conta, 'customers')}
     cobrancas = []
     for st in STATUS_ABERTOS:
-        cobrancas += asaas('payments', status=st)
+        cobrancas += asaas(conta, 'payments', status=st)
     for c in cobrancas:
         c['_nome'] = norm(clientes.get(c.get('customer'), ''))
         c['_venc'] = dia(c.get('dueDate'))
         c['_valor'] = float(c.get('value') or 0)
     # Sem nome ou sem vencimento não dá pra casar com nada; sem link não há o que gravar.
     cobrancas = [c for c in cobrancas if c['_nome'] and c['_venc'] and c.get('invoiceUrl')]
+    return clientes, cobrancas
 
-    # ── lado Central ──
-    vendas = {v['id']: v for v in q('vendas?select=id,nome_cliente,gateway')}
-    todas = q('pagamentos_venda?status=eq.pendente&select=*')
-    parcelas = []
-    for p in todas:
-        v = vendas.get(p.get('venda_id')) or {}
-        if (p.get('link_origem') or '') == 'manual':
-            continue  # link colado à mão manda: o job não escreve por cima
-        venc = dia(p.get('data_prevista'))
-        nome = norm(v.get('nome_cliente'))
-        if not venc or not nome:
-            continue
-        p['_nome'], p['_venc'] = nome, venc
-        p['_valor'] = float(p.get('valor_bruto') or 0)
-        p['_cliente'] = v.get('nome_cliente')
-        parcelas.append(p)
 
+def processar_conta(conta, parcelas, vendas, agora):
+    """Casa, grava e apura as órfãs de UMA conta Asaas.
+
+    Tudo aqui dentro é fechado na conta: as parcelas já chegam filtradas pelo
+    produto, as cobranças vêm de um CNPJ só e as órfãs são comparadas com as
+    vendas daquele mesmo produto. Devolve o pedaço do relatório dessa conta.
+    """
+    clientes, cobrancas = carregar_asaas(conta)
     pares, ambiguas, apelido = casar(parcelas, cobrancas)
 
     # ── gravação ──
-    agora = datetime.now(timezone.utc).isoformat()
     escritas, iguais = [], 0
     for p, c, nivel in pares:
         if p.get('link_cobranca') == c['invoiceUrl'] and p.get('asaas_payment_id') == c['id']:
@@ -339,6 +315,8 @@ def main():
 
     # Parcela que já teve link do Asaas mas cuja cobrança sumiu (paga por fora,
     # removida, reemitida) fica com link morto. Limpa — só o que o job mesmo pôs.
+    # Só as parcelas DESTA conta chegam aqui, então nada é limpo por causa de uma
+    # cobrança que na verdade está viva no outro CNPJ.
     vivos = {c['id'] for c in cobrancas}
     limpas = []
     casadas = {p['id'] for p, _, _ in pares}
@@ -363,9 +341,11 @@ def main():
     casados_asaas = set(apelido.values())
     orfas = [c for c in cobrancas if c['_nome'] not in casados_asaas]
 
-    # Segunda passada de nomes, agora contra TODAS as vendas e não só as que têm
-    # parcela pendente. É o que separa "venda existe mas sem cronograma" de "não
-    # existe venda nenhuma" — duas conclusões que dão trabalho bem diferente.
+    # Segunda passada de nomes, agora contra TODAS as vendas do produto desta
+    # conta e não só as que têm parcela pendente. É o que separa "venda existe mas
+    # sem cronograma" de "não existe venda nenhuma" — duas conclusões que dão
+    # trabalho bem diferente. Fica no produto de propósito: cobrança da Wonder que
+    # só acha nome numa venda de PMM não é venda encontrada, é outra coisa.
     nomes_venda = {norm(v.get('nome_cliente')): v.get('nome_cliente')
                    for v in vendas.values() if norm(v.get('nome_cliente'))}
     liga = resolver_nomes(set(nomes_venda), {c['_nome'] for c in orfas})
@@ -376,6 +356,7 @@ def main():
         central = venda_por_asaas.get(c['_nome'])
         linhas.append({
             'asaas_payment_id': c['id'],
+            'conta': conta.slug,
             'nome_asaas': clientes.get(c.get('customer')) or c['_nome'],
             'asaas_customer_id': c.get('customer'),
             'valor': c['_valor'],
@@ -399,7 +380,7 @@ def main():
             # (denunciada pelo apurado_em) em vez de tabela vazia mentindo que zerou.
             if linhas:
                 upsert('asaas_orfas', linhas)
-            apagar_orfas_antigas(agora)
+            apagar_orfas_antigas(agora, conta.slug)
         except Exception as e:
             erro_orfas = f'{type(e).__name__}: {e}'
 
@@ -407,9 +388,10 @@ def main():
     for c in orfas:
         orfaos[c['_nome']] = orfaos.get(c['_nome'], 0) + 1
 
-    print(json.dumps({
-        'data': str(hoje_sp()),
-        'dry': DRY,
+    return {
+        'conta': conta.slug,
+        'rotulo': conta.rotulo,
+        'cobra': conta.produtos,
         'cobrancas_abertas_asaas': len(cobrancas),
         'parcelas_candidatas': len(parcelas),
         'clientes_ligados': len(apelido),
@@ -422,7 +404,7 @@ def main():
         'orfas_gravadas': 0 if (DRY or erro_orfas) else len(linhas),
         'erro_ao_gravar_orfas': erro_orfas,
         'asaas_sem_parcela_na_central': sorted(
-            ({'nome': n, 'cobrancas': q} for n, q in orfaos.items()),
+            ({'nome': n, 'cobrancas': qtd} for n, qtd in orfaos.items()),
             key=lambda x: -x['cobrancas']),
         'detalhe_orfas': sorted(
             ({'nome': l['nome_asaas'], 'venc': l['vencimento'], 'valor': l['valor'],
@@ -433,6 +415,66 @@ def main():
         'detalhe_sem_casamento': [
             {'cliente': p['_cliente'], 'venc': str(p['_venc']), 'valor': p['_valor'],
              'cobrancas_no_asaas': n} for p, n in ambiguas],
+    }
+
+
+def main():
+    ativas = contas_ativas()
+    if not ativas:
+        raise SystemExit('Nenhuma chave de Asaas no ambiente ('
+                         + ', '.join(c.env for c in CONTAS)
+                         + ') — sem chave não há o que buscar.')
+    slugs = {c.slug for c in ativas}
+
+    # ── lado Central ──
+    vendas = {v['id']: v for v in q('vendas?select=id,nome_cliente,gateway,produto')}
+    todas = q('pagamentos_venda?status=eq.pendente&select=*')
+    parcelas = {s: [] for s in slugs}
+    pulou_por_falta_de_chave = 0
+    for p in todas:
+        v = vendas.get(p.get('venda_id')) or {}
+        if (p.get('link_origem') or '') == 'manual':
+            continue  # link colado à mão manda: o job não escreve por cima
+        venc = dia(p.get('data_prevista'))
+        nome = norm(v.get('nome_cliente'))
+        if not venc or not nome:
+            continue
+        p['_nome'], p['_venc'] = nome, venc
+        p['_valor'] = float(p.get('valor_bruto') or 0)
+        p['_cliente'] = v.get('nome_cliente')
+        slug = conta_da_venda(v.get('produto'))
+        if slug not in slugs:
+            # Conta sem chave nesta rodada. A parcela nem entra: sem consultar o
+            # gateway não dá pra casar, e muito menos pra limpar link que existe.
+            pulou_por_falta_de_chave += 1
+            continue
+        parcelas[slug].append(p)
+
+    agora = datetime.now(timezone.utc).isoformat()
+    por_conta = []
+    for conta in ativas:
+        do_produto = {i: v for i, v in vendas.items()
+                      if conta_da_venda(v.get('produto')) == conta.slug}
+        por_conta.append(processar_conta(conta, parcelas[conta.slug], do_produto, agora))
+
+    somar = lambda campo: sum(r[campo] for r in por_conta)
+    print(json.dumps({
+        'data': str(hoje_sp()),
+        'dry': DRY,
+        'contas_consultadas': [c.slug for c in ativas],
+        # Conta sem secret não é "conta sem cobrança": o relatório precisa dizer
+        # em voz alta o que não foi olhado, senão a ausência vira conclusão.
+        'contas_sem_chave': [{'conta': c.slug, 'secret': c.env, 'cobra': c.produtos}
+                             for c in CONTAS if c.slug not in slugs],
+        'parcelas_puladas_sem_chave': pulou_por_falta_de_chave,
+        'cobrancas_abertas_asaas': somar('cobrancas_abertas_asaas'),
+        'parcelas_candidatas': somar('parcelas_candidatas'),
+        'casadas': somar('casadas'),
+        'gravadas': somar('gravadas'),
+        'limpas': somar('limpas'),
+        'sem_casamento': somar('sem_casamento'),
+        'orfas_gravadas': somar('orfas_gravadas'),
+        'por_conta': por_conta,
     }, ensure_ascii=False, indent=2))
 
 

@@ -4,6 +4,10 @@ name: Links de cobrança (Asaas)
 # grava o link de pagamento em pagamentos_venda.link_cobranca, pra operadora
 # copiar direto da aba Cobranças.
 #
+# São DUAS contas Asaas: a do Grupo Prø (PMM e 2M) e a da Wonder. Cada venda é
+# procurada só na conta do seu produto. Conta cujo secret não existe é pulada, e
+# o relatório diz qual — parcela de conta não consultada fica intocada.
+#
 # Roda no GitHub por dois motivos: a chave do Asaas não pode ir pro index.html
 # (página estática e pública), e a sandbox dos agentes na nuvem tem proxy com
 # allowlist que bloqueia o Supabase (403).
@@ -28,4 +32,5 @@ jobs:
       - name: Casar cobranças do Asaas com as parcelas
         env:
           ASAAS_TOKEN: ${{ secrets.ASAAS_TOKEN }}
+          ASAAS_TOKEN_WONDER: ${{ secrets.ASAAS_TOKEN_WONDER }}
         run: python3 .github/scripts/asaas_links.py

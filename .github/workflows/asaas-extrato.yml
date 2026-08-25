@@ -1,5 +1,7 @@
 name: Extrato de cliente (Asaas)
 
+# Varre as duas contas Asaas do grupo (Grupo Prø e Wonder) por padrão.
+#
 # Consulta manual: imprime no log TODAS as cobranças de um cliente no Asaas,
 # inclusive as já pagas — que a rotina de links não enxerga, porque ela só busca
 # cobrança viva. Serve pra responder "esse cliente já pagou alguma parcela?"
@@ -14,6 +16,12 @@ on:
       nome:
         description: 'Pedaço do nome do cliente (sem acento e case não importam)'
         required: true
+      conta:
+        description: 'Em qual Asaas procurar'
+        required: false
+        default: ambas
+        type: choice
+        options: [ambas, pmm, wonder]
 
 permissions:
   contents: read
@@ -29,5 +37,7 @@ jobs:
       - name: Extrato do cliente no Asaas
         env:
           ASAAS_TOKEN: ${{ secrets.ASAAS_TOKEN }}
+          ASAAS_TOKEN_WONDER: ${{ secrets.ASAAS_TOKEN_WONDER }}
           NOME: ${{ inputs.nome }}
+          CONTA: ${{ inputs.conta }}
         run: python3 .github/scripts/asaas_extrato.py
