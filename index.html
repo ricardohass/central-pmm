@@ -1008,6 +1008,19 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-btn-link.copied { background:#2E4A2E; border-color:#2E4A2E; color:#FAF6EC; }
 .cob-link-abrir { flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:999px; border:0.5px solid #D9D1BE; background:#FAF6EC; color:#6B6355; font-size:12px; cursor:pointer; transition:background .12s,border-color .12s,color .12s; }
 .cob-link-abrir:hover { background:#fff; border-color:#2E4A2E; color:#2E4A2E; }
+
+/* Telefone do cliente (base do PMM) — resolvido na criação da venda e gravado em
+   vendas.telefone_pmm. Mesma linha visual do link de cobrança pra não criar um
+   segundo idioma de card. */
+.cob-lanc-tel { display:flex; align-items:center; gap:7px; margin-top:9px; padding-top:9px; border-top:0.5px dashed #E0D8C4; flex-wrap:wrap; }
+.cob-tel-ico { font-size:12px; opacity:.65; flex-shrink:0; }
+.cob-tel-num { font-size:12px; font-weight:500; color:#1F2E1D; white-space:nowrap; }
+.cob-tel-vazio { font-size:11px; color:#A39B8A; }
+.cob-tel-acao { display:inline-flex; align-items:center; gap:5px; text-decoration:none; background:#DCE8CE; color:#2E4A2E; border:0.5px solid #B9CDA4; border-radius:999px; padding:4px 11px; font-size:11.5px; font-weight:500; white-space:nowrap; transition:background .12s,border-color .12s; }
+.cob-tel-acao:hover { background:#CFE0BC; border-color:#3B5A22; }
+.cob-tel-btn { display:inline-flex; align-items:center; gap:5px; background:#FAF6EC; color:#6B6355; border:0.5px solid #D9D1BE; border-radius:999px; padding:4px 11px; font-family:'Inter',sans-serif; font-size:11.5px; font-weight:500; cursor:pointer; white-space:nowrap; transition:background .12s,border-color .12s,color .12s; }
+.cob-tel-btn:hover { background:#fff; border-color:#2E4A2E; color:#2E4A2E; }
+.cob-tel-btn:disabled { opacity:.55; cursor:default; }
 .cob-link-tag { flex-shrink:0; font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:#6B6355; background:#F1EADA; border:0.5px solid #E0D8C4; border-radius:999px; padding:2px 7px; cursor:help; }
 </style>
 </head>
@@ -3507,6 +3520,10 @@ async function salvarVenda(){
     } else {
       const result=await supaFetch('vendas',{method:'POST',body:JSON.stringify(body)});
       vendaId=Array.isArray(result)&&result[0]?result[0].id:null;
+      // Telefone do cliente: resolve na base do PMM e grava na venda. Fire and forget —
+      // a venda já está salva e a tela não espera o PMM. Se falhar (rede, rota fora do ar),
+      // telefone_pmm_status fica null e o card de Cobranças oferece "Buscar telefone".
+      if(vendaId&&body.nome_cliente) resolverTelefonePmm(vendaId,body.nome_cliente).catch(()=>{});
     }
     // Salva cronograma na tabela pagamentos_venda.
     // Editar uma venda ATUALIZA as parcelas existentes, uma a uma, em vez de apagar tudo e
@@ -6376,10 +6393,17 @@ function pagOculto(p){ return p && p.categoria!=='reembolso' && p.status==='pend
 // Recebidas do mês que está aberto no calendário — por data_recebimento (dinheiro que entrou
 // de fato). Antes isso vinha fixo do mês corrente, então voltar pra um mês passado mostrava o
 // calendário sem nenhuma cobrança recebida.
+// Campos da venda que o calendário de Cobranças precisa. telefone_pmm/_status só
+// existem depois de rodar sql/004_telefone_pmm.sql — o fallback sem eles evita que a
+// aba inteira caia enquanto a migration não foi aplicada.
+const SEL_VENDA_COB='vendas(nome_cliente,id,closer,produto,telefone_pmm,telefone_pmm_status)';
+const SEL_VENDA_COB_LEGADO='vendas(nome_cliente,id,closer,produto)';
+const fetchPagsCob=url=>supaFetch(url(SEL_VENDA_COB)).catch(()=>supaFetch(url(SEL_VENDA_COB_LEGADO)));
+
 function fetchRecebidosMes(ano,mes){
   const anoMes=ano+'-'+String(mes+1).padStart(2,'0');
   const ultimo=anoMes+'-'+String(new Date(ano,mes+1,0).getDate()).padStart(2,'0');
-  return supaFetch('pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01&data_recebimento=lte.'+ultimo+'&select=*,vendas(nome_cliente,id,closer,produto)&order=data_prevista.asc').catch(()=>[]);
+  return fetchPagsCob(sel=>'pagamentos_venda?status=eq.recebido&data_recebimento=gte.'+anoMes+'-01&data_recebimento=lte.'+ultimo+'&select=*,'+sel+'&order=data_prevista.asc').catch(()=>[]);
 }
 
 async function carregarCobrancas(){
@@ -6388,7 +6412,7 @@ async function carregarCobrancas(){
   container.innerHTML='<p style="text-align:center;color:var(--muted);padding:40px;">Carregando cobranças...</p>';
   try{
     const [pendentes,recebidosMes,reembPags,reembCasos]=await Promise.all([
-      supaFetch('pagamentos_venda?status=eq.pendente&select=*,vendas(nome_cliente,id,closer,produto)&order=data_prevista.asc'),
+      fetchPagsCob(sel=>'pagamentos_venda?status=eq.pendente&select=*,'+sel+'&order=data_prevista.asc'),
       fetchRecebidosMes(calAno,calMes),
       supaFetch('reembolsos_pagamentos?select=*,reembolsos(nome_cliente,id,closer,responsavel,tipo,vendas(produto))&order=data_prevista.asc').catch(()=>[]),
       supaFetch('reembolsos?venda_id=not.is.null&select=venda_id,status,status_reembolso').catch(()=>[]),
@@ -6818,6 +6842,117 @@ function iconeMetodoCob(metodo){
 // valor (a venda não guarda CPF nem e-mail), então o que fica ambíguo não casa —
 // e link de cobrança errado na mão da operadora é pior que link nenhum. O que
 // sobrar, cola-se aqui: vira link_origem='manual' e o job não escreve por cima.
+// ═══ TELEFONE DO CLIENTE (base do PMM) ═══
+// O número não é da Central: vive na base de clientes do PMM e chega pela rota
+// /api/pmm-clientes (que já cuida do token — nada de segredo aqui). Consultar essa
+// rota a cada abertura do calendário daria uma chamada externa por card, então o
+// telefone é resolvido UMA vez, na criação da venda, e gravado em vendas.telefone_pmm.
+// vendas.telefone_pmm_status guarda por que o campo está vazio — ver sql/004_telefone_pmm.sql.
+
+// Chama o PMM e diz o que dá pra concluir do resultado. Erro de rede SOBE:
+// quem chama decide (na criação da venda, ignora; no botão, avisa).
+async function buscarClientePmm(nome){
+  const r=await fetch('/api/pmm-clientes?nome='+encodeURIComponent(nome));
+  if(!r.ok) throw new Error('PMM respondeu '+r.status);
+  const d=await r.json();
+  if(!d||d.ok===false) throw new Error('PMM devolveu erro');
+  const lista=Array.isArray(d.clientes)?d.clientes:[];
+  const total=typeof d.total==='number'?d.total:lista.length;
+  if(total>1) return {status:'ambiguo',telefone:null};  // chutar qual é = cobrar o cliente errado
+  const contato=total===1?((lista[0]&&lista[0].contato)||'').trim():'';
+  // Cliente achado mas sem contato cadastrado vale o mesmo que não achado: não há
+  // número pra mostrar, e marcar 'encontrado' deixaria o card mudo pra sempre.
+  return contato?{status:'encontrado',telefone:contato}:{status:'nao_encontrado',telefone:null};
+}
+
+// Busca e grava na venda. Devolve o que foi gravado (pra atualizar a tela sem recarregar).
+async function resolverTelefonePmm(vendaId,nome){
+  const r=await buscarClientePmm(nome);
+  const corpo={telefone_pmm_status:r.status};
+  if(r.status==='encontrado') corpo.telefone_pmm=r.telefone;
+  await supaFetch('vendas?id=eq.'+vendaId,{method:'PATCH',body:JSON.stringify(corpo)});
+  return corpo;
+}
+
+// Telefone do PMM vem em formato livre. Guarda só os dígitos do número nacional:
+// o 55 do país entra na hora de montar o link, não no que a gente compara/formata.
+function telPmmDigitos(t){
+  let d=(t||'').replace(/\D/g,'');
+  if(d.length>11&&d.slice(0,2)==='55') d=d.slice(2);
+  return d;
+}
+function fmtTelefone(t){
+  const d=telPmmDigitos(t);
+  if(d.length===11) return '('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);
+  if(d.length===10) return '('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);
+  return t||'—';  // número fora do padrão BR sai como veio, melhor que esconder
+}
+
+// Linha do telefone no card da parcela. Quatro estados, um por valor de telefone_pmm_status.
+function linhaTelefoneCob(p,dateStr){
+  const v=p.vendas||{};
+  if(!v.id) return '';
+  const tel=v.telefone_pmm||'';
+  const st=v.telefone_pmm_status||'';
+  let corpo;
+  if(tel){
+    const d=telPmmDigitos(tel);
+    corpo=`<span class="cob-tel-num">${escHtml(fmtTelefone(tel))}</span>
+      <a class="cob-tel-acao" href="https://wa.me/55${d}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp">WhatsApp</a>
+      <a class="cob-tel-acao" href="tel:+55${d}" title="Ligar para o cliente">Ligar</a>`;
+  } else if(st==='nao_encontrado'){
+    corpo=`<span class="cob-tel-vazio">sem telefone no PMM</span>`;
+  } else if(st==='ambiguo'){
+    corpo=`<span class="cob-tel-vazio">nome ambíguo no PMM</span>
+      <button class="cob-tel-btn" title="Digitar o nome exato como está cadastrado no PMM" onclick="pmmTelPerguntarNome('${v.id}','${dateStr}',this)">Buscar</button>`;
+  } else {
+    corpo=`<button class="cob-tel-btn" title="Procurar o telefone deste cliente na base do PMM" onclick="pmmTelBuscar('${v.id}','${dateStr}',this)">Buscar telefone</button>`;
+  }
+  return `<div class="cob-lanc-tel"><span class="cob-tel-ico">📞</span>${corpo}</div>`;
+}
+
+// Roda a busca sob demanda a partir do card e redesenha o dia com o resultado.
+async function pmmTelRodar(vendaId,nome,dateStr,btn){
+  const rotulo=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Buscando…';}
+  try{
+    const gravado=await resolverTelefonePmm(vendaId,nome);
+    // Cada parcela carrega sua própria cópia do embed vendas(...) — atualiza todas
+    // as parcelas dessa venda, senão o card do dia seguinte continuaria desatualizado.
+    todosPagamentos.forEach(x=>{
+      if(x.vendas&&x.vendas.id===vendaId) Object.assign(x.vendas,gravado);
+    });
+    mostrarDetalheCalDia(dateStr);
+    if(gravado.telefone_pmm_status==='ambiguo')
+      pmmAlert('Mais de um cliente com esse nome no PMM. Tente o nome completo, exatamente como está cadastrado lá.','🔍','Nome ambíguo');
+    else if(gravado.telefone_pmm_status==='nao_encontrado')
+      pmmAlert('Nenhum cliente com esse nome na base do PMM.','🔍','Sem telefone');
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent=rotulo;}
+    pmmAlert('Não consegui falar com a base do PMM agora. O status fica em branco e dá pra tentar de novo.','📵','Telefone');
+  }
+}
+
+function nomeClienteDaVenda(vendaId){
+  const p=todosPagamentos.find(x=>x.vendas&&x.vendas.id===vendaId);
+  return (p&&p.vendas.nome_cliente)||'';
+}
+
+function pmmTelBuscar(vendaId,dateStr,btn){
+  const nome=nomeClienteDaVenda(vendaId);
+  if(!nome){pmmAlert('Esta venda está sem nome de cliente.','⚠️','Telefone');return;}
+  pmmTelRodar(vendaId,nome,dateStr,btn);
+}
+
+// Nome ambíguo: o nome da venda não resolve sozinho, então quem opera digita o nome
+// exato da base do PMM.
+function pmmTelPerguntarNome(vendaId,dateStr,btn){
+  const nome=prompt('Nome exato do cliente na base do PMM:',nomeClienteDaVenda(vendaId));
+  if(nome===null) return;
+  if(!nome.trim()) return;
+  pmmTelRodar(vendaId,nome.trim(),dateStr,btn);
+}
+
 function linhaLinkCob(p,dateStr){
   const url=p.link_cobranca||'';
   const auto=p.link_origem==='asaas';
@@ -6950,6 +7085,7 @@ function mostrarDetalheCalDia(dateStr){
       // Link de cobrança: só faz sentido no que ainda está em aberto. O que já entrou
       // não precisa de link, e mostrar um ali só polui a linha.
       const linkHtml=recebido?'':linhaLinkCob(p,dateStr);
+      const telHtml=linhaTelefoneCob(p,dateStr);
       return`<div class="cob-lanc${recebido?' is-recebido':''}">
         <div class="cob-lanc-top">
           <div class="cob-lanc-id">
@@ -6978,6 +7114,7 @@ function mostrarDetalheCalDia(dateStr){
           </div>
         </div>
         ${linkHtml}
+        ${telHtml}
       </div>`;
     }).join('');
   }
