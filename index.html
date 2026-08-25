@@ -1016,7 +1016,12 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-tel-ico { font-size:12px; opacity:.65; flex-shrink:0; }
 .cob-tel-num { font-size:12px; font-weight:500; color:#1F2E1D; white-space:nowrap; }
 .cob-tel-vazio { font-size:11px; color:#A39B8A; }
+.vf-doc-aviso { display:block; font-size:11px; margin-top:4px; min-height:14px; color:transparent; }
+.vf-doc-aviso.bom { color:#3B5A22; }
+.vf-doc-aviso.ruim { color:#8B3A1F; }
+input.vf-doc-ruim { border-color:#8B3A1F !important; }
 .cob-tel-divergente { font-size:11px; color:#8B3A1F; background:#F5D9CA; border-radius:999px; padding:3px 9px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cob-tel-confirmado { font-size:11px; color:#3B5A22; background:#DCE8CE; border-radius:999px; padding:3px 9px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .cob-tel-acao { display:inline-flex; align-items:center; gap:5px; text-decoration:none; background:#DCE8CE; color:#2E4A2E; border:0.5px solid #B9CDA4; border-radius:999px; padding:4px 11px; font-size:11.5px; font-weight:500; white-space:nowrap; transition:background .12s,border-color .12s; }
 .cob-tel-acao:hover { background:#CFE0BC; border-color:#3B5A22; }
 .cob-tel-btn { display:inline-flex; align-items:center; gap:5px; background:#FAF6EC; color:#6B6355; border:0.5px solid #D9D1BE; border-radius:999px; padding:4px 11px; font-family:'Inter',sans-serif; font-size:11.5px; font-weight:500; cursor:pointer; white-space:nowrap; transition:background .12s,border-color .12s,color .12s; }
@@ -1866,6 +1871,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
           </select>
         </div>
         <div class="vf-field vf-full"><label>Nome do cliente</label><input type="text" id="vfCliente" placeholder="Nome completo do cliente"></div>
+        <div class="vf-field vf-full"><label>CPF / CNPJ do cliente</label><input type="text" id="vfCpfCnpj" placeholder="Só números, ou com pontuação — tanto faz" oninput="validarDocVenda(this)"><span id="vfDocAviso" class="vf-doc-aviso"></span></div>
         <div class="vf-field vf-full"><label>Observações</label><textarea id="vfObs" placeholder="Observações sobre a venda..."></textarea></div>
       </div>
     </div>
@@ -3415,6 +3421,7 @@ function abrirFormVenda(){
   document.getElementById('vfOrigem').value='';
   document.getElementById('vfStatus').value='confirmada';
   document.getElementById('vfCliente').value='';
+  document.getElementById('vfCpfCnpj').value=''; validarDocVenda(document.getElementById('vfCpfCnpj'));
   document.getElementById('vfObs').value='';
   document.getElementById('vfCloser').value='';
   document.getElementById('vfSdr').value='';
@@ -3440,6 +3447,7 @@ function editarVenda(v){
   document.getElementById('vfOrigem').value=v.origem||'';
   document.getElementById('vfStatus').value=v.status||'confirmada';
   document.getElementById('vfCliente').value=v.nome_cliente||'';
+  document.getElementById('vfCpfCnpj').value=v.cpf_cnpj||''; validarDocVenda(document.getElementById('vfCpfCnpj'));
   document.getElementById('vfObs').value=v.observacoes||'';
   document.getElementById('vfCloser').value=v.closer||'';
   document.getElementById('vfSdr').value=v.sdr||'';
@@ -3497,6 +3505,7 @@ async function salvarVenda(){
   const body={
     data_venda:dataVenda,
     nome_cliente:document.getElementById('vfCliente').value||null,
+    cpf_cnpj:soDigitos(document.getElementById('vfCpfCnpj').value)||null,
     produto,
     origem:document.getElementById('vfOrigem').value||null,
     gateway:primeiroGateway,
@@ -3518,13 +3527,16 @@ async function salvarVenda(){
     let vendaId=id;
     if(id){
       await supaFetch('vendas?id=eq.'+id,{method:'PATCH',body:JSON.stringify(body)});
+      // Venda que ganhou CPF agora, ou que nunca resolveu, merece nova tentativa.
+      // Quem já tem telefone fica intocado: pode ter sido corrigido à mão pelo card.
+      if(body.nome_cliente||body.cpf_cnpj) retentarTelefonePmm(id,body.nome_cliente,body.cpf_cnpj).catch(()=>{});
     } else {
       const result=await supaFetch('vendas',{method:'POST',body:JSON.stringify(body)});
       vendaId=Array.isArray(result)&&result[0]?result[0].id:null;
       // Telefone do cliente: resolve na base do PMM e grava na venda. Fire and forget —
       // a venda já está salva e a tela não espera o PMM. Se falhar (rede, rota fora do ar),
       // telefone_pmm_status fica null e o card de Cobranças oferece "Buscar telefone".
-      if(vendaId&&body.nome_cliente) resolverTelefonePmm(vendaId,body.nome_cliente).catch(()=>{});
+      if(vendaId&&(body.nome_cliente||body.cpf_cnpj)) resolverTelefonePmm(vendaId,body.nome_cliente,body.cpf_cnpj).catch(()=>{});
     }
     // Salva cronograma na tabela pagamentos_venda.
     // Editar uma venda ATUALIZA as parcelas existentes, uma a uma, em vez de apagar tudo e
@@ -6397,7 +6409,7 @@ function pagOculto(p){ return p && p.categoria!=='reembolso' && p.status==='pend
 // Campos da venda que o calendário de Cobranças precisa. telefone_pmm/_status só
 // existem depois de rodar sql/004_telefone_pmm.sql — o fallback sem eles evita que a
 // aba inteira caia enquanto a migration não foi aplicada.
-const SEL_VENDA_COB='vendas(nome_cliente,id,closer,produto,telefone_pmm,telefone_pmm_status,nome_pmm)';
+const SEL_VENDA_COB='vendas(nome_cliente,id,closer,produto,telefone_pmm,telefone_pmm_status,nome_pmm,cpf_cnpj,telefone_pmm_via)';
 const SEL_VENDA_COB_LEGADO='vendas(nome_cliente,id,closer,produto)';
 const fetchPagsCob=url=>supaFetch(url(SEL_VENDA_COB)).catch(()=>supaFetch(url(SEL_VENDA_COB_LEGADO)));
 
@@ -6854,8 +6866,8 @@ function iconeMetodoCob(metodo){
 // (na criação da venda, ignora; no botão, avisa). Resposta inválida NUNCA vira
 // 'nao_encontrado' — a rota devolve corpo vazio de vez em quando, e carimbar
 // "não existe" em cima de uma falha deixaria a venda marcada errada pra sempre.
-async function consultarPmm(nome){
-  const r=await fetch('/api/pmm-clientes?nome='+encodeURIComponent(nome));
+async function consultarPmm(campo,valor){
+  const r=await fetch('/api/pmm-clientes?'+campo+'='+encodeURIComponent(valor));
   if(!r.ok) throw new Error('PMM respondeu '+r.status);
   const d=await r.json();
   if(!d||d.ok===false) throw new Error('PMM devolveu erro');
@@ -6870,6 +6882,59 @@ async function consultarPmm(nome){
 // normalizado, não um chute em outro cliente.
 // Versão própria: o semAcento() do topo do arquivo também joga pra minúscula, e a
 // busca do PMM reage ao caixa. Aqui só o acento sai; o resto do nome vai como veio.
+// ── DOCUMENTO DO CLIENTE (CPF/CNPJ) ──────────────────────────────────────────
+// Nome é chave fraca: dois clientes podem se chamar igual, nenhum tem o mesmo CPF.
+// O documento é o que faz o telefone do PMM vir do cadastro certo.
+//
+// Validar o dígito verificador aqui não é preciosismo: CPF digitado errado não dá
+// erro em lugar nenhum — a busca no PMM simplesmente não acha, a venda fica sem
+// telefone e ninguém descobre por quê. O aviso no formulário mostra o problema
+// enquanto a pessoa ainda está com o cadastro aberto.
+const soDigitos=t=>(t||'').replace(/\D/g,'');
+
+function cpfValido(c){
+  if(c.length!==11||/^(\d)\1{10}$/.test(c)) return false;  // 111.111.111-11 passa na conta e não existe
+  for(let t=9;t<11;t++){
+    let soma=0;
+    for(let i=0;i<t;i++) soma+=Number(c[i])*((t+1)-i);
+    let dig=(soma*10)%11; if(dig===10) dig=0;
+    if(dig!==Number(c[t])) return false;
+  }
+  return true;
+}
+
+function cnpjValido(c){
+  if(c.length!==14||/^(\d)\1{13}$/.test(c)) return false;
+  const calc=len=>{
+    let soma=0,pos=len-7;
+    for(let i=len;i>=1;i--){ soma+=Number(c[len-i])*pos--; if(pos<2) pos=9; }
+    const r=soma%11; return r<2?0:11-r;
+  };
+  return calc(12)===Number(c[12])&&calc(13)===Number(c[13]);
+}
+
+// '' (vazio, e tudo bem) | 'cpf' | 'cnpj' | 'invalido'
+function tipoDoc(d){
+  d=soDigitos(d);
+  if(!d) return '';
+  if(d.length===11) return cpfValido(d)?'cpf':'invalido';
+  if(d.length===14) return cnpjValido(d)?'cnpj':'invalido';
+  return 'invalido';
+}
+
+// Aviso ao vivo no formulário. Nunca bloqueia o salvamento: documento errado é
+// problema de cadastro, não motivo pra impedir alguém de registrar a venda.
+function validarDocVenda(el){
+  const aviso=document.getElementById('vfDocAviso');
+  if(!el||!aviso) return;
+  const d=soDigitos(el.value), t=tipoDoc(d);
+  el.classList.toggle('vf-doc-ruim',t==='invalido');
+  aviso.textContent=t==='invalido'
+    ?(d.length===11||d.length===14?'Dígito verificador não fecha — confira o número.':'CPF tem 11 dígitos, CNPJ tem 14. Digitados: '+d.length)
+    :(t==='cpf'?'✓ CPF válido':t==='cnpj'?'✓ CNPJ válido':'');
+  aviso.className='vf-doc-aviso'+(t==='invalido'?' ruim':t?' bom':'');
+}
+
 const pmmSemAcento=t=>(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 
 // A venda e o cadastro do PMM raramente divergem, mas quando divergem o estrago é
@@ -6886,26 +6951,74 @@ function nomesConferem(a,b){
   return x===y||x.startsWith(y)||y.startsWith(x);
 }
 
-async function buscarClientePmm(nome){
-  let r=await consultarPmm(nome);
+// Fecha o resultado a partir de UM cliente escolhido. Contato vazio ou que não
+// chega a ser telefone vale o mesmo que não achar: não há número pra mostrar, e
+// marcar 'encontrado' deixaria o card mudo pra sempre.
+function fecharAchado(c,docVenda){
+  const contato=((c&&c.contato)||'').trim();
+  if(!contato||telPmmDigitos(contato).length<10)
+    return {status:'nao_encontrado',telefone:null,nome:null,via:null};
+  // Registra a chave que confirmou o casamento, não o caminho que a busca tomou:
+  // o que importa depois é se o documento bateu, e não se chegamos ali pelo nome.
+  const d=soDigitos(docVenda);
+  const via=(d&&(soDigitos(c.cpf)===d||soDigitos(c.cnpj)===d))?'documento':'nome';
+  return {status:'encontrado',telefone:contato,nome:((c.nome||'').trim())||null,via};
+}
+
+// A ordem importa: documento primeiro, nome só como plano B.
+//
+//   1. Tem CPF/CNPJ → busca por ele. É chave única: o que voltar é o cliente certo,
+//      sem depender de como cada sistema escreve o nome.
+//   2. Sem documento (ou documento não achou nada) → busca por nome, com o retry
+//      sem acento, como antes.
+//   3. Nome trouxe vários MAS a venda tem documento → o documento desempata: fica
+//      o cliente cujo CPF/CNPJ bate. Sem documento, continua ambíguo.
+//   4. Nome trouxe UM SÓ e a venda tem documento que NÃO bate com o dele → é outra
+//      pessoa. Recusa o casamento em vez de gravar o telefone de terceiro.
+async function buscarClientePmm(nome,doc){
+  const d=soDigitos(doc), tipo=tipoDoc(d);
+
+  if(tipo==='cpf'||tipo==='cnpj'){
+    const rd=await consultarPmm(tipo,d);
+    if(rd.total===1) return fecharAchado(rd.lista[0],d);
+    if(rd.total>1){
+      // Mesmo documento em mais de um cadastro é problema da base de lá, não nosso.
+      const igual=rd.lista.filter(c=>soDigitos(c.cpf)===d||soDigitos(c.cnpj)===d);
+      if(igual.length===1) return fecharAchado(igual[0],d);
+      return {status:'ambiguo',telefone:null,nome:null};
+    }
+    // total===0: o cliente pode existir lá sem o documento preenchido. Cai pro nome.
+  }
+
+  if(!nome) return {status:'nao_encontrado',telefone:null,nome:null};
+
+  let r=await consultarPmm('nome',nome);
   const alt=pmmSemAcento(nome);
-  if(r.total===0&&alt!==nome) r=await consultarPmm(alt);
-  if(r.total>1) return {status:'ambiguo',telefone:null,nome:null};  // chutar qual é = cobrar o cliente errado
-  const achado=r.total===1?(r.lista[0]||{}):{};
-  const contato=(achado.contato||'').trim();
-  // Cliente achado mas sem contato cadastrado vale o mesmo que não achado: não há
-  // número pra mostrar, e marcar 'encontrado' deixaria o card mudo pra sempre.
-  return contato
-    ?{status:'encontrado',telefone:contato,nome:(achado.nome||'').trim()||null}
-    :{status:'nao_encontrado',telefone:null,nome:null};
+  if(r.total===0&&alt!==nome) r=await consultarPmm('nome',alt);
+
+  const casaDoc=c=>soDigitos(c.cpf)===d||soDigitos(c.cnpj)===d;
+  if(r.total>1){
+    if(!d) return {status:'ambiguo',telefone:null,nome:null};  // chutar qual é = cobrar o cliente errado
+    const escolhidos=r.lista.filter(casaDoc);
+    return escolhidos.length===1?fecharAchado(escolhidos[0],d):{status:'ambiguo',telefone:null,nome:null};
+  }
+  if(r.total===1){
+    const c=r.lista[0]||{};
+    // Só recusa quando dá pra comparar dos dois lados: cadastro do PMM sem documento
+    // não desmente nada, e recusar aí perderia telefone bom por falta de dado deles.
+    const temLa=soDigitos(c.cpf)||soDigitos(c.cnpj);
+    if(d&&temLa&&!casaDoc(c)) return {status:'nao_encontrado',telefone:null,nome:null};
+    return fecharAchado(c,d);
+  }
+  return {status:'nao_encontrado',telefone:null,nome:null};
 }
 
 // Busca e grava na venda. Devolve o que foi gravado (pra atualizar a tela sem recarregar).
-async function resolverTelefonePmm(vendaId,nome){
-  const r=await buscarClientePmm(nome);
+async function resolverTelefonePmm(vendaId,nome,doc){
+  const r=await buscarClientePmm(nome,doc);
   const corpo={telefone_pmm_status:r.status};
-  if(r.status==='encontrado'){ corpo.telefone_pmm=r.telefone; corpo.nome_pmm=r.nome; }
-  else { corpo.nome_pmm=null; }
+  if(r.status==='encontrado'){ corpo.telefone_pmm=r.telefone; corpo.nome_pmm=r.nome; corpo.telefone_pmm_via=r.via; }
+  else { corpo.nome_pmm=null; corpo.telefone_pmm_via=null; }
   await supaFetch('vendas?id=eq.'+vendaId,{method:'PATCH',body:JSON.stringify(corpo)});
   return corpo;
 }
@@ -6924,6 +7037,24 @@ function fmtTelefone(t){
   return t||'—';  // número fora do padrão BR sai como veio, melhor que esconder
 }
 
+// DDDs que existem no Brasil. Sem essa lista, "0000000000" viraria um link de
+// WhatsApp de aparência normal que simplesmente não abre conversa nenhuma.
+const DDDS_BR=new Set(('11 12 13 14 15 16 17 18 19 21 22 24 27 28 31 32 33 34 35 37 38 41 42 43 44 45 46 '
+  +'47 48 49 51 53 54 55 61 62 63 64 65 66 67 68 69 71 73 74 75 77 79 81 82 83 84 85 86 87 88 89 '
+  +'91 92 93 94 95 96 97 98 99').split(' '));
+
+// 'celular' | 'fixo' | 'invalido'. O que decide se mostramos link de WhatsApp:
+// mandar mensagem pra telefone fixo não chega em ninguém.
+function tipoTelefone(t){
+  const d=telPmmDigitos(t);
+  if(!DDDS_BR.has(d.slice(0,2))) return 'invalido';
+  if(d.length===11) return d[2]==='9'?'celular':'invalido';
+  // 10 dígitos: fixo começa em 2-5. De 6 a 9 é celular do formato antigo, sem o
+  // nono dígito — ainda abre conversa no WhatsApp.
+  if(d.length===10) return /[2-5]/.test(d[2])?'fixo':(/[6-9]/.test(d[2])?'celular':'invalido');
+  return 'invalido';
+}
+
 // Linha do telefone no card da parcela. Quatro estados, um por valor de telefone_pmm_status.
 function linhaTelefoneCob(p,dateStr){
   const v=p.vendas||{};
@@ -6938,10 +7069,20 @@ function linhaTelefoneCob(p,dateStr){
     // Bateu: o nome de lá fica no title, disponível sem poluir o card.
     // Divergiu: vira aviso na cara de quem vai cobrar, com o nome do cadastro.
     const titulo=nomePmm?` title="Cadastro no PMM: ${escHtml(nomePmm)}"`:'';
+    const tipo=tipoTelefone(tel);
+    // Link só onde ele funciona: WhatsApp pra celular, ligação pra celular e fixo.
+    // Número que não fecha como telefone brasileiro não vira link nenhum — melhor
+    // mostrar que está torto do que entregar um botão que não abre nada.
+    const acoes=tipo==='invalido'?'':(
+      (tipo==='celular'?`<a class="cob-tel-acao" href="https://wa.me/55${d}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp">WhatsApp</a>`:'')
+      +`<a class="cob-tel-acao" href="tel:+55${d}" title="Ligar para o cliente">Ligar</a>`);
     corpo=`<span class="cob-tel-num"${titulo}>${escHtml(fmtTelefone(tel))}</span>
-      <a class="cob-tel-acao" href="https://wa.me/55${d}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp">WhatsApp</a>
-      <a class="cob-tel-acao" href="tel:+55${d}" title="Ligar para o cliente">Ligar</a>
-      ${confere?'':`<span class="cob-tel-divergente" title="A venda está num nome e o telefone veio de outro cadastro no PMM. Confira se é o mesmo cliente antes de cobrar.">⚠ no PMM: ${escHtml(nomePmm)}</span>`}
+      ${tipo==='fixo'?'<span class="cob-tel-vazio">fixo</span>':''}
+      ${tipo==='invalido'?'<span class="cob-tel-divergente" title="O contato cadastrado no PMM não forma um telefone brasileiro válido. Confira na base de lá.">⚠ número inválido</span>':''}
+      ${acoes}
+      ${confere?'':(v.telefone_pmm_via==='documento'
+        ? `<span class="cob-tel-confirmado" title="O CPF/CNPJ da venda bate com o deste cadastro no PMM — é o mesmo cliente, só com outro nome no cadastro de lá.">✓ CPF confere · no PMM: ${escHtml(nomePmm)}</span>`
+        : `<span class="cob-tel-divergente" title="A venda está num nome e o telefone veio de outro cadastro no PMM, casado só pelo nome. Confira se é o mesmo cliente antes de cobrar.">⚠ no PMM: ${escHtml(nomePmm)}</span>`)}
       <button class="cob-tel-btn" title="Buscar de novo, digitando o nome exato do cadastro no PMM" onclick="pmmTelPerguntarNome('${v.id}','${dateStr}',this)">↻</button>`;
   } else if(st==='nao_encontrado'){
     corpo=`<span class="cob-tel-vazio">sem telefone no PMM</span>
@@ -6956,11 +7097,11 @@ function linhaTelefoneCob(p,dateStr){
 }
 
 // Roda a busca sob demanda a partir do card e redesenha o dia com o resultado.
-async function pmmTelRodar(vendaId,nome,dateStr,btn){
+async function pmmTelRodar(vendaId,nome,doc,dateStr,btn){
   const rotulo=btn?btn.textContent:'';
   if(btn){btn.disabled=true;btn.textContent='Buscando…';}
   try{
-    const gravado=await resolverTelefonePmm(vendaId,nome);
+    const gravado=await resolverTelefonePmm(vendaId,nome,doc);
     // Cada parcela carrega sua própria cópia do embed vendas(...) — atualiza todas
     // as parcelas dessa venda, senão o card do dia seguinte continuaria desatualizado.
     todosPagamentos.forEach(x=>{
@@ -6977,15 +7118,26 @@ async function pmmTelRodar(vendaId,nome,dateStr,btn){
   }
 }
 
+async function retentarTelefonePmm(vendaId,nome,doc){
+  const [v]=await supaFetch('vendas?id=eq.'+vendaId+'&select=telefone_pmm_status,telefone_pmm');
+  if(v&&v.telefone_pmm_status==='encontrado'&&v.telefone_pmm) return;
+  await resolverTelefonePmm(vendaId,nome,doc);
+}
+
 function nomeClienteDaVenda(vendaId){
   const p=todosPagamentos.find(x=>x.vendas&&x.vendas.id===vendaId);
   return (p&&p.vendas.nome_cliente)||'';
 }
 
+function docDaVenda(vendaId){
+  const p=todosPagamentos.find(x=>x.vendas&&x.vendas.id===vendaId);
+  return (p&&p.vendas.cpf_cnpj)||'';
+}
+
 function pmmTelBuscar(vendaId,dateStr,btn){
-  const nome=nomeClienteDaVenda(vendaId);
-  if(!nome){pmmAlert('Esta venda está sem nome de cliente.','⚠️','Telefone');return;}
-  pmmTelRodar(vendaId,nome,dateStr,btn);
+  const nome=nomeClienteDaVenda(vendaId), doc=docDaVenda(vendaId);
+  if(!nome&&!doc){pmmAlert('Esta venda está sem nome e sem CPF/CNPJ — não há por onde procurar.','⚠️','Telefone');return;}
+  pmmTelRodar(vendaId,nome,doc,dateStr,btn);
 }
 
 // Nome ambíguo: o nome da venda não resolve sozinho, então quem opera digita o nome
@@ -6994,7 +7146,9 @@ function pmmTelPerguntarNome(vendaId,dateStr,btn){
   const nome=prompt('Nome exato do cliente na base do PMM:',nomeClienteDaVenda(vendaId));
   if(nome===null) return;
   if(!nome.trim()) return;
-  pmmTelRodar(vendaId,nome.trim(),dateStr,btn);
+  // Busca manual é por NOME de propósito: quem clicou aqui já viu que o documento
+  // não resolveu, ou a venda nem tem um.
+  pmmTelRodar(vendaId,nome.trim(),'',dateStr,btn);
 }
 
 function linhaLinkCob(p,dateStr){
