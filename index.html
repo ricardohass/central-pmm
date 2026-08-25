@@ -1016,6 +1016,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-tel-ico { font-size:12px; opacity:.65; flex-shrink:0; }
 .cob-tel-num { font-size:12px; font-weight:500; color:#1F2E1D; white-space:nowrap; }
 .cob-tel-vazio { font-size:11px; color:#A39B8A; }
+.cob-tel-divergente { font-size:11px; color:#8B3A1F; background:#F5D9CA; border-radius:999px; padding:3px 9px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .cob-tel-acao { display:inline-flex; align-items:center; gap:5px; text-decoration:none; background:#DCE8CE; color:#2E4A2E; border:0.5px solid #B9CDA4; border-radius:999px; padding:4px 11px; font-size:11.5px; font-weight:500; white-space:nowrap; transition:background .12s,border-color .12s; }
 .cob-tel-acao:hover { background:#CFE0BC; border-color:#3B5A22; }
 .cob-tel-btn { display:inline-flex; align-items:center; gap:5px; background:#FAF6EC; color:#6B6355; border:0.5px solid #D9D1BE; border-radius:999px; padding:4px 11px; font-family:'Inter',sans-serif; font-size:11.5px; font-weight:500; cursor:pointer; white-space:nowrap; transition:background .12s,border-color .12s,color .12s; }
@@ -6396,7 +6397,7 @@ function pagOculto(p){ return p && p.categoria!=='reembolso' && p.status==='pend
 // Campos da venda que o calendário de Cobranças precisa. telefone_pmm/_status só
 // existem depois de rodar sql/004_telefone_pmm.sql — o fallback sem eles evita que a
 // aba inteira caia enquanto a migration não foi aplicada.
-const SEL_VENDA_COB='vendas(nome_cliente,id,closer,produto,telefone_pmm,telefone_pmm_status)';
+const SEL_VENDA_COB='vendas(nome_cliente,id,closer,produto,telefone_pmm,telefone_pmm_status,nome_pmm)';
 const SEL_VENDA_COB_LEGADO='vendas(nome_cliente,id,closer,produto)';
 const fetchPagsCob=url=>supaFetch(url(SEL_VENDA_COB)).catch(()=>supaFetch(url(SEL_VENDA_COB_LEGADO)));
 
@@ -6871,22 +6872,40 @@ async function consultarPmm(nome){
 // busca do PMM reage ao caixa. Aqui só o acento sai; o resto do nome vai como veio.
 const pmmSemAcento=t=>(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 
+// A venda e o cadastro do PMM raramente divergem, mas quando divergem o estrago é
+// mandar cobrança pro contato errado: a venda no nome da pessoa e o cadastro de lá
+// no nome da empresa (a Marcia Donadussi está no gateway como "MD Clínica Médica
+// Dermatológica"). Por isso o nome do PMM é sempre comparado com o da venda.
+// Acento, caixa e espaço sobrando não contam — só divergência de verdade.
+const pmmNomeChave=t=>pmmSemAcento(t||'').toLowerCase().replace(/\s+/g,' ').trim();
+function nomesConferem(a,b){
+  const x=pmmNomeChave(a), y=pmmNomeChave(b);
+  if(!x||!y) return true;  // sem os dois lados não há comparação — não inventa alarme
+  // Um nome mais curto que o outro ("Ana Paula" x "Ana Paula Souza") é a mesma pessoa
+  // com cadastro mais completo de um lado. Alarme só quando começam diferente.
+  return x===y||x.startsWith(y)||y.startsWith(x);
+}
+
 async function buscarClientePmm(nome){
   let r=await consultarPmm(nome);
   const alt=pmmSemAcento(nome);
   if(r.total===0&&alt!==nome) r=await consultarPmm(alt);
-  if(r.total>1) return {status:'ambiguo',telefone:null};  // chutar qual é = cobrar o cliente errado
-  const contato=r.total===1?((r.lista[0]&&r.lista[0].contato)||'').trim():'';
+  if(r.total>1) return {status:'ambiguo',telefone:null,nome:null};  // chutar qual é = cobrar o cliente errado
+  const achado=r.total===1?(r.lista[0]||{}):{};
+  const contato=(achado.contato||'').trim();
   // Cliente achado mas sem contato cadastrado vale o mesmo que não achado: não há
   // número pra mostrar, e marcar 'encontrado' deixaria o card mudo pra sempre.
-  return contato?{status:'encontrado',telefone:contato}:{status:'nao_encontrado',telefone:null};
+  return contato
+    ?{status:'encontrado',telefone:contato,nome:(achado.nome||'').trim()||null}
+    :{status:'nao_encontrado',telefone:null,nome:null};
 }
 
 // Busca e grava na venda. Devolve o que foi gravado (pra atualizar a tela sem recarregar).
 async function resolverTelefonePmm(vendaId,nome){
   const r=await buscarClientePmm(nome);
   const corpo={telefone_pmm_status:r.status};
-  if(r.status==='encontrado') corpo.telefone_pmm=r.telefone;
+  if(r.status==='encontrado'){ corpo.telefone_pmm=r.telefone; corpo.nome_pmm=r.nome; }
+  else { corpo.nome_pmm=null; }
   await supaFetch('vendas?id=eq.'+vendaId,{method:'PATCH',body:JSON.stringify(corpo)});
   return corpo;
 }
@@ -6914,9 +6933,16 @@ function linhaTelefoneCob(p,dateStr){
   let corpo;
   if(tel){
     const d=telPmmDigitos(tel);
-    corpo=`<span class="cob-tel-num">${escHtml(fmtTelefone(tel))}</span>
+    const nomePmm=v.nome_pmm||'';
+    const confere=nomesConferem(v.nome_cliente,nomePmm);
+    // Bateu: o nome de lá fica no title, disponível sem poluir o card.
+    // Divergiu: vira aviso na cara de quem vai cobrar, com o nome do cadastro.
+    const titulo=nomePmm?` title="Cadastro no PMM: ${escHtml(nomePmm)}"`:'';
+    corpo=`<span class="cob-tel-num"${titulo}>${escHtml(fmtTelefone(tel))}</span>
       <a class="cob-tel-acao" href="https://wa.me/55${d}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp">WhatsApp</a>
-      <a class="cob-tel-acao" href="tel:+55${d}" title="Ligar para o cliente">Ligar</a>`;
+      <a class="cob-tel-acao" href="tel:+55${d}" title="Ligar para o cliente">Ligar</a>
+      ${confere?'':`<span class="cob-tel-divergente" title="A venda está num nome e o telefone veio de outro cadastro no PMM. Confira se é o mesmo cliente antes de cobrar.">⚠ no PMM: ${escHtml(nomePmm)}</span>`}
+      <button class="cob-tel-btn" title="Buscar de novo, digitando o nome exato do cadastro no PMM" onclick="pmmTelPerguntarNome('${v.id}','${dateStr}',this)">↻</button>`;
   } else if(st==='nao_encontrado'){
     corpo=`<span class="cob-tel-vazio">sem telefone no PMM</span>
       <button class="cob-tel-btn" title="A busca do PMM é literal: tente o nome exato como está cadastrado lá" onclick="pmmTelPerguntarNome('${v.id}','${dateStr}',this)">Buscar</button>`;
