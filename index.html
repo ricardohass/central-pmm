@@ -6849,17 +6849,34 @@ function iconeMetodoCob(metodo){
 // telefone é resolvido UMA vez, na criação da venda, e gravado em vendas.telefone_pmm.
 // vendas.telefone_pmm_status guarda por que o campo está vazio — ver sql/004_telefone_pmm.sql.
 
-// Chama o PMM e diz o que dá pra concluir do resultado. Erro de rede SOBE:
-// quem chama decide (na criação da venda, ignora; no botão, avisa).
-async function buscarClientePmm(nome){
+// Uma consulta crua ao PMM. Erro de rede/resposta vazia SOBE: quem chama decide
+// (na criação da venda, ignora; no botão, avisa). Resposta inválida NUNCA vira
+// 'nao_encontrado' — a rota devolve corpo vazio de vez em quando, e carimbar
+// "não existe" em cima de uma falha deixaria a venda marcada errada pra sempre.
+async function consultarPmm(nome){
   const r=await fetch('/api/pmm-clientes?nome='+encodeURIComponent(nome));
   if(!r.ok) throw new Error('PMM respondeu '+r.status);
   const d=await r.json();
   if(!d||d.ok===false) throw new Error('PMM devolveu erro');
   const lista=Array.isArray(d.clientes)?d.clientes:[];
-  const total=typeof d.total==='number'?d.total:lista.length;
-  if(total>1) return {status:'ambiguo',telefone:null};  // chutar qual é = cobrar o cliente errado
-  const contato=total===1?((lista[0]&&lista[0].contato)||'').trim():'';
+  return {total:typeof d.total==='number'?d.total:lista.length, lista};
+}
+
+// A busca do PMM é LITERAL e sensível a acento, e a base de lá é mista: tem
+// "João" com acento e "Jose" sem. Nome digitado na Central com acento não acha o
+// registro gravado sem — "José" devolve 0 enquanto "Jose" devolve 3. Por isso,
+// quando a busca crua não acha nada, tenta de novo sem acento: é o MESMO nome
+// normalizado, não um chute em outro cliente.
+// Versão própria: o semAcento() do topo do arquivo também joga pra minúscula, e a
+// busca do PMM reage ao caixa. Aqui só o acento sai; o resto do nome vai como veio.
+const pmmSemAcento=t=>(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+async function buscarClientePmm(nome){
+  let r=await consultarPmm(nome);
+  const alt=pmmSemAcento(nome);
+  if(r.total===0&&alt!==nome) r=await consultarPmm(alt);
+  if(r.total>1) return {status:'ambiguo',telefone:null};  // chutar qual é = cobrar o cliente errado
+  const contato=r.total===1?((r.lista[0]&&r.lista[0].contato)||'').trim():'';
   // Cliente achado mas sem contato cadastrado vale o mesmo que não achado: não há
   // número pra mostrar, e marcar 'encontrado' deixaria o card mudo pra sempre.
   return contato?{status:'encontrado',telefone:contato}:{status:'nao_encontrado',telefone:null};
@@ -6901,7 +6918,8 @@ function linhaTelefoneCob(p,dateStr){
       <a class="cob-tel-acao" href="https://wa.me/55${d}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp">WhatsApp</a>
       <a class="cob-tel-acao" href="tel:+55${d}" title="Ligar para o cliente">Ligar</a>`;
   } else if(st==='nao_encontrado'){
-    corpo=`<span class="cob-tel-vazio">sem telefone no PMM</span>`;
+    corpo=`<span class="cob-tel-vazio">sem telefone no PMM</span>
+      <button class="cob-tel-btn" title="A busca do PMM é literal: tente o nome exato como está cadastrado lá" onclick="pmmTelPerguntarNome('${v.id}','${dateStr}',this)">Buscar</button>`;
   } else if(st==='ambiguo'){
     corpo=`<span class="cob-tel-vazio">nome ambíguo no PMM</span>
       <button class="cob-tel-btn" title="Digitar o nome exato como está cadastrado no PMM" onclick="pmmTelPerguntarNome('${v.id}','${dateStr}',this)">Buscar</button>`;
