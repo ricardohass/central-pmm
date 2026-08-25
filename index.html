@@ -1016,7 +1016,8 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-tel-ico { font-size:12px; opacity:.65; flex-shrink:0; }
 .cob-tel-num { font-size:12px; font-weight:500; color:#1F2E1D; white-space:nowrap; }
 .cob-tel-vazio { font-size:11px; color:#A39B8A; }
-.vf-doc-aviso { display:block; font-size:11px; margin-top:4px; min-height:14px; color:transparent; }
+.vf-label-aviso { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.vf-doc-aviso { font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .vf-doc-aviso.bom { color:#3B5A22; }
 .vf-doc-aviso.ruim { color:#8B3A1F; }
 input.vf-doc-ruim { border-color:#8B3A1F !important; }
@@ -1870,8 +1871,8 @@ input.vf-doc-ruim { border-color:#8B3A1F !important; }
             <option value="arrependimento">Arrependimento (7 dias · CDC)</option>
           </select>
         </div>
-        <div class="vf-field vf-full"><label>Nome do cliente</label><input type="text" id="vfCliente" placeholder="Nome completo do cliente"></div>
-        <div class="vf-field vf-full"><label>CPF / CNPJ do cliente</label><input type="text" id="vfCpfCnpj" placeholder="Só números, ou com pontuação — tanto faz" oninput="validarDocVenda(this)"><span id="vfDocAviso" class="vf-doc-aviso"></span></div>
+        <div class="vf-field"><label>Nome do cliente</label><input type="text" id="vfCliente" placeholder="Nome completo do cliente"></div>
+        <div class="vf-field"><label class="vf-label-aviso">CPF / CNPJ do cliente <span id="vfDocAviso" class="vf-doc-aviso"></span></label><input type="text" id="vfCpfCnpj" placeholder="Só números ou com pontuação" oninput="validarDocVenda(this)"></div>
         <div class="vf-field vf-full"><label>Observações</label><textarea id="vfObs" placeholder="Observações sobre a venda..."></textarea></div>
       </div>
     </div>
@@ -6930,8 +6931,8 @@ function validarDocVenda(el){
   const d=soDigitos(el.value), t=tipoDoc(d);
   el.classList.toggle('vf-doc-ruim',t==='invalido');
   aviso.textContent=t==='invalido'
-    ?(d.length===11||d.length===14?'Dígito verificador não fecha — confira o número.':'CPF tem 11 dígitos, CNPJ tem 14. Digitados: '+d.length)
-    :(t==='cpf'?'✓ CPF válido':t==='cnpj'?'✓ CNPJ válido':'');
+    ?(d.length===11||d.length===14?'✕ dígito não fecha':'✕ 11 ou 14 dígitos')
+    :(t==='cpf'?'✓ CPF':t==='cnpj'?'✓ CNPJ':'');
   aviso.className='vf-doc-aviso'+(t==='invalido'?' ruim':t?' bom':'');
 }
 
