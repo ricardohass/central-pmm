@@ -404,8 +404,8 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .vt-full th:nth-child(2){ width:13%; }  /* Cliente */
 .vt-full th:nth-child(3){ width:12%; }  /* Closer */
 .vt-full th:nth-child(4){ width:10%; }  /* Gateway */
-.vt-full th:nth-child(5){ width:12%; }  /* Infos ao jurídico */
-.vt-full th:nth-child(6){ width:12%; }  /* Contrato assinado */
+.vt-full th:nth-child(5){ width:12%; }  /* Subido na Central */
+.vt-full th:nth-child(6){ width:12%; }  /* Infos ao jurídico */
 .vt-full th:nth-child(7){ width:12%; }  /* Agendou a call (SDR ou social seller) */
 .vt-full th:nth-child(8){ width:12%; }  /* Status */
 .vt-full th:nth-child(9){ width:8%;  }  /* Ações */
@@ -1404,7 +1404,7 @@ input.vf-doc-ruim { border-color:#8B3A1F !important; }
       </div>
       <div class="vendas-table-wrap">
         <table class="vendas-table vt-full">
-          <thead><tr><th>Data</th><th>Cliente</th><th>Closer</th><th>Gateway</th><th><span class="hint" tabindex="0" data-hint="contrato">Infos ao jurídico</span></th><th><span class="hint" tabindex="0" data-hint="contratoAssinado">Contrato assinado</span></th><th>Agendou a call</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Cliente</th><th>Closer</th><th>Gateway</th><th><span class="hint" tabindex="0" data-hint="subidoCentral">Subido na Central</span></th><th><span class="hint" tabindex="0" data-hint="contrato">Infos ao jurídico</span></th><th>Agendou a call</th><th>Status</th><th></th></tr></thead>
           <tbody id="vendasTbody"></tbody>
         </table>
       </div>
@@ -2362,7 +2362,7 @@ const CRITERIOS={
   recAntigo:'Parte do caixa do período que veio de vendas <b>fechadas antes</b> — parcelamento de meses anteriores caindo agora. É dinheiro do mês, mas não é venda do mês, e por isso fica de fora do número principal.',
   recCaixa:'Todo o dinheiro que entrou no período, some a venda de quando for — as vendas do período <b>mais</b> as parcelas de vendas antigas. Serve pra conferir caixa; não serve pra medir o desempenho comercial do período.',
   contrato:'Marcação manual: <b>marque quando as informações do cliente já tiverem sido enviadas ao jurídico</b> para elaboração do contrato. Serve só para acompanhar o que falta — não altera valor, status nem comissão.',
-  contratoAssinado:'Marcação manual: <b>marque quando o cliente já tiver assinado o contrato</b>. Serve só para acompanhar o que falta — não altera valor, status nem comissão.',
+  subidoCentral:'Marcação manual: <b>marque quando os dados da venda já tiverem sido subidos na Central</b>. Serve só para acompanhar o que falta — não altera valor, status nem comissão.',
   reembolso:'Reembolso integral já efetivado conta o valor total do caso; parcial ou em andamento conta só as parcelas de devolução já pagas.',
   reembAReembolsar:'<b>A reembolsar</b> = quanto a empresa se comprometeu a devolver, somando todos os casos. Não é o quanto o cliente pagou: em <b>reembolso parcial já concluído</b> entra só o valor acordado com o jurídico, e a parte retida fica de fora porque não é dívida. Caso revertido ou não necessário entra como zero.',
   reembPendente:'<b>Pendente</b> = "A reembolsar" menos o que já foi devolvido. É o que ainda tem que sair do caixa. Reembolso parcial concluído fica zerado aqui, mesmo que o cliente tenha pago mais do que recebeu de volta.',
@@ -3359,8 +3359,8 @@ function filtrarVendas(){
       <td title="${escHtml(v.nome_cliente||'')}">${v.nome_cliente||'—'}</td>
       <td>${v.closer||'—'}</td>
       <td>${v.gateway||'—'}</td>
+      <td>${checkContratoFlag(v,'subido_central')}</td>
       <td>${checkContratoFlag(v,'contrato_enviado')}</td>
-      <td>${checkContratoFlag(v,'contrato_assinado')}</td>
       <td title="${escHtml(quemAgendouTitle(v))}">${quemAgendou(v)}</td>
       <td><span class="status-badge s-${v.status||'confirmada'}">${v.status==='reembolso'?'Reembolsada':cap(v.status||'confirmada')}</span>${(v.status!=='reembolso'&&reembParcialVendas.has(v.id))?' <span class="status-badge reemb-badge" title="Reembolso parcial — a venda segue contando, abatido só o valor devolvido">↩ parcial</span>':''}</td>
       <td>
@@ -3605,11 +3605,11 @@ function removerLinkPgto(btn){
 
 // ── ACOMPANHAMENTO DE CONTRATO ──
 // Duas marcações manuais, só para acompanhar o que falta em cada venda:
-// contrato_enviado  = infos do cliente já enviadas ao jurídico
-// contrato_assinado = contrato já assinado pelo cliente
+// subido_central   = dados da venda já subidos na Central
+// contrato_enviado = infos do cliente já enviadas ao jurídico
 const FLAGS_CONTRATO={
-  contrato_enviado:{on:'Infos enviadas ao jurídico',off:'Infos ainda não enviadas ao jurídico'},
-  contrato_assinado:{on:'Contrato assinado pelo cliente',off:'Contrato ainda não assinado'}
+  subido_central:{on:'Subido na Central',off:'Ainda não subido na Central'},
+  contrato_enviado:{on:'Infos enviadas ao jurídico',off:'Infos ainda não enviadas ao jurídico'}
 };
 function checkContratoFlag(v,campo){
   const t=FLAGS_CONTRATO[campo];
@@ -3649,10 +3649,10 @@ function abrirDetalheVenda(v){
       <div><span style="color:var(--muted);">Pagamento:</span> <strong>${v.forma_pagamento==='parcelado'&&v.parcelas?v.parcelas+'x':'À vista'}</strong></div>
       ${v.origem?`<div><span style="color:var(--muted);">Origem:</span> <strong>${v.origem}</strong></div>`:''}
       <div style="grid-column:1/-1;display:flex;align-items:center;gap:7px;padding-top:2px;">
-        ${checkContratoFlag(v,'contrato_enviado')}<span class="hint" tabindex="0" data-hint="contrato" style="color:var(--muted);">Infos enviadas ao jurídico</span>
+        ${checkContratoFlag(v,'subido_central')}<span class="hint" tabindex="0" data-hint="subidoCentral" style="color:var(--muted);">Subido na Central</span>
       </div>
       <div style="grid-column:1/-1;display:flex;align-items:center;gap:7px;">
-        ${checkContratoFlag(v,'contrato_assinado')}<span class="hint" tabindex="0" data-hint="contratoAssinado" style="color:var(--muted);">Contrato assinado pelo cliente</span>
+        ${checkContratoFlag(v,'contrato_enviado')}<span class="hint" tabindex="0" data-hint="contrato" style="color:var(--muted);">Infos enviadas ao jurídico</span>
       </div>
       ${quemAgendouLista(v).map(p=>`<div><span style="color:var(--muted);">Agendou a call (${p.papel}):</span> <strong>${p.nome}</strong></div>`).join('')}
       ${v.observacoes?`<div style="grid-column:1/-1;"><span style="color:var(--muted);">Obs:</span> ${v.observacoes}</div>`:''}
