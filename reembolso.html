@@ -56,6 +56,9 @@
   .vsearch-opt:hover{background:var(--cream);}
   .vsearch-opt .vs-meta{font-size:12px;color:var(--muted);margin-top:2px;}
   .vsearch-empty{padding:13px 12px;font-size:13px;color:var(--muted);text-align:center;}
+  /* Aviso do valor: aparece quando a venda é antiga demais para o número ser confiável */
+  .warn-valor{display:none;gap:8px;align-items:flex-start;background:#FBEAE3;border:0.5px solid rgba(212,87,42,0.35);border-radius:9px;padding:10px 12px;font-size:12px;line-height:1.5;color:#8A3415;margin:2px 0 0;}
+  .warn-valor.on{display:flex;}
 </style>
 </head>
 <body>
@@ -96,6 +99,7 @@
         <label>Valor da negociação (R$) <span class="req">*</span></label>
         <input type="text" id="f-valor" inputmode="numeric" placeholder="Ex: 35.000,00" required oninput="this.value=maskMoeda(this.value)">
         <p style="font-size:11px;color:var(--muted);margin:2px 0 0;">Valor em jogo na negociação — o closer precisa dele pra montar o termo de acordo.</p>
+        <p class="warn-valor" id="avisoValor"><span>⚠️</span><span id="avisoValorTxt"></span></p>
       </div>
 
       <div class="grid2">
@@ -270,7 +274,7 @@ function vendaLabelExt(v){ return (v.nome_cliente||'Sem nome')+' — '+fmtDataOp
 async function carregarVendasForm(){
   const inp=document.getElementById('fVendaSearch');
   try{
-    const res=await fetch(SUPA_URL+'/rest/v1/vendas?select=id,nome_cliente,data_venda,closer,produto,valor_bruto&order=data_venda.desc&limit=2000',{
+    const res=await fetch(SUPA_URL+'/rest/v1/vendas?select=id,nome_cliente,data_venda,closer,produto,valor_bruto,base_comissao&order=data_venda.desc&limit=2000',{
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
     });
     VENDAS_CENTRAL=await res.json();
@@ -323,11 +327,43 @@ function selecionarVendaExt(id){
   if(!nomeEl.value.trim()) nomeEl.value=v.nome_cliente||'';
   if(v.data_venda && !document.getElementById('f-compra').value) document.getElementById('f-compra').value=v.data_venda.split('T')[0];
   if(v.closer){ const cs=document.getElementById('f-closer'); for(let i=0;i<cs.options.length;i++){ if(cs.options[i].value===v.closer){ cs.selectedIndex=i; break; } } }
+  preencherValorNegociado(v);
+}
+
+// ── Valor da negociação ──
+// Só puxa sozinho o que dá pra confiar. O valor negociado (vendas.base_comissao)
+// passou a ser preenchido caso a caso a partir de agosto/2026; no que é anterior a
+// isso o número da Central não é o que foi combinado com o cliente, e chutar aqui
+// vira termo de acordo errado. Nunca puxa valor_bruto: ele embute os juros do
+// parcelamento, que não são a negociação.
+const CORTE_VALOR_AUTO='2026-08-01';
+let valorAutoPreenchido=false;
+function preencherValorNegociado(v){
   const valEl=document.getElementById('f-valor');
-  if(valEl && !valEl.value.trim() && Number(v.valor_bruto)>0) valEl.value=fmtMoedaFromNum(v.valor_bruto);
+  const aviso=document.getElementById('avisoValor');
+  const txt=document.getElementById('avisoValorTxt');
+  if(!valEl) return;
+  const data=(v.data_venda||'').split('T')[0];
+  const negociado=Number(v.base_comissao||0);
+  const antiga=!data || data<CORTE_VALOR_AUTO;
+  const digitadoAMao=valEl.value.trim() && !valorAutoPreenchido;
+
+  if(!antiga && negociado>0){
+    if(!digitadoAMao){ valEl.value=fmtMoedaFromNum(negociado); valorAutoPreenchido=true; }
+    aviso.classList.remove('on');
+    return;
+  }
+  // sem número confiável: limpa o que veio de outra venda e pede confirmação
+  if(valorAutoPreenchido){ valEl.value=''; valorAutoPreenchido=false; }
+  txt.textContent = antiga
+    ? 'Venda anterior a agosto/2026 — o valor não é puxado automaticamente. Fale com o Ricardo para pegar o valor exato do contrato antes de registrar o caso.'
+    : 'Esta venda está sem o valor da negociação preenchido na Central. Fale com o Ricardo para pegar o valor exato antes de registrar o caso.';
+  aviso.classList.add('on');
 }
 function resetVendaExt(){
   document.getElementById('f-venda').value='';
+  const av=document.getElementById('avisoValor'); if(av) av.classList.remove('on');
+  const vl=document.getElementById('f-valor'); if(vl && valorAutoPreenchido){ vl.value=''; valorAutoPreenchido=false; }
   const box=document.getElementById('fVendaBox'); if(box) box.style.display='';
   const inp=document.getElementById('fVendaSearch'); if(inp) inp.value='';
   const sel=document.getElementById('fVendaSelected'); if(sel){ sel.style.display='none'; sel.innerHTML=''; }
