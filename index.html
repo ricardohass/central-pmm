@@ -1077,7 +1077,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
   transition:border-color .12s, background .12s, box-shadow .12s;
 }
 .cob-venc-input { cursor:pointer; font-weight:500; }
-.cob-link-input { flex:1; min-width:0; text-overflow:ellipsis; }
+.cob-link-input { flex:1; min-width:64px; text-overflow:ellipsis; }
 .cob-link-input::placeholder { color:#A39B8A; }
 .cob-venc-input:hover, .cob-link-input:hover { border-color:#B9C0B5; background:#fff; }
 .cob-venc-input:focus, .cob-link-input:focus { border-color:var(--c-accent); background:#fff; box-shadow:0 0 0 2px rgba(212,87,42,.14); }
@@ -1087,13 +1087,20 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 
 /* ── Link de cobrança (Asaas) e contato: dois blocos irmãos, separados por uma régua fina.
    O link sai preenchido pelo job asaas_links.py; o campo aceita colar à mão quando não casou. ── */
-.cob-canais { display:flex; flex-direction:column; gap:7px; background:#FAF8F3; border:1px solid rgba(61,92,74,0.07); border-radius:10px; padding:8px 10px; }
+/* Link e telefone dividem a linha quando há largura para os dois; no card estreito
+   cada um fica com a sua. A base de 216px é o ponto em que o campo de link ainda
+   mostra o suficiente da URL para dar para conferir. */
+.cob-canais { display:flex; flex-wrap:wrap; gap:8px 12px; background:#FAF8F3; border:1px solid rgba(61,92,74,0.07); border-radius:10px; padding:8px 10px; }
 .cob-canais:empty { display:none; }
-.cob-lanc-link, .cob-lanc-tel { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
-/* o telefone só ganha régua quando vem depois do link */
-.cob-lanc-link + .cob-lanc-tel { border-top:1px solid var(--c-line); padding-top:7px; }
+.cob-lanc-link, .cob-lanc-tel { display:flex; align-items:center; gap:7px; flex-wrap:wrap; min-width:0; }
+/* o link fica com a sobra: o telefone tem tamanho fixo de conteúdo, e é o campo
+   da URL que ganha em mostrar mais caracteres */
+.cob-lanc-link { flex:1 1 230px; }
+.cob-lanc-tel { flex:0 1 auto; }
 .cob-lanc-tel .cob-tel-btn { padding:5px 10px; }
 .cob-link-ico, .cob-tel-ico { font-size:12px; opacity:.5; flex-shrink:0; }
+a.cob-tel-num { text-decoration:none; border-bottom:1px dotted rgba(42,61,48,.35); }
+a.cob-tel-num:hover { color:var(--c-accent); border-bottom-color:currentColor; }
 .cob-tel-num { font-size:12px; font-weight:600; color:var(--c-ink); white-space:nowrap; }
 .cob-tel-vazio { font-size:11.5px; color:var(--c-soft); }
 .vf-label-aviso { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
@@ -7158,9 +7165,11 @@ function linhaTelefoneCob(p,dateStr){
     // Número que não fecha como telefone brasileiro não vira link nenhum — melhor
     // mostrar que está torto do que entregar um botão que não abre nada.
     const acoes=tipo==='invalido'?'':(
-      (tipo==='celular'?`<a class="cob-tel-acao" href="https://wa.me/55${d}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp">WhatsApp</a>`:'')
-      +`<a class="cob-tel-acao" href="tel:+55${d}" title="Ligar para o cliente">Ligar</a>`);
-    corpo=`<span class="cob-tel-num"${titulo}>${escHtml(fmtTelefone(tel))}</span>
+      tipo==='celular'?`<a class="cob-tel-acao" href="https://wa.me/55${d}" target="_blank" rel="noopener" title="Abrir conversa no WhatsApp">WhatsApp</a>`:'');
+    // O próprio número liga: vira link tel: quando o telefone fecha como brasileiro.
+    corpo=`${tipo==='invalido'
+      ?`<span class="cob-tel-num"${titulo}>${escHtml(fmtTelefone(tel))}</span>`
+      :`<a class="cob-tel-num" href="tel:+55${d}" title="Ligar para o cliente${nomePmm?' · Cadastro no PMM: '+escHtml(nomePmm):''}">${escHtml(fmtTelefone(tel))}</a>`}
       ${tipo==='fixo'?'<span class="cob-tel-vazio">fixo</span>':''}
       ${tipo==='invalido'?'<span class="cob-tel-divergente" title="O contato cadastrado no PMM não forma um telefone brasileiro válido. Confira na base de lá.">⚠ número inválido</span>':''}
       ${acoes}
@@ -7242,7 +7251,7 @@ function linhaLinkCob(p,dateStr){
     <span class="cob-link-ico">🔗</span>
     <input type="url" class="cob-link-input" id="clink_${p.id}" value="${escHtml(url)}" placeholder="Colar link de cobrança" onchange="salvarLinkCobranca('${p.id}',this.value,'${dateStr}')">
     ${auto?`<span class="cob-link-tag" title="Puxado da cobrança aberta no Asaas. Se você editar, o campo passa a ser seu e o robô não mexe mais nele.">auto</span>`:''}
-    ${url?`<button class="cob-btn-link" id="cbtn_cob_${p.id}" onclick="copiarLinkCob('${p.id}')">Copiar link</button>
+    ${url?`<button class="cob-btn-link" id="cbtn_cob_${p.id}" onclick="copiarLinkCob('${p.id}')" title="Copiar o link de cobrança">Copiar</button>
     <button class="cob-link-abrir" onclick="abrirLinkCob('${p.id}')" title="Abrir a cobrança numa aba nova">↗</button>`:''}
   </div>`;
 }
@@ -7313,12 +7322,11 @@ function renderPainelCob(scroll){
     fila.filter(p=>p.status==='pendente'&&cobrancaVencida(p,hojStr)).forEach(p=>{
       const k=(p.vendas&&p.vendas.id)||p.venda_id||p.id;
       const atual=porCliente.get(k);
-      if(!atual||urgenciaCobranca(p)<urgenciaCobranca(atual)) porCliente.set(k,p);
+      if(!atual||ordemFilaCob(p,hojStr)<ordemFilaCob(atual,hojStr)) porCliente.set(k,p);
     });
-    // Ordem = urgência da PRÓXIMA tentativa, não do vencimento original. Uma parcela
-    // vencida em 11/08 com a 3ª tentativa marcada para hoje vem antes de uma de 20/08
-    // cuja próxima tentativa ainda é semana que vem.
-    return [...porCliente.values()].sort((a,b)=>urgenciaCobranca(a).localeCompare(urgenciaCobranca(b)));
+    // Primeiro quem tem cobrança para fazer hoje; só depois quem já levou as três
+    // tentativas e continua devendo, do mais atrasado para o menos.
+    return [...porCliente.values()].sort((a,b)=>ordemFilaCob(a,hojStr).localeCompare(ordemFilaCob(b,hojStr)));
   })();
   const pendentesLista=fila.filter(p=>p.status==='pendente'&&!cobrancaVencida(p,hojStr))
     .sort((a,b)=>(a.data_prevista||'').localeCompare(b.data_prevista||''));
@@ -7430,8 +7438,8 @@ function renderPainelCob(scroll){
       // não precisa de link, e mostrar um ali só polui a linha.
       const linkHtml=recebido?'':linhaLinkCob(p,dateStr);
       const telHtml=linhaTelefoneCob(p,dateStr);
-      // Próxima tentativa caindo hoje: é a ação do dia, e o card diz isso
-      const acaoHoje=!recebido&&urgenciaCobranca(p)===hojStr;
+      // Tem cobrança para fazer agora (venceu ou vence hoje): é a ação do dia
+      const acaoHoje=!recebido&&!!acaoPendenteCob(p,hojStr);
       return`<div class="cob-lanc${recebido?' is-recebido':''}${acaoHoje?' is-agora':''}">
         <div class="cob-lanc-top">
           <div class="cob-lanc-id">
@@ -7567,12 +7575,28 @@ function proximaTentativa(p){
   for(const n of [1,2,3]) if(!cobrancaFeita(p,n)) return {n,data:dataCobranca(p,n)};
   return null;
 }
-// A data que ordena a fila de trabalho: a próxima tentativa em aberto. Esgotadas as
-// três, vale a data da última — quem já levou três cobranças e não pagou não pode
-// cair para o fim da fila.
+// A data que diz se a parcela já entrou no radar da cobrança: a próxima tentativa em
+// aberto, ou a data da última quando as três já foram feitas.
 function urgenciaCobranca(p){
   const prox=proximaTentativa(p);
   return prox?prox.data:dataCobranca(p,3);
+}
+// Tentativa em aberto cuja hora já chegou — o que precisa ser cobrado agora.
+// null = ou ainda não é a vez dela, ou as três já foram feitas.
+function acaoPendenteCob(p,hojStr){
+  const prox=proximaTentativa(p);
+  return prox&&prox.data<=hojStr?prox:null;
+}
+// Ordem da fila em dois blocos, porque são dois trabalhos diferentes:
+//   bloco 0 — tem cobrança para fazer hoje (tentativa em aberto que já venceu ou vence
+//             hoje), da mais antiga para a mais nova: quem está esperando há mais tempo
+//             pela ligação vem primeiro;
+//   bloco 1 — as três tentativas já foram feitas e o cliente segue devendo. Aqui não há
+//             o que cobrar hoje, então a ordem é por tempo de atraso do vencimento.
+// O prefixo numérico faz o bloco mandar na comparação de string.
+function ordemFilaCob(p,hojStr){
+  const acao=acaoPendenteCob(p,hojStr);
+  return acao?('0'+acao.data):('1'+(p.data_prevista||'').split('T')[0]);
 }
 // "Vencida" inclui a que vence HOJE: cobrança de hoje é trabalho de hoje, não de
 // amanhã — e é ela que aparece em destaque no topo da fila.
