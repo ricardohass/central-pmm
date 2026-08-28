@@ -1050,16 +1050,6 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-state { display:flex; align-items:center; justify-content:space-between; gap:8px 10px; flex-wrap:wrap;
   background:#FAF8F3; border:1px solid rgba(61,92,74,0.07); border-radius:10px; padding:7px 10px; }
 .cob-state:has(> :only-child) { background:none; border-color:transparent; padding:0; }
-.cob-followups { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; }
-.cob-fu-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--c-soft); }
-/* marcado x desmarcado é UMA diferença: apagado vs coral. Sem misturar contorno e preenchimento. */
-.cob-fu { display:inline-flex; align-items:center; gap:6px; border-radius:999px; border:1px solid var(--c-line); padding:3px 10px; background:#fff; cursor:pointer; font-size:11px; font-weight:500; color:var(--c-soft); user-select:none; transition:background .12s, border-color .12s, color .12s; }
-.cob-fu:hover { border-color:var(--c-accent); color:var(--c-accent-ink); }
-.cob-fu input { appearance:none; -webkit-appearance:none; position:relative; width:13px; height:13px; margin:0; border:1px solid #C6CDC6; border-radius:50%; background:#fff; cursor:pointer; flex-shrink:0; transition:background .12s, border-color .12s; }
-.cob-fu input::after { content:'✓'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:9px; line-height:1; color:#fff; opacity:0; }
-.cob-fu:has(input:checked) { background:var(--c-accent-soft); border-color:var(--c-accent); color:var(--c-accent-ink); }
-.cob-fu:has(input:checked) input { background:var(--c-accent); border-color:var(--c-accent); }
-.cob-fu:has(input:checked) input::after { opacity:1; }
 
 /* ── Ação: um botão cheio por card, o resto é secundário ── */
 /* Rodapé do card: a ação é a última coisa depois de tudo que se lê para decidir. */
