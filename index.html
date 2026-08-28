@@ -979,7 +979,8 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-lanc-top { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
 .cob-lanc-id { min-width:0; }
 .cob-lanc-nome { font-size:15px; font-weight:600; color:var(--c-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.cob-lanc-money { flex-shrink:0; text-align:right; }
+.cob-lanc-money { flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.cob-venc-line { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; color:var(--c-soft); white-space:nowrap; }
 .cob-lanc-valor { font-size:16px; font-weight:600; color:var(--c-ink); white-space:nowrap; }
 
 /* Metadados: uma linha só, tudo no mesmo tom secundário */
@@ -1020,7 +1021,8 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-fu:has(input:checked) input::after { opacity:1; }
 
 /* ── Ação: um botão cheio por card, o resto é secundário ── */
-.cob-lanc-acao { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+/* Rodapé do card: a ação é a última coisa depois de tudo que se lê para decidir. */
+.cob-lanc-acao { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:1px; }
 .cob-btn-receber { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px; background:var(--c-accent); color:#fff; border:1px solid var(--c-accent); border-radius:10px; padding:9px 16px; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:background .12s, border-color .12s; }
 .cob-btn-receber:hover { background:#B8461F; border-color:#B8461F; }
 .cob-confirmado { display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:500; color:var(--c-ok); }
@@ -7280,10 +7282,11 @@ function mostrarDetalheCalDia(dateStr){
           <div class="cob-lanc-top">
             <div class="cob-lanc-id">
               <div class="cob-lanc-nome">${escHtml(p.nome_cliente)}</div>
-              <div class="cob-lanc-meta"><span class="cob-chip">↩ Reembolso</span>${cobProdTag(p)}<span class="cob-meta-txt">${p.responsavel?escHtml(p.responsavel)+'<span class="sep">·</span>':''}${p.closer?escHtml(p.closer)+'<span class="sep">·</span>':''}${vencHtml}</span></div>
+              <div class="cob-lanc-meta"><span class="cob-chip">↩ Reembolso</span>${cobProdTag(p)}${(p.responsavel||p.closer)?`<span class="cob-meta-txt">${escHtml(p.responsavel||'')}${p.responsavel&&p.closer?'<span class="sep">·</span>':''}${escHtml(p.closer||'')}</span>`:''}</div>
             </div>
             <div class="cob-lanc-money">
               <div class="cob-lanc-valor">${fmtBRL(p.valor)}</div>
+              <span class="cob-venc-line">${vencHtml}</span>
             </div>
           </div>
           <div class="cob-state">
@@ -7305,10 +7308,11 @@ function mostrarDetalheCalDia(dateStr){
           <div class="cob-lanc-top">
             <div class="cob-lanc-id">
               <div class="cob-lanc-nome">❄ ${escHtml(nomeC)}</div>
-              <div class="cob-lanc-meta"><span class="cob-chip">${mIconC?mIconC+' ':''}${escHtml(p.metodo||'—')}</span>${cobProdTag(p)}<span class="cob-meta-txt">${closerC?escHtml(closerC)+'<span class="sep">·</span>':''}Venc. ${fmtDataBR(dC)}</span></div>
+              <div class="cob-lanc-meta"><span class="cob-chip">${mIconC?mIconC+' ':''}${escHtml(p.metodo||'—')}</span>${cobProdTag(p)}${closerC?`<span class="cob-meta-txt">${escHtml(closerC)}</span>`:''}</div>
             </div>
             <div class="cob-lanc-money">
               <div class="cob-lanc-valor">${fmtBRL(p.valor_bruto)}</div>
+              <span class="cob-venc-line">Venc. ${fmtDataBR(dC)}</span>
             </div>
           </div>
           <div class="cob-state">
@@ -7336,10 +7340,11 @@ function mostrarDetalheCalDia(dateStr){
         <div class="cob-lanc-top">
           <div class="cob-lanc-id">
             <div class="cob-lanc-nome">${escHtml(nome)}</div>
-            <div class="cob-lanc-meta"><span class="cob-chip">${mIcon?mIcon+' ':''}${escHtml(p.metodo||'—')}</span>${cobProdTag(p)}<span class="cob-meta-txt">${closer?escHtml(closer)+'<span class="sep">·</span>':''}${vencHtml}</span></div>
+            <div class="cob-lanc-meta"><span class="cob-chip">${mIcon?mIcon+' ':''}${escHtml(p.metodo||'—')}</span>${cobProdTag(p)}${closer?`<span class="cob-meta-txt">${escHtml(closer)}</span>`:''}</div>
           </div>
           <div class="cob-lanc-money">
             <div class="cob-lanc-valor">${fmtBRL(p.valor_bruto)}</div>
+            <span class="cob-venc-line">${vencHtml}</span>
           </div>
         </div>
         <div class="cob-state">
@@ -7353,10 +7358,10 @@ function mostrarDetalheCalDia(dateStr){
             <label class="cob-fu"><input type="checkbox" ${p.cobranca_3?'checked':''} onchange="toggleCobranca('${p.id}',3,this.checked,'${dateStr}')">3ª</label>
           </div>`}
         </div>
+        <div class="cob-canais">${linkHtml}${telHtml}</div>
         ${recebido?'':`<div class="cob-lanc-acao">
           <button class="cob-btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Marcar como recebido</button>
         </div>`}
-        <div class="cob-canais">${linkHtml}${telHtml}</div>
       </div>`;
     }).join('');
   }
