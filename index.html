@@ -956,7 +956,8 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
   --c-alert:#A8341B; --c-alert-soft:#F6DED5;
   --c-ok:#3D5C4A; --c-ok-soft:#E4EBE5;
 }
-.cob-daycard-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:20px; flex-wrap:wrap; }
+.cob-daycard-head { display:flex; flex-direction:column; align-items:stretch; gap:12px; padding:20px; }
+.cob-head-linha { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
 .cob-day-date { font-size:15px; font-weight:600; color:var(--c-ink); }
 .cob-day-count { font-size:13px; color:var(--c-soft); margin-top:3px; }
 .cob-day-total { font-size:13px; color:var(--c-soft); white-space:nowrap; }
@@ -964,6 +965,15 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 /* align-items:start: cada card fica da altura do próprio conteúdo. Esticado, o card
    mais curto ganhava um vão de vazio no rodapé só para empatar com o vizinho. */
 .cob-daygrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:12px; padding:0 20px 20px; align-items:start; }
+
+/* Filtro do painel: Todos (o dia clicado) · Atrasados · Pendentes · Pagos */
+.cob-seg { display:inline-flex; gap:3px; background:#fff; border:1px solid var(--c-line); border-radius:10px; padding:3px; flex-wrap:wrap; }
+.cob-seg-btn { font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--c-soft); background:none; border:none; border-radius:7px; padding:6px 13px; cursor:pointer; transition:background .12s, color .12s; }
+.cob-seg-btn:hover { color:var(--c-ink); }
+.cob-seg-btn.active { background:var(--c-accent); color:#fff; }
+.cob-seg-btn .cob-seg-n { font-weight:600; opacity:.75; margin-left:5px; }
+/* Cobrança cuja próxima tentativa cai hoje: é a ação do dia na lista de atrasados */
+.cob-lanc.is-agora { border-color:var(--c-accent); box-shadow:0 0 0 3px rgba(212,87,42,.10); }
 
 /* ── O card ── blocos empilhados na ordem de leitura: quem é · quanto · em que pé
    está · o que já foi cobrado · a ação · o link · o contato. */
@@ -1005,7 +1015,38 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-tel-divergente { background:var(--c-alert-soft); color:var(--c-alert); }
 .cob-tel-confirmado { background:var(--c-ok-soft); color:var(--c-ok); }
 
-/* ── Estado: badge à esquerda, cobranças já feitas à direita ── */
+/* ── Timeline de cobrança ──
+   Três tentativas contadas SEMPRE a partir do vencimento (nunca em cascata):
+   1ª no vencimento, 2ª em +2 dias, 3ª em +10. Quem paga, paga nas duas primeiras;
+   a terceira é a incisiva, e só faz sentido depois de um intervalo maior.
+   A data mostrada é sugestão do sistema até alguém digitar outra — daí a manual manda. */
+.cob-tl { background:#FAF8F3; border:1px solid rgba(61,92,74,0.07); border-radius:10px; padding:9px 12px 10px; }
+.cob-tl-head { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--c-soft); margin-bottom:9px; }
+.cob-tl-steps { display:grid; grid-template-columns:repeat(3,1fr); }
+.cob-tl-step { position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; }
+/* trilho entre um ponto e o anterior — verde quando a tentativa anterior já foi feita */
+.cob-tl-step + .cob-tl-step::before { content:''; position:absolute; top:10px; right:50%; width:100%; height:2px; background:#E2DCCE; }
+.cob-tl-step.lig-feita::before { background:var(--c-ok); }
+.cob-tl-dot { position:relative; z-index:1; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-family:'Inter',sans-serif; font-size:11px; font-weight:600; line-height:1; cursor:pointer; padding:0;
+  background:#fff; color:#A9A497; border:1.5px solid #D5CEBE; transition:background .12s, border-color .12s, color .12s, box-shadow .12s; }
+.cob-tl-dot:hover { border-color:var(--c-accent); color:var(--c-accent); }
+.cob-tl-n { font-size:10.5px; font-weight:600; color:var(--c-soft); }
+.cob-tl-date { font-family:'Inter',sans-serif; font-size:11px; color:var(--c-soft); background:none; border:none; border-bottom:1px dotted transparent; padding:0 1px; cursor:pointer; }
+.cob-tl-date:hover { color:var(--c-accent); border-bottom-color:currentColor; }
+.cob-tl-date input { font-family:'Inter',sans-serif; font-size:11px; width:104px; border:1px solid var(--c-accent); border-radius:6px; padding:1px 4px; outline:none; }
+.cob-tl-tag { font-size:9.5px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--c-accent); white-space:nowrap; }
+/* feita */
+.cob-tl-step.st-feita .cob-tl-dot { background:var(--c-ok); border-color:var(--c-ok); color:#fff; }
+.cob-tl-step.st-feita .cob-tl-n, .cob-tl-step.st-feita .cob-tl-date { color:var(--c-ok); }
+/* a vez dela: chegou o dia */
+.cob-tl-step.st-agora .cob-tl-dot { background:var(--c-accent); border-color:var(--c-accent); color:#fff; box-shadow:0 0 0 4px rgba(212,87,42,.16); }
+.cob-tl-step.st-agora .cob-tl-n, .cob-tl-step.st-agora .cob-tl-date { color:var(--c-accent); font-weight:600; }
+/* passou do dia e ninguém cobrou — o estado mais forte da timeline */
+.cob-tl-step.st-atrasada .cob-tl-dot { background:var(--c-alert); border-color:var(--c-alert); color:#fff; box-shadow:0 0 0 4px rgba(168,52,27,.14); }
+.cob-tl-step.st-atrasada .cob-tl-n, .cob-tl-step.st-atrasada .cob-tl-date, .cob-tl-step.st-atrasada .cob-tl-tag { color:var(--c-alert); }
+
+/* ── Estado: badge à esquerda, vencimento à direita ── */
 .cob-state { display:flex; align-items:center; justify-content:space-between; gap:8px 10px; flex-wrap:wrap;
   background:#FAF8F3; border:1px solid rgba(61,92,74,0.07); border-radius:10px; padding:7px 10px; }
 .cob-state:has(> :only-child) { background:none; border-color:transparent; padding:0; }
@@ -6797,6 +6838,10 @@ function renderCobrancas(){
 
   atualizarCalLabel();
   renderCalendario();
+  // Painel aberto já na carga, no dia de hoje: a fila de trabalho não deveria depender
+  // de alguém lembrar de clicar no calendário. Sem rolar a página — quem abriu a aba
+  // ainda está lendo os totais do topo.
+  renderPainelCob(false);
 }
 
 function atualizarCalLabel(){
@@ -7156,7 +7201,7 @@ async function pmmTelRodar(vendaId,nome,doc,dateStr,btn){
     todosPagamentos.forEach(x=>{
       if(x.vendas&&x.vendas.id===vendaId) Object.assign(x.vendas,gravado);
     });
-    mostrarDetalheCalDia(dateStr);
+    renderPainelCob();
     if(gravado.telefone_pmm_status==='ambiguo')
       pmmAlert('Mais de um cliente com esse nome no PMM. Tente o nome completo, exatamente como está cadastrado lá.','🔍','Nome ambíguo');
     else if(gravado.telefone_pmm_status==='nao_encontrado')
@@ -7239,37 +7284,96 @@ async function salvarLinkCobranca(id,url,dateStr){
   try{
     await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify(corpo)});
     if(p) Object.assign(p,corpo);
-    mostrarDetalheCalDia(dateStr);
+    renderPainelCob();
   }catch(e){pmmAlert('Erro ao salvar o link: '+e.message,'❌','Erro');}
 }
 
+// O painel de baixo tem quatro recortes. 'dia' é o do calendário — os outros três
+// ignoram o mês aberto e varrem tudo que está carregado, porque a fila de trabalho da
+// operadora não cabe num dia só: o atraso de julho continua sendo trabalho de hoje.
+let cobFiltro='dia';   // 'dia' | 'atrasados' | 'pendentes' | 'pagos'
+let calDiaSel=null;
+
 function mostrarDetalheCalDia(dateStr){
+  if(dateStr){ calDiaSel=dateStr; cobFiltro='dia'; }
+  renderPainelCob(true);
+}
+function setCobFiltro(f){ cobFiltro=f; renderPainelCob(true); }
+
+// Cobranças que entram nos recortes de trabalho: sem reembolso (é saída), sem
+// congelada/oculta (caso de reembolso em curso) e dentro do produto filtrado.
+function cobrancasDaFila(){
+  return todosPagamentos.filter(p=>p.categoria!=='reembolso'&&!pagOculto(p)&&!pagCongelado(p)&&cobProdOk(p));
+}
+
+function renderPainelCob(scroll){
   const detail=document.getElementById('calDetail');
   const header=document.getElementById('calDetailHeader');
   const lista=document.getElementById('calDetailList');
-  if(!detail) return;
+  if(!detail||!header||!lista) return;
   const hoje=new Date(); hoje.setHours(0,0,0,0);
   const hojStr=hoje.toISOString().split('T')[0];
-  const pagsDia=[...todosPagamentos,...todosReembPagamentos].filter(p=>p.data_prevista&&p.data_prevista.split('T')[0]===dateStr&&!pagOculto(p)&&cobProdOk(p));
-  const [ano,mes,dia]=dateStr.split('-');
+  const dateStrDia=calDiaSel||hojStr;
+  const fila=cobrancasDaFila();
 
-  // Cabeçalho do dia: data por extenso + contador + total consolidado
+  // Atrasados: um card por CLIENTE, não por tentativa — quem está devendo aparece
+  // uma vez, no estágio de cobrança em que está.
+  const atrasadosLista=(()=>{
+    const porCliente=new Map();
+    fila.filter(p=>p.status==='pendente'&&cobrancaVencida(p,hojStr)).forEach(p=>{
+      const k=(p.vendas&&p.vendas.id)||p.venda_id||p.id;
+      const atual=porCliente.get(k);
+      if(!atual||urgenciaCobranca(p)<urgenciaCobranca(atual)) porCliente.set(k,p);
+    });
+    // Ordem = urgência da PRÓXIMA tentativa, não do vencimento original. Uma parcela
+    // vencida em 11/08 com a 3ª tentativa marcada para hoje vem antes de uma de 20/08
+    // cuja próxima tentativa ainda é semana que vem.
+    return [...porCliente.values()].sort((a,b)=>urgenciaCobranca(a).localeCompare(urgenciaCobranca(b)));
+  })();
+  const pendentesLista=fila.filter(p=>p.status==='pendente'&&!cobrancaVencida(p,hojStr))
+    .sort((a,b)=>(a.data_prevista||'').localeCompare(b.data_prevista||''));
+  const pagosLista=todosPagamentos.filter(p=>p.status==='recebido'&&cobProdOk(p))
+    .sort((a,b)=>(b.data_recebimento||'').localeCompare(a.data_recebimento||''));
+  const pagsDia=[...todosPagamentos,...todosReembPagamentos].filter(p=>p.data_prevista&&p.data_prevista.split('T')[0]===dateStrDia&&!pagOculto(p)&&cobProdOk(p));
+
   const DIAS_EXT=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const [ano,mes,dia]=dateStrDia.split('-');
   const dObj=new Date(Number(ano),Number(mes)-1,Number(dia));
   const dataExtenso=`${DIAS_EXT[dObj.getDay()]}, ${Number(dia)} de ${MESES_NOMES[Number(mes)-1].toLowerCase()}`;
-  const totalDia=pagsDia.reduce((s,p)=>s+Number((p.categoria==='reembolso'?p.valor:p.valor_bruto)||0),0);
-  const n=pagsDia.length;
-  header.innerHTML=`
-    <div class="cob-day-when">
-      <div class="cob-day-date">${dataExtenso}</div>
-      <div class="cob-day-count">${n} lançamento${n===1?'':'s'} neste dia</div>
-    </div>
-    <div class="cob-day-total">Total: <b>${fmtBRL(totalDia)}</b></div>`;
+  const mesLabel=MESES_NOMES[calMes].toLowerCase()+'/'+calAno;
 
-  if(pagsDia.length===0){
-    lista.innerHTML='<p style="font-size:13px;color:#6B6355;padding:0 20px 20px;">Nenhum lançamento neste dia.</p>';
+  const VISTAS={
+    dia:{itens:pagsDia, titulo:dataExtenso, sub:i=>`${i} lançamento${i===1?'':'s'} neste dia`, vazio:'Nenhum lançamento neste dia.'},
+    atrasados:{itens:atrasadosLista, titulo:'Atrasados', sub:i=>`${i} cliente${i===1?'':'s'} com cobrança vencida ou vencendo hoje · todos os meses, do mais urgente para o menos`, vazio:'Nenhuma cobrança vencida. A fila está limpa.'},
+    pendentes:{itens:pendentesLista, titulo:'Pendentes', sub:i=>`${i} parcela${i===1?'':'s'} com a próxima cobrança ainda no futuro · todos os meses`, vazio:'Nenhuma parcela pendente.'},
+    pagos:{itens:pagosLista, titulo:'Pagos', sub:i=>`${i} parcela${i===1?'':'s'} recebida${i===1?'':'s'} em ${mesLabel} · segue o mês do calendário`, vazio:'Nenhum recebimento em '+mesLabel+'.'}
+  };
+  const vista=VISTAS[cobFiltro]||VISTAS.dia;
+  const itens=vista.itens;
+  const total=itens.reduce((s,p)=>s+Number((p.categoria==='reembolso'?p.valor:p.valor_bruto)||0),0);
+  const btn=(k,rot,qtd)=>`<button class="cob-seg-btn${cobFiltro===k?' active':''}" onclick="setCobFiltro('${k}')">${rot}${qtd!==null?`<span class="cob-seg-n">${qtd}</span>`:''}</button>`;
+
+  header.innerHTML=`
+    <div class="cob-head-linha">
+      <div class="cob-day-when">
+        <div class="cob-day-date">${vista.titulo}</div>
+        <div class="cob-day-count">${vista.sub(itens.length)}</div>
+      </div>
+      <div class="cob-day-total">Total: <b>${fmtBRL(total)}</b></div>
+    </div>
+    <div class="cob-seg">
+      ${btn('dia','Do dia',null)}
+      ${btn('atrasados','Atrasados',atrasadosLista.length)}
+      ${btn('pendentes','Pendentes',pendentesLista.length)}
+      ${btn('pagos','Pagos',pagosLista.length)}
+    </div>`;
+
+  if(itens.length===0){
+    lista.innerHTML=`<p style="font-size:13px;color:#6B6355;padding:0 20px 20px;">${vista.vazio}</p>`;
   } else {
-    lista.innerHTML=pagsDia.map(p=>{
+    lista.innerHTML=itens.map(p=>{
+      // Fora do recorte do dia cada card responde pela própria data
+      const dateStr=(p.data_prevista||dateStrDia).split('T')[0];
       // ═══ REEMBOLSO (saída) ═══
       if(p.categoria==='reembolso'){
         const pago=p.status==='pago';
@@ -7336,7 +7440,9 @@ function mostrarDetalheCalDia(dateStr){
       // não precisa de link, e mostrar um ali só polui a linha.
       const linkHtml=recebido?'':linhaLinkCob(p,dateStr);
       const telHtml=linhaTelefoneCob(p,dateStr);
-      return`<div class="cob-lanc${recebido?' is-recebido':''}">
+      // Próxima tentativa caindo hoje: é a ação do dia, e o card diz isso
+      const acaoHoje=!recebido&&urgenciaCobranca(p)===hojStr;
+      return`<div class="cob-lanc${recebido?' is-recebido':''}${acaoHoje?' is-agora':''}">
         <div class="cob-lanc-top">
           <div class="cob-lanc-id">
             <div class="cob-lanc-nome">${escHtml(nome)}</div>
@@ -7344,20 +7450,14 @@ function mostrarDetalheCalDia(dateStr){
           </div>
           <div class="cob-lanc-money">
             <div class="cob-lanc-valor">${fmtBRL(p.valor_bruto)}</div>
-            <span class="cob-venc-line">${vencHtml}</span>
           </div>
         </div>
         <div class="cob-state">
           <span class="cob-pill-status ${stCls}">${stInner}</span>
-          ${recebido
-            ? `<span class="cob-confirmado">Recebido em <input type="date" class="cob-venc-input" value="${(p.data_recebimento||p.data_prevista||dateStr).split('T')[0]}" title="Data em que o valor entrou (usada nos levantamentos/comissão)" onchange="atualizarDataRecebimento('${p.id}',this.value,'${dateStr}')"></span>`
-            : `<div class="cob-followups" title="Controle de cobranças feitas nesta parcela">
-            <span class="cob-fu-label">Cobranças</span>
-            <label class="cob-fu"><input type="checkbox" ${p.cobranca_1?'checked':''} onchange="toggleCobranca('${p.id}',1,this.checked,'${dateStr}')">1ª</label>
-            <label class="cob-fu"><input type="checkbox" ${p.cobranca_2?'checked':''} onchange="toggleCobranca('${p.id}',2,this.checked,'${dateStr}')">2ª</label>
-            <label class="cob-fu"><input type="checkbox" ${p.cobranca_3?'checked':''} onchange="toggleCobranca('${p.id}',3,this.checked,'${dateStr}')">3ª</label>
-          </div>`}
+          <span class="cob-venc-line">${vencHtml}</span>
+          ${recebido?`<span class="cob-confirmado">Recebido em <input type="date" class="cob-venc-input" value="${(p.data_recebimento||p.data_prevista||dateStr).split('T')[0]}" title="Data em que o valor entrou (usada nos levantamentos/comissão)" onchange="atualizarDataRecebimento('${p.id}',this.value,'${dateStr}')"></span>`:''}
         </div>
+        ${recebido?'':timelineCobHTML(p,hojStr)}
         <div class="cob-canais">${linkHtml}${telHtml}</div>
         ${recebido?'':`<div class="cob-lanc-acao">
           <button class="cob-btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Marcar como recebido</button>
@@ -7366,7 +7466,7 @@ function mostrarDetalheCalDia(dateStr){
     }).join('');
   }
   detail.style.display='block';
-  detail.scrollIntoView({behavior:'smooth',block:'nearest'});
+  if(scroll) detail.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 // Recalcula os totais da venda a partir das parcelas reais no banco.
@@ -7417,7 +7517,7 @@ async function marcarRecebido(id,dateStr){
         await marcarCompetencia(p.vendas.id); }
     }
     renderCobrancas();
-    mostrarDetalheCalDia(dateStr);
+    renderPainelCob();
   }catch(e){pmmAlert('Erro ao marcar como recebido: '+e.message,'❌','Erro');}
 }
 
@@ -7445,24 +7545,119 @@ async function atualizarDataPagamento(id,novaData,dateStrOriginal){
       await supaFetch('vendas?id=eq.'+p.vendas.id,{method:'PATCH',body:JSON.stringify({valor_restante:restante})});
     }
     renderCobrancas();
-    // Abre o detalhe no novo dia
-    mostrarDetalheCalDia(novaData);
+    // No recorte do dia, segue a parcela para a data nova; nos outros, só repinta
+    if(cobFiltro==='dia') mostrarDetalheCalDia(novaData); else renderPainelCob();
   }catch(e){pmmAlert('Erro ao atualizar data: '+e.message,'❌','Erro');}
 }
 
+// ── AGENDA DE COBRANÇA ──
+// A operadora estava cobrando sem critério, o que gasta o dia e não traz dinheiro.
+// Quem paga, paga na 1ª ou na 2ª tentativa; quem não paga precisa de um intervalo
+// maior antes da 3ª, que é a incisiva. Daí os prazos abaixo.
+//
+// Os três prazos contam SEMPRE a partir do vencimento da parcela, nunca um sobre o
+// outro: adiar a 2ª não empurra a 3ª. E a data é só sugestão — assim que alguém
+// digita uma data na tentativa, a manual passa a mandar e o cálculo não a reescreve.
+const DIAS_COBRANCA={1:0,2:2,3:10};
+function somaDias(iso,n){
+  const [a,m,d]=iso.split('-').map(Number);
+  // UTC de propósito: somar dia em horário local erra na virada do horário de verão.
+  const t=new Date(Date.UTC(a,m-1,d)); t.setUTCDate(t.getUTCDate()+n);
+  return t.toISOString().split('T')[0];
+}
+function dataCobranca(p,n){
+  const manual=p['cobranca_'+n+'_data'];
+  if(manual) return manual.split('T')[0];
+  const venc=(p.data_prevista||'').split('T')[0];
+  return venc?somaDias(venc,DIAS_COBRANCA[n]):'';
+}
+function cobrancaFeita(p,n){ return !!p['cobranca_'+n]; }
+// Em que tentativa a parcela está agora. null = as três já foram feitas.
+function proximaTentativa(p){
+  for(const n of [1,2,3]) if(!cobrancaFeita(p,n)) return {n,data:dataCobranca(p,n)};
+  return null;
+}
+// A data que ordena a fila de trabalho: a próxima tentativa em aberto. Esgotadas as
+// três, vale a data da última — quem já levou três cobranças e não pagou não pode
+// cair para o fim da fila.
+function urgenciaCobranca(p){
+  const prox=proximaTentativa(p);
+  return prox?prox.data:dataCobranca(p,3);
+}
+// "Vencida" inclui a que vence HOJE: cobrança de hoje é trabalho de hoje, não de
+// amanhã — e é ela que aparece em destaque no topo da fila.
+function cobrancaVencida(p,hojStr){ return urgenciaCobranca(p)<=hojStr; }
+
+// A timeline dentro do card: 1ª — 2ª — 3ª, com data editável em cada ponto.
+function timelineCobHTML(p,hojStr){
+  const passos=[1,2,3].map(n=>{
+    const feita=cobrancaFeita(p,n);
+    const data=dataCobranca(p,n);
+    const venceu=data&&data<hojStr;
+    const ehHoje=data===hojStr;
+    // atrasada ganha de "a vez dela": é o que precisa aparecer primeiro
+    const st=feita?'st-feita':venceu?'st-atrasada':ehHoje?'st-agora':'st-futura';
+    const lig=n>1&&cobrancaFeita(p,n-1)?' lig-feita':'';
+    const tag=(!feita&&(venceu||ehHoje))?'<span class="cob-tl-tag">▸ cobrar agora</span>':'';
+    return `<div class="cob-tl-step ${st}${lig}">
+      <button class="cob-tl-dot" title="${feita?'Cobrança feita — clique para desmarcar':'Marcar esta cobrança como feita'}"
+        onclick="toggleCobranca('${p.id}',${n},${!feita})">${feita?'✓':st==='st-atrasada'?'!':n}</button>
+      <span class="cob-tl-n">${n}ª</span>
+      <button class="cob-tl-date" title="Clique para ajustar a data desta cobrança"
+        onclick="editarDataCob(event,'${p.id}',${n})">${data?fmtDataCurta(data):'—'}</button>
+      ${tag}
+    </div>`;
+  }).join('');
+  return `<div class="cob-tl"><div class="cob-tl-head">Cobranças</div><div class="cob-tl-steps">${passos}</div></div>`;
+}
+function fmtDataCurta(iso){ const [,m,d]=iso.split('-'); return d+'/'+m; }
+
+// Troca o texto da data por um campo de data, só enquanto edita.
+function editarDataCob(ev,id,num){
+  const btn=ev.currentTarget;
+  if(btn.querySelector('input')) return;
+  const p=todosPagamentos.find(x=>x.id===id);
+  if(!p) return;
+  const atual=dataCobranca(p,num);
+  btn.innerHTML=`<input type="date" value="${atual}" onclick="event.stopPropagation()"
+    onchange="salvarDataCob('${id}',${num},this.value)" onblur="renderPainelCob()">`;
+  const inp=btn.querySelector('input');
+  inp.focus();
+  try{ inp.showPicker&&inp.showPicker(); }catch(e){}
+}
+
+async function salvarDataCob(id,num,valor){
+  if(!valor) return;
+  const col='cobranca_'+num+'_data';
+  const p=todosPagamentos.find(x=>x.id===id);
+  const antes=p?p[col]:null;
+  if(p) p[col]=valor;
+  renderPainelCob();
+  try{
+    await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify({[col]:valor})});
+  }catch(e){
+    if(p) p[col]=antes;
+    renderPainelCob();
+    pmmAlert((e.message||'').includes(col)
+      ? `A coluna ${col} ainda não existe no Supabase. Rode sql/009_datas_cobranca.sql no SQL editor.`
+      : 'Erro ao salvar a data: '+e.message,'❌','Data de cobrança');
+  }
+}
+
 // Controle de follow-ups / cobranças por parcela (individual, zera a cada nova parcela)
-async function toggleCobranca(id,num,checked,dateStr){
+async function toggleCobranca(id,num,checked){
   const col='cobranca_'+num;
   const p=todosPagamentos.find(x=>x.id===id);
-  // Otimista: o próprio checkbox já mostra o novo estado, sem re-renderizar o dia
-  // (re-render tiraria o foco e o scroll de quem está marcando).
+  // Otimista, e repinta na hora: marcar uma tentativa muda o trilho, o ponto seguinte
+  // e o aviso de "cobrar agora" — a timeline inteira responde ao clique.
   if(p) p[col]=checked;
+  renderPainelCob();
   try{
     await supaFetch('pagamentos_venda?id=eq.'+id,{method:'PATCH',body:JSON.stringify({[col]:checked})});
   }catch(e){
     if(p) p[col]=!checked; // reverte
+    renderPainelCob();
     pmmAlert('Erro ao salvar cobrança: '+e.message,'❌','Erro');
-    mostrarDetalheCalDia(dateStr);
   }
 }
 
@@ -7474,7 +7669,7 @@ async function marcarReembPago(id,dateStr){
     const p=todosReembPagamentos.find(x=>x.id===id);
     if(p){p.status='pago';p.data_pagamento=hoje;}
     renderCobrancas();
-    mostrarDetalheCalDia(dateStr);
+    renderPainelCob();
   }catch(e){pmmAlert('Erro ao marcar como pago: '+e.message,'❌','Erro');}
 }
 async function atualizarDataReembParcela(id,novaData,dateStrOriginal){
@@ -7484,7 +7679,7 @@ async function atualizarDataReembParcela(id,novaData,dateStrOriginal){
     const p=todosReembPagamentos.find(x=>x.id===id);
     if(p) p.data_prevista=novaData;
     renderCobrancas();
-    mostrarDetalheCalDia(novaData);
+    if(cobFiltro==='dia') mostrarDetalheCalDia(novaData); else renderPainelCob();
   }catch(e){pmmAlert('Erro ao atualizar data: '+e.message,'❌','Erro');}
 }
 
