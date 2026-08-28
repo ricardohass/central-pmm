@@ -961,11 +961,13 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-day-count { font-size:13px; color:var(--c-soft); margin-top:3px; }
 .cob-day-total { font-size:13px; color:var(--c-soft); white-space:nowrap; }
 .cob-day-total b { font-weight:600; color:var(--c-ink); }
-.cob-daygrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:12px; padding:0 20px 20px; }
+/* align-items:start: cada card fica da altura do próprio conteúdo. Esticado, o card
+   mais curto ganhava um vão de vazio no rodapé só para empatar com o vizinho. */
+.cob-daygrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:12px; padding:0 20px 20px; align-items:start; }
 
 /* ── O card ── blocos empilhados na ordem de leitura: quem é · quanto · em que pé
    está · o que já foi cobrado · a ação · o link · o contato. */
-.cob-lanc { background:#fff; border:1px solid var(--c-line); border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+.cob-lanc { background:#fff; border:1px solid var(--c-line); border-radius:12px; padding:13px 14px; display:flex; flex-direction:column; gap:8px; }
 .cob-lanc.is-recebido { opacity:.9; }
 /* Reembolso e congelada: trilho lateral neutro. O tipo já está dito no rótulo e no
    ícone — não precisa de mais uma cor pra dizer a mesma coisa. */
@@ -981,7 +983,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-lanc-valor { font-size:16px; font-weight:600; color:var(--c-ink); white-space:nowrap; }
 
 /* Metadados: uma linha só, tudo no mesmo tom secundário */
-.cob-lanc-meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:12px; color:var(--c-soft); margin-top:5px; }
+.cob-lanc-meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:12px; color:var(--c-soft); margin-top:4px; }
 .cob-lanc-meta .sep { color:#C3BCAE; }
 .cob-meta-txt { display:inline-flex; align-items:center; gap:5px; flex-wrap:wrap; }
 
@@ -1003,7 +1005,9 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-tel-confirmado { background:var(--c-ok-soft); color:var(--c-ok); }
 
 /* ── Estado: badge à esquerda, cobranças já feitas à direita ── */
-.cob-state { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.cob-state { display:flex; align-items:center; justify-content:space-between; gap:8px 10px; flex-wrap:wrap;
+  background:#FAF8F3; border:1px solid rgba(61,92,74,0.07); border-radius:10px; padding:7px 10px; }
+.cob-state:has(> :only-child) { background:none; border-color:transparent; padding:0; }
 .cob-followups { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .cob-fu-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--c-soft); }
 /* marcado x desmarcado é UMA diferença: apagado vs coral. Sem misturar contorno e preenchimento. */
@@ -1016,10 +1020,11 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .cob-fu:has(input:checked) input::after { opacity:1; }
 
 /* ── Ação: um botão cheio por card, o resto é secundário ── */
-.cob-lanc-acao { display:flex; justify-content:flex-end; align-items:center; gap:8px; flex-wrap:wrap; }
-.cob-btn-receber { display:inline-flex; align-items:center; gap:6px; background:var(--c-accent); color:#fff; border:1px solid var(--c-accent); border-radius:999px; padding:8px 16px; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:background .12s, border-color .12s; }
+.cob-lanc-acao { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.cob-btn-receber { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px; background:var(--c-accent); color:#fff; border:1px solid var(--c-accent); border-radius:10px; padding:9px 16px; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:background .12s, border-color .12s; }
 .cob-btn-receber:hover { background:#B8461F; border-color:#B8461F; }
-.cob-confirmado { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--c-soft); }
+.cob-confirmado { display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:500; color:var(--c-ok); }
+.cob-state .cob-confirmado .cob-venc-input { padding:3px 8px; }
 /* secundários: mesma pílula vazada, mesma reação ao hover */
 .cob-btn-link, .cob-link-abrir, .cob-tel-acao, .cob-tel-btn {
   display:inline-flex; align-items:center; justify-content:center; gap:5px; flex-shrink:0;
@@ -1034,7 +1039,7 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 
 /* ── Campos editáveis: mesma caixa, mesmo foco coral ── */
 .cob-venc-input, .cob-link-input {
-  font-family:'Inter',sans-serif; font-size:12px; color:var(--c-ink); background:#FCFAF5;
+  font-family:'Inter',sans-serif; font-size:12px; color:var(--c-ink); background:#fff;
   border:1px solid var(--c-line); border-radius:8px; padding:4px 9px; outline:none;
   transition:border-color .12s, background .12s, box-shadow .12s;
 }
@@ -1049,7 +1054,12 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 
 /* ── Link de cobrança (Asaas) e contato: dois blocos irmãos, separados por uma régua fina.
    O link sai preenchido pelo job asaas_links.py; o campo aceita colar à mão quando não casou. ── */
-.cob-lanc-link, .cob-lanc-tel { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:10px; border-top:1px solid var(--c-line); }
+.cob-canais { display:flex; flex-direction:column; gap:7px; background:#FAF8F3; border:1px solid rgba(61,92,74,0.07); border-radius:10px; padding:8px 10px; }
+.cob-canais:empty { display:none; }
+.cob-lanc-link, .cob-lanc-tel { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+/* o telefone só ganha régua quando vem depois do link */
+.cob-lanc-link + .cob-lanc-tel { border-top:1px solid var(--c-line); padding-top:7px; }
+.cob-lanc-tel .cob-tel-btn { padding:5px 10px; }
 .cob-link-ico, .cob-tel-ico { font-size:12px; opacity:.5; flex-shrink:0; }
 .cob-tel-num { font-size:12px; font-weight:600; color:var(--c-ink); white-space:nowrap; }
 .cob-tel-vazio { font-size:11.5px; color:var(--c-soft); }
@@ -7276,10 +7286,13 @@ function mostrarDetalheCalDia(dateStr){
               <div class="cob-lanc-valor">${fmtBRL(p.valor)}</div>
             </div>
           </div>
-          <div class="cob-state"><span class="cob-pill-status ${stCls}">${stLbl}</span></div>
-          <div class="cob-lanc-acao">
-            ${pago?`<span class="cob-confirmado">✓ Pago</span>`:`<button class="cob-btn-receber" onclick="marcarReembPago('${p.id}','${dateStr}')">✓ Marcar como pago</button>`}
+          <div class="cob-state">
+            <span class="cob-pill-status ${stCls}">${stLbl}</span>
+            ${pago?`<span class="cob-confirmado">✓ Baixa dada</span>`:''}
           </div>
+          ${pago?'':`<div class="cob-lanc-acao">
+            <button class="cob-btn-receber" onclick="marcarReembPago('${p.id}','${dateStr}')">✓ Marcar como pago</button>
+          </div>`}
         </div>`;
       }
       // ═══ COBRANÇA CONGELADA (reembolso em curso) ═══
@@ -7298,8 +7311,10 @@ function mostrarDetalheCalDia(dateStr){
               <div class="cob-lanc-valor">${fmtBRL(p.valor_bruto)}</div>
             </div>
           </div>
-          <div class="cob-state"><span class="cob-pill-status st-congelada">❄ Congelada</span></div>
-          <div class="cob-congelada-nota">Reembolso/cancelamento em andamento — cobrança pausada</div>
+          <div class="cob-state">
+            <span class="cob-pill-status st-congelada">❄ Congelada</span>
+            <span class="cob-congelada-nota">Reembolso/cancelamento em andamento</span>
+          </div>
         </div>`;
       }
       // ═══ COBRANÇA (entrada) ═══
@@ -7329,20 +7344,19 @@ function mostrarDetalheCalDia(dateStr){
         </div>
         <div class="cob-state">
           <span class="cob-pill-status ${stCls}">${stInner}</span>
-          ${recebido?'':`<div class="cob-followups" title="Controle de cobranças feitas nesta parcela">
+          ${recebido
+            ? `<span class="cob-confirmado">Recebido em <input type="date" class="cob-venc-input" value="${(p.data_recebimento||p.data_prevista||dateStr).split('T')[0]}" title="Data em que o valor entrou (usada nos levantamentos/comissão)" onchange="atualizarDataRecebimento('${p.id}',this.value,'${dateStr}')"></span>`
+            : `<div class="cob-followups" title="Controle de cobranças feitas nesta parcela">
             <span class="cob-fu-label">Cobranças</span>
             <label class="cob-fu"><input type="checkbox" ${p.cobranca_1?'checked':''} onchange="toggleCobranca('${p.id}',1,this.checked,'${dateStr}')">1ª</label>
             <label class="cob-fu"><input type="checkbox" ${p.cobranca_2?'checked':''} onchange="toggleCobranca('${p.id}',2,this.checked,'${dateStr}')">2ª</label>
             <label class="cob-fu"><input type="checkbox" ${p.cobranca_3?'checked':''} onchange="toggleCobranca('${p.id}',3,this.checked,'${dateStr}')">3ª</label>
           </div>`}
         </div>
-        <div class="cob-lanc-acao">
-          ${recebido
-            ? `<span class="cob-confirmado">✓ Recebido em <input type="date" class="cob-venc-input" value="${(p.data_recebimento||p.data_prevista||dateStr).split('T')[0]}" title="Data em que o valor entrou (usada nos levantamentos/comissão)" onchange="atualizarDataRecebimento('${p.id}',this.value,'${dateStr}')"></span>`
-            : `<button class="cob-btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Marcar como recebido</button>`}
-        </div>
-        ${linkHtml}
-        ${telHtml}
+        ${recebido?'':`<div class="cob-lanc-acao">
+          <button class="cob-btn-receber" onclick="marcarRecebido('${p.id}','${dateStr}')">✓ Marcar como recebido</button>
+        </div>`}
+        <div class="cob-canais">${linkHtml}${telHtml}</div>
       </div>`;
     }).join('');
   }
