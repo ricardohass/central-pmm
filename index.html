@@ -780,6 +780,14 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .pend-item.dispensada { opacity:.62; border-left-color:var(--cream3); background:var(--cream); }
 .pend-item.dispensada .pend-idade { color:var(--muted); font-weight:400; }
 .pend-selo { font-size:11px; color:var(--muted); font-style:italic; }
+.pend-modal-box { max-width:420px; }
+.pend-modal-box .modal-title { color:var(--coral); }
+.pend-modal-alvo { font-size:13px; color:var(--text); background:#fff; border:0.5px solid var(--border); border-radius:10px; padding:11px 13px; margin:14px 0 4px; }
+.pend-modal-alvo b { font-weight:600; }
+.pend-modal-alvo span { display:block; font-size:11.5px; color:var(--muted); margin-top:3px; }
+.pend-modal-aviso { font-size:12px; color:var(--muted); line-height:1.6; margin-top:12px; }
+.btn-dispensar-ok { font-family:'Inter',sans-serif; font-size:13px; font-weight:500; background:var(--coral); color:#fff; border:none; border-radius:8px; padding:7px 16px; cursor:pointer; }
+.btn-dispensar-ok:hover { background:#c0491f; }
 .pend-grupo-titulo { font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin:18px 0 2px; }
 .pend-nota { font-size:11.5px; color:var(--muted); line-height:1.6; margin-top:20px; padding-top:14px; border-top:0.5px solid var(--border); }
 .pend-nota b { color:var(--text); font-weight:600; }
@@ -1776,6 +1784,22 @@ input.vf-doc-ruim { border-color:#8B3A1F !important; }
         <button class="btn-novo" id="btnNovoLink" onclick="abrirFormLink()">+ Novo link</button>
       </div>
       <div id="linksContent"></div>
+    </div>
+
+    <!-- CONFIRMAÇÃO DE DISPENSA -->
+    <div class="modal-overlay" id="pendModal">
+      <div class="modal-box pend-modal-box">
+        <p class="modal-title">Tirar da fila sem resolver?</p>
+        <p class="modal-sub" id="pendModalSub">Esta pendência sai da lista sem ter sido resolvida.</p>
+        <div class="pend-modal-alvo" id="pendModalAlvo"></div>
+        <p class="pend-modal-aviso">A pendência <b>continua existindo na venda</b> — só deixa de aparecer aqui.
+          Nenhuma justificativa fica registrada. Dá para trazer de volta a qualquer momento pelo filtro
+          <b>Dispensadas</b>.</p>
+        <div class="modal-actions">
+          <button class="btn-cancelar" onclick="pendFecharModal()">Cancelar</button>
+          <button class="btn-dispensar-ok" id="pendModalOk">Dispensar</button>
+        </div>
+      </div>
     </div>
 
     <!-- PENDÊNCIAS -->
@@ -6976,22 +7000,39 @@ function pendVerFila(dispensadas){ pendVerDispensadas=dispensadas; renderPendenc
 
 // Dispensar não resolve nada: tira da fila e guarda quem tirou, quando e por quê.
 // Reativar é o mesmo caminho de volta, zerando a data.
+function pendFecharModal(){ document.getElementById('pendModal').classList.remove('open'); }
+// Confirmação na cara da Central, no lugar do prompt do navegador. Reativar não
+// abre modal nenhum: trazer de volta não custa nada a ninguém.
+function pendConfirmarDispensa(sub,alvoHtml,aoConfirmar){
+  document.getElementById('pendModalSub').textContent=sub;
+  document.getElementById('pendModalAlvo').innerHTML=alvoHtml;
+  const ok=document.getElementById('pendModalOk');
+  const novo=ok.cloneNode(true);            // nó novo pra não empilhar handler antigo
+  ok.parentNode.replaceChild(novo,ok);
+  novo.onclick=()=>{ pendFecharModal(); aoConfirmar(); };
+  document.getElementById('pendModal').classList.add('open');
+}
+
 async function pendDispensar(chave,dispensar){
-  let motivo='';
-  if(dispensar){
-    motivo=prompt('Por que está tirando isso da fila? (opcional)\n\nA pendência continua existindo na venda — só deixa de aparecer aqui.','');
-    if(motivo===null) return;   // cancelou
-  }
+  if(!dispensar) return pendGravarDispensa(chave,false);
+  const i=pendItens.find(x=>x.chave===chave)||{};
+  pendConfirmarDispensa(
+    'Esta pendência sai da lista sem ter sido resolvida.',
+    '<b>'+((PEND_TIPOS[i.tipo]||{}).rot||'')+' · '+(i.cliente||'')+'</b><span>'+(i.desc||'')+'</span>',
+    ()=>pendGravarDispensa(chave,true));
+}
+
+async function pendGravarDispensa(chave,dispensar){
   const corpo={chave:chave,
     dispensada_em:dispensar?new Date().toISOString():null,
     dispensada_por:dispensar?((currentUser&&currentUser.nome)||''):null,
-    dispensa_motivo:dispensar?(motivo||null):null};
+    dispensa_motivo:null};
   try{
     await supaFetch('pendencias_touchpoint',{method:'POST',body:JSON.stringify(corpo),
       headers:{'Prefer':'resolution=merge-duplicates,return=representation'}});
     pendTouch[chave]=Object.assign(pendTouch[chave]||{},corpo);
     const it=pendItens.find(i=>i.chave===chave);
-    if(it){ it.dispensada=dispensar; it.dispensaMotivo=dispensar?(motivo||''):''; }
+    if(it){ it.dispensada=dispensar; it.dispensaMotivo=''; }
     renderPendencias();
   }catch(e){
     alert('Não deu para '+(dispensar?'dispensar':'reativar')+'.\n\n'+String(e.message||e).slice(0,200)
@@ -7001,18 +7042,25 @@ async function pendDispensar(chave,dispensar){
 
 // Limpa em massa do que está na tela — respeita os filtros ativos, por isso o
 // botão só aparece com filtro ligado.
-async function pendDispensarFiltradas(){
+function pendDispensarFiltradas(){
   const alvo=pendFiltrados();
   if(!alvo.length) return;
-  const motivo=prompt('Dispensar '+alvo.length+' pendências de uma vez.\n\nElas somem da fila mas continuam existindo nas vendas.\nMotivo (opcional):','');
-  if(motivo===null) return;
+  const cont={}; alvo.forEach(i=>{ cont[i.tipo]=(cont[i.tipo]||0)+1; });
+  const resumo=Object.keys(cont).map(t=>cont[t]+' '+(PEND_TIPOS[t]||{}).rot).join(' · ');
+  pendConfirmarDispensa(
+    'São '+alvo.length+' pendências de uma vez, todas sem ter sido resolvidas.',
+    '<b>'+alvo.length+' pendências saem da fila</b><span>'+resumo+'</span>',
+    ()=>pendGravarDispensaEmMassa(alvo));
+}
+
+async function pendGravarDispensaEmMassa(alvo){
   const agora=new Date().toISOString(), quem=(currentUser&&currentUser.nome)||'';
-  const linhas=alvo.map(i=>({chave:i.chave,dispensada_em:agora,dispensada_por:quem,dispensa_motivo:motivo||null}));
+  const linhas=alvo.map(i=>({chave:i.chave,dispensada_em:agora,dispensada_por:quem,dispensa_motivo:null}));
   try{
     // PostgREST exige as mesmas chaves em todos os objetos do lote — por isso o map acima é uniforme.
     await supaFetch('pendencias_touchpoint',{method:'POST',body:JSON.stringify(linhas),
       headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}});
-    alvo.forEach(i=>{ i.dispensada=true; i.dispensaMotivo=motivo||'';
+    alvo.forEach(i=>{ i.dispensada=true; i.dispensaMotivo='';
                       pendTouch[i.chave]=Object.assign(pendTouch[i.chave]||{},{dispensada_em:agora}); });
     renderPendencias();
   }catch(e){
