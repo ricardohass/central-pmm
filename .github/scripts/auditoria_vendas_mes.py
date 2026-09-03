@@ -219,7 +219,7 @@ def montar(itens, total_vendas, ref, prazo, parcial):
              'Gateway fica no cronograma de pagamentos; SDR e social seller em Atribuições; '
              'comprovante na seção Comprovantes de pagamento; as duas caixas "Infos enviadas ao '
              'jurídico" e "Subido na Central" ficam no card da venda.'
-             '<br/><strong>Origem:</strong> base da Central PMM, vendas com data_venda em '
+             '\n<strong>Origem:</strong> base da Central PMM, vendas com data_venda em '
              f'{MES_EXT[ref.month]}/{ref.year} (canceladas e arrependimentos fora). '
              + ('Rodada PARCIAL, com o mês ainda aberto — o fechamento sai no último dia.'
                 if parcial else 'Gerado automaticamente no último dia do mês.') + '</body>')
