@@ -1,12 +1,16 @@
 name: Cobranças 25d+
 
+# DESLIGADA DO ASANA (set/2026): estas pendências agora vivem na guia
+# "Pendências" da Central, calculadas ao vivo — ver sql/010 e a seção
+# PENDÊNCIAS no index.html. O agendamento saiu junto com o token: sem
+# ASANA_TOKEN o script só imprime o levantamento no log, então o botão
+# "Run workflow" continua servindo de consulta manual.
+
 # Varre as parcelas da Central e abre no Asana uma tarefa por caso que passou de
 # 25 dias de atraso. Roda no GitHub porque a sandbox dos agentes na nuvem tem
 # proxy com allowlist e bloqueia o acesso direto ao Supabase (403).
 
 on:
-  schedule:
-    - cron: '7 11 * * *'   # 11:07 UTC = 08:07 em São Paulo
   workflow_dispatch:        # botão "Run workflow" pra rodar na mão
 
 permissions:
@@ -20,7 +24,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Levantar parcelas e abrir tarefas no Asana
-        env:
-          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
+      - name: Levantar parcelas e imprimir o levantamento
         run: python3 .github/scripts/cobrancas_25dias.py

@@ -1,11 +1,15 @@
 name: Cobranças mensal
 
+# DESLIGADA DO ASANA (set/2026): estas pendências agora vivem na guia
+# "Pendências" da Central, calculadas ao vivo — ver sql/010 e a seção
+# PENDÊNCIAS no index.html. O agendamento saiu junto com o token: sem
+# ASANA_TOKEN o script só imprime o levantamento no log, então o botão
+# "Run workflow" continua servindo de consulta manual.
+
 # Fechamento do mês: uma tarefa no Asana com todos os atrasados agrupados por
 # closer. Irmã da rotina diária, mesmo motivo pra viver aqui e não na nuvem.
 
 on:
-  schedule:
-    - cron: '0 11 1 * *'   # 11:00 UTC do dia 1º = 08:00 em São Paulo
   workflow_dispatch:
 
 permissions:
@@ -20,6 +24,4 @@ jobs:
         with:
           python-version: '3.12'
       - name: Fechamento mensal de cobranças
-        env:
-          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
         run: python3 .github/scripts/cobrancas_mensal.py

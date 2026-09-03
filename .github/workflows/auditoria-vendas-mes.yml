@@ -1,5 +1,11 @@
 name: Conferência de cadastro das vendas
 
+# DESLIGADA DO ASANA (set/2026): estas pendências agora vivem na guia
+# "Pendências" da Central, calculadas ao vivo — ver sql/010 e a seção
+# PENDÊNCIAS no index.html. O agendamento saiu junto com o token: sem
+# ASANA_TOKEN o script só imprime o levantamento no log, então o botão
+# "Run workflow" continua servindo de consulta manual.
+
 # Último dia do mês, 20h em São Paulo: varre as vendas fechadas no mês e abre no
 # Asana UMA tarefa com o que falta preencher em cada uma — gateway da parcela,
 # SDR/social seller, comprovante de pagamento, infos pro jurídico e "subido na
@@ -14,8 +20,6 @@ name: Conferência de cadastro das vendas
 # allowlist e bloqueia o Supabase (403).
 
 on:
-  schedule:
-    - cron: '0 23 * * *'   # 23:00 UTC = 20:00 em São Paulo
   workflow_dispatch:
     inputs:
       mes:
@@ -33,9 +37,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Conferir cadastro das vendas e abrir tarefa no Asana
+      - name: Conferir cadastro das vendas e imprimir o levantamento
         env:
-          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
           MES: ${{ inputs.mes }}
         run: |
           if [ -n "$MES" ]; then
