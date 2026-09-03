@@ -1,0 +1,47 @@
+name: Conferência de cadastro das vendas
+
+# Último dia do mês, 20h em São Paulo: varre as vendas fechadas no mês e abre no
+# Asana UMA tarefa com o que falta preencher em cada uma — gateway da parcela,
+# SDR/social seller, comprovante de pagamento, infos pro jurídico e "subido na
+# Central". Prazo da tarefa: o primeiro dia do mês seguinte.
+#
+# O cron do GitHub não sabe dizer "último dia do mês", então a rotina bate todo
+# dia e o próprio script desiste quando não é o último — a conta é feita na data
+# de São Paulo, o que ainda deixa até 3h de folga pro agendador do Actions
+# atrasar sem virar o mês.
+#
+# Roda aqui, e não na nuvem, porque a sandbox dos agentes tem proxy com
+# allowlist e bloqueia o Supabase (403).
+
+on:
+  schedule:
+    - cron: '0 23 * * *'   # 23:00 UTC = 20:00 em São Paulo
+  workflow_dispatch:
+    inputs:
+      mes:
+        description: 'Mês a conferir (AAAA-MM) — vazio roda o mês corrente, sem esperar ser o último dia'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  auditoria:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Conferir cadastro das vendas e abrir tarefa no Asana
+        env:
+          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
+          MES: ${{ inputs.mes }}
+        run: |
+          if [ -n "$MES" ]; then
+            python3 .github/scripts/auditoria_vendas_mes.py "$MES"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python3 .github/scripts/auditoria_vendas_mes.py "$(TZ=America/Sao_Paulo date +%Y-%m)"
+          else
+            python3 .github/scripts/auditoria_vendas_mes.py
+          fi
