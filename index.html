@@ -773,6 +773,13 @@ select.filtro-input.ativo { background-image:url("data:image/svg+xml;utf8,<svg x
 .pend-salvo.on { opacity:1; }
 .pend-abrir { font-family:'Inter',sans-serif; font-size:11.5px; color:var(--coral); background:none; border:0.5px solid var(--coral); border-radius:7px; padding:5px 10px; cursor:pointer; white-space:nowrap; }
 .pend-abrir:hover { background:var(--coral); color:#fff; }
+.pend-dispensar { font-family:'Inter',sans-serif; font-size:11.5px; color:var(--muted); background:none; border:0.5px solid var(--border); border-radius:7px; padding:5px 10px; cursor:pointer; white-space:nowrap; }
+.pend-dispensar:hover { border-color:var(--muted); color:var(--text); }
+.pend-limpar { font-family:'Inter',sans-serif; font-size:12.5px; font-weight:500; color:#fff; background:var(--muted); border:none; border-radius:8px; padding:7px 13px; cursor:pointer; white-space:nowrap; }
+.pend-limpar:hover { background:var(--text); }
+.pend-item.dispensada { opacity:.62; border-left-color:var(--cream3); background:var(--cream); }
+.pend-item.dispensada .pend-idade { color:var(--muted); font-weight:400; }
+.pend-selo { font-size:11px; color:var(--muted); font-style:italic; }
 .pend-grupo-titulo { font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin:18px 0 2px; }
 .pend-nota { font-size:11.5px; color:var(--muted); line-height:1.6; margin-top:20px; padding-top:14px; border-top:0.5px solid var(--border); }
 .pend-nota b { color:var(--text); font-weight:600; }
@@ -6709,6 +6716,9 @@ const PEND_STATUS_VIVO=['confirmada','pendente','reembolso'];
 
 let pendItens=[], pendTouch={}, pendSemTabela=false;
 let pendFiltroTipo='todos', pendFiltroResp='todos', pendOrdem='idade';
+let pendFiltroPeriodo='todos', pendVerDispensadas=false;
+// Corte que separa o passivo herdado do que é da gestão atual.
+const PEND_CORTE_JUNHO='2026-06-30';
 
 const pendHoje=()=>new Date().toISOString().slice(0,10);
 const pendDias=(iso)=>{
@@ -6810,21 +6820,31 @@ function montarPendencias(vendas,pags,reembCasos){
     }),{chave:'cobranca:'+p.id, pagamento_id:p.id}));
   });
 
-  out.forEach(i=>{ i.tp=(pendTouch[i.chave]||{}).proximo_touchpoint||''; i.obs=(pendTouch[i.chave]||{}).observacao||''; });
+  out.forEach(i=>{
+    const t=pendTouch[i.chave]||{};
+    i.tp=t.proximo_touchpoint||''; i.obs=t.observacao||'';
+    i.dispensada=!!t.dispensada_em; i.dispensaMotivo=t.dispensa_motivo||'';
+  });
   return out;
 }
 
 function pendFiltrados(){
   return pendItens.filter(i=>
+    (!!i.dispensada===pendVerDispensadas)&&
     (pendFiltroTipo==='todos'||i.tipo===pendFiltroTipo)&&
-    (pendFiltroResp==='todos'||i.closer===pendFiltroResp));
+    (pendFiltroResp==='todos'||i.closer===pendFiltroResp)&&
+    (pendFiltroPeriodo==='todos'
+      ||(pendFiltroPeriodo==='ate_jun'&&i.data_venda<=PEND_CORTE_JUNHO)
+      ||(pendFiltroPeriodo==='jul_em_diante'&&i.data_venda>PEND_CORTE_JUNHO)));
 }
 
 function renderPendencias(){
   const el=document.getElementById('pendenciasContent');
   if(!el) return;
   const hoje=pendHoje();
-  const todos=pendItens;
+  // Dispensada sai de tudo: da fila, dos contadores e dos chips.
+  const todos=pendItens.filter(i=>!i.dispensada);
+  const dispensadas=pendItens.filter(i=>i.dispensada);
   const lista=pendFiltrados().slice();
 
   lista.sort((a,b)=>{
@@ -6868,11 +6888,25 @@ function renderPendencias(){
     +'<option value="todos"'+(pendFiltroResp==='todos'?' selected':'')+'>Todos</option>'
     +closers.map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'"'+(pendFiltroResp===c?' selected':'')+'>'+c+'</option>').join('')
     +'</select></div>';
+  h+='<div class="pend-grupo"><span>Venda</span><select class="pend-select" onchange="pendFiltrar(\'periodo\',this.value)">'
+    +'<option value="todos"'+(pendFiltroPeriodo==='todos'?' selected':'')+'>Todas</option>'
+    +'<option value="jul_em_diante"'+(pendFiltroPeriodo==='jul_em_diante'?' selected':'')+'>De jul/26 em diante</option>'
+    +'<option value="ate_jun"'+(pendFiltroPeriodo==='ate_jun'?' selected':'')+'>Até jun/26 (passivo herdado)</option>'
+    +'</select></div>';
   h+='<div class="pend-grupo"><span>Ordenar por</span><select class="pend-select" onchange="pendFiltrar(\'ordem\',this.value)">'
     +'<option value="idade"'+(pendOrdem==='idade'?' selected':'')+'>Mais antigas primeiro</option>'
     +'<option value="touchpoint"'+(pendOrdem==='touchpoint'?' selected':'')+'>Próximo touch point</option>'
     +'<option value="valor"'+(pendOrdem==='valor'?' selected':'')+'>Maior valor</option>'
-    +'</select></div></div>';
+    +'</select></div>';
+  h+='<div class="pend-grupo"><span>Fila</span><div class="pend-chips">'
+    +'<button class="pend-chip'+(!pendVerDispensadas?' on':'')+'" onclick="pendVerFila(false)">Abertas <b>'+todos.length+'</b></button>'
+    +'<button class="pend-chip'+(pendVerDispensadas?' on':'')+'" onclick="pendVerFila(true)">Dispensadas <b>'+dispensadas.length+'</b></button>'
+    +'</div></div>';
+  // A limpa em massa só aparece com filtro ativo: dispensar a fila inteira de
+  // uma vez nunca é o que alguém quer, e o engano seria caro de desfazer.
+  if(!pendVerDispensadas&&lista.length&&(pendFiltroTipo!=='todos'||pendFiltroResp!=='todos'||pendFiltroPeriodo!=='todos'))
+    h+='<div class="pend-grupo"><span>&nbsp;</span><button class="pend-limpar" onclick="pendDispensarFiltradas()">Dispensar as '+lista.length+' filtradas</button></div>';
+  h+='</div>';
 
   if(pendSemTabela)
     h+='<p class="pend-nota" style="margin-top:0;border:0;padding:0;color:var(--coral);">A tabela <b>pendencias_touchpoint</b> ainda não existe no Supabase — rode <b>sql/010_pendencias_touchpoint.sql</b>. Até lá a lista funciona, mas o touch point não é salvo.</p>';
@@ -6888,7 +6922,7 @@ function renderPendencias(){
       grupoAtual=g;
       const tpVenc=i.tp&&i.tp<hoje;
       const velha=i.dias>=30;
-      h+='<div class="pend-item'+(tpVenc?' tp-vencido':velha?' velha':'')+'">'
+      h+='<div class="pend-item'+(i.dispensada?' dispensada':tpVenc?' tp-vencido':velha?' velha':'')+'">'
         +'<div>'
           +'<div class="pend-head">'
             +'<span class="pend-tipo '+PEND_TIPOS[i.tipo].cls+'">'+PEND_TIPOS[i.tipo].rot+'</span>'
@@ -6896,7 +6930,8 @@ function renderPendencias(){
             +'<span class="pend-meta">'+i.closer+' · venda de '+fmtDataBR(i.data_venda)+' · '+i.produto
               +(i.valor?' · '+fmtBRL(i.valor):'')+(i.congelado?' · <b style="color:#A8341B">reembolso em aberto</b>':'')+'</span>'
           +'</div>'
-          +'<div class="pend-desc">'+i.desc+'</div>'
+          +'<div class="pend-desc">'+i.desc
+            +(i.dispensada?' <span class="pend-selo">· dispensada'+(i.dispensaMotivo?': '+i.dispensaMotivo:'')+'</span>':'')+'</div>'
         +'</div>'
         +'<div class="pend-acao">'
           +'<span class="pend-idade'+(i.dias<15?' calma':'')+'">'+i.dias+' dia'+(i.dias===1?'':'s')+'</span>'
@@ -6910,6 +6945,9 @@ function renderPendencias(){
           +(i.tipo==='cobranca'
             ? '<button class="pend-abrir" onclick="pendIrCobrancas()">Cobranças</button>'
             : '<button class="pend-abrir" onclick="pendAbrirVenda(\''+i.venda_id+'\')">Abrir venda</button>')
+          +(i.dispensada
+            ? '<button class="pend-dispensar" onclick="pendDispensar(\''+i.chave+'\',false)">Reativar</button>'
+            : '<button class="pend-dispensar" onclick="pendDispensar(\''+i.chave+'\',true)">Dispensar</button>')
         +'</div>'
       +'</div>';
     });
@@ -6920,7 +6958,9 @@ function renderPendencias(){
    +'<b>pagamentos_venda</b> — resolveu na origem, some daqui sozinho. O relógio de cada pendência começa na data da '
    +'venda, ou na data em que o campo passou a existir na Central, o que vier depois: venda antiga não é cobrada por '
    +'campo que ainda não existia. Cobrança vencida conta a partir do vencimento da parcela. '
-   +'Só o <b>touch point</b> e a <b>observação</b> ficam gravados.</p>';
+   +'Só o <b>touch point</b>, a <b>observação</b> e a <b>dispensa</b> ficam gravados. '
+   +'<b>Dispensar</b> tira da fila sem resolver — serve pro passivo que ninguém vai correr atrás. '
+   +'Some daqui, continua na venda, e volta a qualquer momento pelo filtro Dispensadas.</p>';
 
   el.innerHTML=h;
 }
@@ -6929,7 +6969,55 @@ function pendFiltrar(campo,valor){
   if(campo==='tipo') pendFiltroTipo=valor;
   if(campo==='resp') pendFiltroResp=valor;
   if(campo==='ordem') pendOrdem=valor;
+  if(campo==='periodo') pendFiltroPeriodo=valor;
   renderPendencias();
+}
+function pendVerFila(dispensadas){ pendVerDispensadas=dispensadas; renderPendencias(); }
+
+// Dispensar não resolve nada: tira da fila e guarda quem tirou, quando e por quê.
+// Reativar é o mesmo caminho de volta, zerando a data.
+async function pendDispensar(chave,dispensar){
+  let motivo='';
+  if(dispensar){
+    motivo=prompt('Por que está tirando isso da fila? (opcional)\n\nA pendência continua existindo na venda — só deixa de aparecer aqui.','');
+    if(motivo===null) return;   // cancelou
+  }
+  const corpo={chave:chave,
+    dispensada_em:dispensar?new Date().toISOString():null,
+    dispensada_por:dispensar?((currentUser&&currentUser.nome)||''):null,
+    dispensa_motivo:dispensar?(motivo||null):null};
+  try{
+    await supaFetch('pendencias_touchpoint',{method:'POST',body:JSON.stringify(corpo),
+      headers:{'Prefer':'resolution=merge-duplicates,return=representation'}});
+    pendTouch[chave]=Object.assign(pendTouch[chave]||{},corpo);
+    const it=pendItens.find(i=>i.chave===chave);
+    if(it){ it.dispensada=dispensar; it.dispensaMotivo=dispensar?(motivo||''):''; }
+    renderPendencias();
+  }catch(e){
+    alert('Não deu para '+(dispensar?'dispensar':'reativar')+'.\n\n'+String(e.message||e).slice(0,200)
+      +'\n\nSe a mensagem falar em coluna que não existe, rode sql/011_pendencias_dispensa.sql no Supabase.');
+  }
+}
+
+// Limpa em massa do que está na tela — respeita os filtros ativos, por isso o
+// botão só aparece com filtro ligado.
+async function pendDispensarFiltradas(){
+  const alvo=pendFiltrados();
+  if(!alvo.length) return;
+  const motivo=prompt('Dispensar '+alvo.length+' pendências de uma vez.\n\nElas somem da fila mas continuam existindo nas vendas.\nMotivo (opcional):','');
+  if(motivo===null) return;
+  const agora=new Date().toISOString(), quem=(currentUser&&currentUser.nome)||'';
+  const linhas=alvo.map(i=>({chave:i.chave,dispensada_em:agora,dispensada_por:quem,dispensa_motivo:motivo||null}));
+  try{
+    // PostgREST exige as mesmas chaves em todos os objetos do lote — por isso o map acima é uniforme.
+    await supaFetch('pendencias_touchpoint',{method:'POST',body:JSON.stringify(linhas),
+      headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}});
+    alvo.forEach(i=>{ i.dispensada=true; i.dispensaMotivo=motivo||'';
+                      pendTouch[i.chave]=Object.assign(pendTouch[i.chave]||{},{dispensada_em:agora}); });
+    renderPendencias();
+  }catch(e){
+    alert('Não deu para dispensar em massa.\n\n'+String(e.message||e).slice(0,200));
+  }
 }
 
 // Grava só a decisão de gestão. Upsert pela chave: a mesma pendência reaberta
