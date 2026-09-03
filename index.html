@@ -1206,10 +1206,10 @@ input.vf-doc-ruim { border-color:#8B3A1F !important; }
     <span class="topbar-logo">PMM <em>central comercial</em></span>
     <button class="nav-tab" id="tab-home"        onclick="sp('home',this)">Home</button>
     <button class="nav-tab" id="tab-time"        onclick="sp('time',this)">Time interno</button>
-    <button class="nav-tab" id="tab-pendencias"  onclick="sp('pendencias',this)">Pendências</button>
     <div class="nav-grupo" id="grp-gestao">
       <button class="nav-tab nav-grupo-btn" onclick="abrirGrupo(event,'gestao')">Gestão<span class="nav-caret">▾</span></button>
       <div class="nav-menu">
+        <button class="nav-item" id="tab-pendencias" onclick="sp('pendencias',this)">Pendências</button>
         <button class="nav-item" id="tab-dashboards" onclick="sp('dashboards',this)">Dashboards</button>
         <button class="nav-item" id="tab-vendas" onclick="sp('vendas',this)">Vendas</button>
         <button class="nav-item" id="tab-performance" onclick="sp('performance',this)">Performance</button>
@@ -2986,7 +2986,7 @@ function aplicarPermissoes(){
 // Telas agrupadas em pastas. A permissão continua sendo por tela (id tab-xxx);
 // a pasta some sozinha quando nenhuma das telas dela está liberada.
 const NAV_GRUPOS={
-  gestao:      ['dashboards','vendas','performance','funil','analises','metas','comissionamento','cobertura'],
+  gestao:      ['pendencias','dashboards','vendas','performance','funil','analises','metas','comissionamento','cobertura'],
   credenciais: ['acessos','usuarios'],
   utilidades:  ['depoimentos','links','faq'],
   operacional: ['cobrancas','reembolsos'],
