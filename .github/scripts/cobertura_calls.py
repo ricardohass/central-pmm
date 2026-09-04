@@ -590,7 +590,56 @@ def diagnosticar_google(e):
     return None
 
 
+
+def diagnostico(codigos):
+    """Modo de conferência: tudo que as três fontes sabem sobre um código de Meet.
+
+    Serve pra checar caso a caso quando o veredito da aba Cobertura não bate com
+    o que o Meetrox mostra na tela. Roda pelo workflow, passando o código no
+    campo "Data inicial": diag:mvt-mcyj-pnv
+
+    Imprime cada conferência do Meet com horário e participantes, e as calls do
+    Meetrox com o mesmo código — que é onde aparece o link reaproveitado em dias
+    diferentes.
+    """
+    closers = supa('agendas_closers?ativo=eq.true&select=email,nome&order=email')
+    for cod in [norm(c) for c in codigos if norm(c)]:
+        print('\n=== codigo %s ===' % com_traco(cod))
+        for c in closers:
+            try:
+                tok = token_google(c['email'], ESCOPO_MEET)
+            except Exception as e:
+                print('  %s: token falhou — %s' % (c['nome'], str(e)[:120]))
+                continue
+            h = {'Authorization': 'Bearer ' + tok}
+            filtro = urllib.parse.quote('space.meeting_code="%s"' % com_traco(cod))
+            r = http('%s/conferenceRecords?filter=%s' % (MEET, filtro), h, tolerar=(403, 404))
+            regs = (r or {}).get('conferenceRecords') or []
+            if not regs:
+                continue
+            print('  visto por %s — %d conferencia(s)' % (c['nome'], len(regs)))
+            for reg in regs:
+                print('    %s  inicio=%s  fim=%s' % (reg['name'], reg.get('startTime'), reg.get('endTime')))
+                pp = http('%s/%s/participants' % (MEET, reg['name']), h, tolerar=(403, 404))
+                for x in ((pp or {}).get('participants') or []):
+                    nome = ((x.get('signedinUser') or {}).get('displayName')
+                            or (x.get('anonymousUser') or {}).get('displayName')
+                            or (x.get('phoneUser') or {}).get('displayName') or '(sem nome)')
+                    print('       %-42s entrou=%s saiu=%s' % (nome[:42], x.get('earliestStartTime'), x.get('latestEndTime')))
+        if MEETROX_KEY:
+            achadas = [c for c in calls_do_meetrox(
+                datetime(2026, 7, 1, tzinfo=timezone.utc), datetime.now(timezone.utc))
+                if codigo_da_url((c.get('source') or {}).get('meeting_system_url')) == cod]
+            print('  Meetrox: %d call(s) com esse codigo' % len(achadas))
+            for a in achadas:
+                print('    id=%s  %s  dur=%ss  %s' % (a['id'], a.get('timestamp'),
+                                                     a.get('duration'), (a.get('title') or '')[:50]))
+
+
 def main():
+    arg1 = sys.argv[1] if len(sys.argv) > 1 else ''
+    if arg1.startswith('diag:'):
+        return diagnostico(arg1[5:].split(','))
     d0, d1, t0, t1 = janela(sys.argv)
     print('Janela: %s a %s (America/Sao_Paulo)' % (d0, d1))
 
