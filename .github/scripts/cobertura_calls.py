@@ -636,10 +636,36 @@ def diagnostico(codigos):
                                                      a.get('duration'), (a.get('title') or '')[:50]))
 
 
+
+def diagnostico_api(caminhos):
+    """Sonda endpoints do Meetrox: o que existe além de /calls e /users.
+
+    A tela de Gravações do Meetrox mostra reunião NÃO gravada com o motivo
+    ("tempo limite da sala de espera excedido"). Se isso existir na API, a
+    cobertura para de inferir pelo Meet e passa a ler a resposta do próprio bot.
+
+    Roda pelo workflow: diagapi:/recordings,/meetings
+    """
+    for c in caminhos:
+        c = c.strip()
+        if not c:
+            continue
+        if not c.startswith('/'):
+            c = '/' + c
+        try:
+            r = meetrox(c + ('&' if '?' in c else '?') + 'first=2')
+            amostra = json.dumps(r, ensure_ascii=False)[:900]
+            print('  OK   %-28s %s' % (c, amostra))
+        except Exception as e:
+            print('  --   %-28s %s' % (c, str(e)[:160]))
+
+
 def main():
     arg1 = sys.argv[1] if len(sys.argv) > 1 else ''
     if arg1.startswith('diag:'):
         return diagnostico(arg1[5:].split(','))
+    if arg1.startswith('diagapi:'):
+        return diagnostico_api(arg1[8:].split(','))
     d0, d1, t0, t1 = janela(sys.argv)
     print('Janela: %s a %s (America/Sao_Paulo)' % (d0, d1))
 
