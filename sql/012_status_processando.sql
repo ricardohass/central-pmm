@@ -18,7 +18,9 @@ alter table cobertura_calls add  constraint cobertura_status_ok check (status in
 ));
 
 -- A view de resumo passa a mostrar quantas estão em processamento, e elas
--- continuam fora de calls_realizadas — o desfecho ainda não existe.
+-- continuam fora de calls_realizadas — o desfecho ainda não existe. A coluna
+-- nova vai no FIM: create or replace não deixa inserir coluna no meio de uma
+-- view existente (42P16), só acrescentar depois da última.
 create or replace view cobertura_resumo_v
 with (security_invoker = true) as
 select
@@ -27,13 +29,13 @@ select
   count(*) filter (where status_final in ('ok','sem_gravacao'))  as calls_realizadas,
   count(*) filter (where status_final = 'ok')                    as gravadas,
   count(*) filter (where status_final = 'sem_gravacao')          as sem_gravacao,
-  count(*) filter (where status_final = 'processando')           as processando,
   count(*) filter (where status_final = 'no_show')               as no_shows,
   count(*) filter (where status_final = 'fora_da_agenda')        as fora_da_agenda,
   count(*) filter (where status_final = 'indeterminado')         as indeterminados,
   round(
     100.0 * count(*) filter (where status_final = 'ok')
     / nullif(count(*) filter (where status_final in ('ok','sem_gravacao')), 0)
-  , 1) as pct_cobertura
+  , 1) as pct_cobertura,
+  count(*) filter (where status_final = 'processando')           as processando
 from cobertura_calls_v
 group by closer, data;
