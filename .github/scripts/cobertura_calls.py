@@ -446,7 +446,23 @@ def identificar_closer(humanos, nome_closer):
     return com_cargo or por_nome[:1]
 
 
-def classificar(gravada, presencas, nome_closer):
+# O Meetrox não publica a call no instante em que ela acaba: sobe o vídeo,
+# transcreve e analisa. Enquanto isso a call existe no Meet e não existe em
+# /calls — e cobrar gravação aí é alarme falso que se desfaz sozinho.
+ESPERA_MEETROX_H = 3
+
+
+def em_processamento(fim):
+    """A call é recente demais pra cobrar gravação?"""
+    if not fim:
+        return False
+    t = _quando(fim)
+    if not t:
+        return False
+    return (datetime.now(timezone.utc) - t) < timedelta(hours=ESPERA_MEETROX_H)
+
+
+def classificar(gravada, presencas, nome_closer, fim=None):
     """gravada + quem entrou na sala → veredito.
 
     A distinção que importa: sem gravação, a call aconteceu ou não? Só quem
@@ -468,8 +484,12 @@ def classificar(gravada, presencas, nome_closer):
         return 'nao_aconteceu', 'ninguém entrou na sala'
     if closer and leads:
         if bot:
-            # Bot entrou e mesmo assim não há registro: o problema é do Meetrox,
-            # não do closer. Separar isso evita cobrar a pessoa errada.
+            # O bot entrou: não há o que cobrar do closer. Ou a gravação ainda
+            # está subindo, ou o Meetrox perdeu a call — e a diferença entre as
+            # duas é só o relógio.
+            if em_processamento(fim):
+                return ('processando',
+                        'call recém-encerrada — a gravação ainda está subindo no Meetrox')
             return 'sem_gravacao', 'closer, lead e o bot entraram — o Meetrox não gerou a gravação'
         return 'sem_gravacao', 'closer e lead na sala, o bot do Meetrox não foi admitido'
     if closer and not leads:
@@ -538,7 +558,8 @@ def mesmo_cliente(a, b):
 
 # Quando a call acontece, a sala que importa é a que teve gente. A ordem diz
 # qual linha vence quando o mesmo encontro aparece em dois eventos.
-_PESO = {'ok': 4, 'sem_gravacao': 3, 'no_show': 2, 'nao_aconteceu': 1, 'fora_da_agenda': 0}
+_PESO = {'ok': 5, 'sem_gravacao': 4, 'processando': 3, 'no_show': 2,
+         'nao_aconteceu': 1, 'fora_da_agenda': 0}
 
 
 def remover_duplicatas(linhas, nomes_closers):
@@ -854,7 +875,7 @@ def main():
                         print('  Meet API indisponível (%s) — os casos sem gravação '
                               'ficam sem apuração de presença.' % str(e)[:140])
                         _avisou_meet = True
-            status, porque = classificar(bool(mrx), pres, nome)
+            status, porque = classificar(bool(mrx), pres, nome, fim)
             humanos = [p for p in (pres or []) if BOT not in sem_acento(p['nome'])]
             alvo = sem_acento(nome).split()[0] if nome.strip() else ''
             entrou_closer = [p for p in humanos if alvo and alvo in sem_acento(p['nome'])]
