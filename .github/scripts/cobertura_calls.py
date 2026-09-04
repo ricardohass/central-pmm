@@ -256,16 +256,51 @@ def com_traco(cod):
     return '%s-%s-%s' % (c[:3], c[3:7], c[7:]) if len(c) == 10 else c
 
 
-def quem_entrou(email_closer, cod):
-    """Participantes de uma sala do Meet. None quando não dá pra apurar.
+def janela_do_evento(ini, fim):
+    """Intervalo em que a conferência daquele evento pode ter acontecido.
+
+    Meia hora antes do horário marcado (closer que entra cedo) e duas horas
+    depois do fim previsto (call que estica). Fora disso é outra call.
+    """
+    if not ini:
+        return None, None
+    t0 = datetime.fromisoformat(ini)
+    t1 = datetime.fromisoformat(fim) if fim else t0 + timedelta(hours=1)
+    return t0 - timedelta(minutes=30), t1 + timedelta(hours=2)
+
+
+def _quando(iso):
+    """Timestamp do Google → datetime com fuso. Sempre UTC quando vem com Z."""
+    if not iso:
+        return None
+    t = iso.replace('Z', '+00:00')
+    # A Meet API manda mais casas decimais do que o fromisoformat aceita.
+    t = re.sub(r'\.(\d{6})\d+', r'.\1', t)
+    try:
+        d = datetime.fromisoformat(t)
+    except ValueError:
+        return None
+    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+
+# A Meet API guarda os registros de conferência por 30 dias. Passado isso, "não
+# há registro" deixa de significar "ninguém entrou" e passa a significar "não dá
+# mais pra saber" — e reprocessar um mês antigo transformaria calls que
+# aconteceram em "ninguém entrou na sala".
+RETENCAO_MEET_DIAS = 28
+
+
+def quem_entrou(email_closer, cod, ini=None, fim=None):
+    """Participantes da sala do Meet NAQUELE horário. None quando não dá pra apurar.
 
     Chamada só para as calls SEM gravação — que são as ambíguas. Para as
     gravadas o Meetrox já respondeu, e consultar seria gastar requisição à toa.
 
-    Não recebe horário de propósito: a Meet API devolve `startTime` SEM fuso, e
-    comparar isso com um horário com fuso daria resultado diferente no Mac
-    (São Paulo) e no runner do Actions (UTC). Como junta os participantes de
-    todas as conferências do código, não há o que desempatar.
+    O horário importa. Um mesmo código de Meet costuma servir a várias calls do
+    mesmo lead — o closer reaproveita o link quando remarca. Sem filtrar pela
+    janela do evento, a call de hoje herdava os participantes da conferência da
+    semana passada, inclusive o bot do Meetrox: o veredito virava "o bot entrou
+    e o Meetrox não gravou" quando o que houve foi o bot não ser admitido.
     """
     tok = token_google(email_closer, ESCOPO_MEET)
     h = {'Authorization': 'Bearer ' + tok}
@@ -274,14 +309,26 @@ def quem_entrou(email_closer, cod):
     if r is None:
         return None
     regs = r.get('conferenceRecords') or []
-    if not regs:
-        return []          # a sala nunca foi aberta: ninguém entrou
 
-    # Um mesmo código costuma ter mais de uma conferência, e uma delas vem
-    # VAZIA — a sala abriu, fechou e reabriu minutos depois. Pegar a primeira
-    # da lista fazia uma call de três pessoas virar "ninguém entrou".
-    # Junta os participantes de todas: a pergunta é quem esteve na sala, e
-    # entrar duas vezes não muda a resposta.
+    j0, j1 = janela_do_evento(ini, fim)
+    if j0:
+        agora = datetime.now(timezone.utc)
+        regs = [g for g in regs
+                if (_quando(g.get('startTime')) or agora) < j1
+                and (_quando(g.get('endTime')) or agora) > j0]
+        velho = (agora - j1).days > RETENCAO_MEET_DIAS
+    else:
+        velho = False
+
+    if not regs:
+        # Sem registro dentro da janela: a sala não foi aberta naquele horário —
+        # a menos que o Meet já tenha descartado o registro por idade.
+        return None if velho else []
+
+    # Dentro da janela ainda cabe mais de uma conferência: a sala abre, fecha e
+    # reabre minutos depois, e uma delas vem vazia. Junta os participantes de
+    # todas — a pergunta é quem esteve na sala, e entrar duas vezes não muda a
+    # resposta.
     saida, vistos = [], set()
     for reg in regs[:4]:
         p = http('%s/%s/participants' % (MEET, reg['name']), h, tolerar=(403, 404))
@@ -297,8 +344,6 @@ def quem_entrou(email_closer, cod):
             vistos.add(chave)
             saida.append({'nome': nome, 'entrou': x.get('earliestStartTime')})
     return saida
-
-
 
 
 def calls_do_meetrox(t0, t1):
@@ -542,6 +587,47 @@ def remover_duplicatas(linhas, nomes_closers):
     return linhas
 
 
+
+def preservar_apuracao_antiga(linhas):
+    """Reprocessar mês antigo não pode apagar o que já se apurou.
+
+    O Meet guarda os registros de conferência por 30 dias. Passado isso, quem
+    entrou na sala vira pergunta sem resposta — e regravar a linha com "não
+    consegui apurar" jogaria fora um veredito que estava certo. Quando a linha
+    já existe no banco com presença apurada e a rodada de agora não conseguiu
+    apurar, mantém o que estava lá.
+    """
+    pendentes = [l for l in linhas if l.get('meet_apurado') is False or l.get('meet_apurado') is None]
+    if not pendentes:
+        return linhas
+    chaves = [l['chave'] for l in pendentes if l.get('chave')]
+    antigas = {}
+    for i in range(0, len(chaves), 100):
+        lote = ','.join('"%s"' % c for c in chaves[i:i + 100])
+        try:
+            for a in (supa('cobertura_calls?select=chave,status,motivo,meet_entrou_closer,'
+                           'meet_entrou_ext,meet_apurado&chave=in.(%s)' % lote) or []):
+                antigas[a['chave']] = a
+        except Exception as e:
+            print('  não consegui reler o histórico (%s) — sigo com a apuração de agora.'
+                  % str(e)[:120])
+            return linhas
+    mantidas = 0
+    for l in pendentes:
+        a = antigas.get(l.get('chave'))
+        if not a or not a.get('meet_apurado') or l.get('gravada'):
+            continue
+        l['status'], l['motivo'] = a['status'], a['motivo']
+        l['meet_entrou_closer'] = a['meet_entrou_closer']
+        l['meet_entrou_ext'] = a['meet_entrou_ext']
+        l['meet_apurado'] = True
+        mantidas += 1
+    if mantidas:
+        print('\nPresença fora do alcance do Meet em %d linha(s) — mantive o veredito '
+              'já apurado.' % mantidas)
+    return linhas
+
+
 def janela(argv):
     # Aspas vazias contam como argumento: na rodada agendada o workflow passa
     # "" "" e a janela tem que voltar a ser a padrão, não estourar.
@@ -739,21 +825,30 @@ def main():
             if not vale:
                 continue
             cod = codigo_da_url(ev.get('hangoutLink'))
-            achadas = por_codigo_mrx.get(cod) or []
+            ini = (ev.get('start') or {}).get('dateTime')
+            fim = (ev.get('end') or {}).get('dateTime')
+            # Código do Meet não basta pra casar: o mesmo link volta a ser usado
+            # quando a call é remarcada, e a gravação da semana passada dava esta
+            # call como gravada. A gravação tem que ter começado dentro da janela
+            # do evento.
+            j0, j1 = janela_do_evento(ini, fim)
+            achadas = []
+            for a in (por_codigo_mrx.get(cod) or []):
+                q = _quando(a.get('timestamp'))
+                if j0 is None or q is None or (j0 <= q <= j1):
+                    achadas.append(a)
             mrx = achadas[0] if achadas else None
             # Todas, não só a primeira: quando o bot é readmitido o Meetrox gera
             # dois registros pro mesmo código. Marcar só uma faria a segunda
             # aparecer como "gravada fora da agenda", que é falso.
             for a in achadas:
                 casados.add(a['id'])
-
-            ini = (ev.get('start') or {}).get('dateTime')
             # Só as sem gravação vão à Meet API: nas gravadas o Meetrox já
             # respondeu, e consultar seria requisição jogada fora.
             pres = None
             if not mrx and usa_meet:
                 try:
-                    pres = quem_entrou(email, cod)
+                    pres = quem_entrou(email, cod, ini, fim)
                 except Exception as e:
                     if not _avisou_meet:
                         print('  Meet API indisponível (%s) — os casos sem gravação '
@@ -761,7 +856,6 @@ def main():
                         _avisou_meet = True
             status, porque = classificar(bool(mrx), pres, nome)
             humanos = [p for p in (pres or []) if BOT not in sem_acento(p['nome'])]
-            fim = (ev.get('end') or {}).get('dateTime')
             alvo = sem_acento(nome).split()[0] if nome.strip() else ''
             entrou_closer = [p for p in humanos if alvo and alvo in sem_acento(p['nome'])]
             leads_pres = [p for p in humanos if p not in entrou_closer]
@@ -802,21 +896,32 @@ def main():
         if agente not in nomes:
             continue
         ts = c.get('timestamp')
+        cod_c = codigo_da_url((c.get('source') or {}).get('meeting_system_url'))
+        # Mesmo link, dia diferente: não é call fora da agenda, é call remarcada
+        # que aconteceu no link antigo. Dizer isso poupa a caçada manual.
+        outro_dia = sorted({l['data'] for l in linhas
+                            if l.get('meet_code') and l['meet_code'] == cod_c
+                            and l.get('evento_id')})
+        motivo_fora = ('gravada sem evento correspondente na agenda'
+                       if not outro_dia else
+                       'gravada no link de uma call marcada para %s — remarcação'
+                       % ' e '.join('%s/%s' % (d[8:10], d[5:7]) for d in outro_dia[:2]))
         linhas.append({
             'chave': 'mr:%s' % c['id'],
             'closer': agente, 'closer_email': (c.get('agent') or {}).get('email'),
             'data': datetime.fromisoformat(ts.replace('Z', '+00:00')).astimezone(SP).date().isoformat(),
             'inicio': ts, 'titulo': c.get('title') or '(sem título)',
-            'meet_code': codigo_da_url((c.get('source') or {}).get('meeting_system_url')),
+            'meet_code': cod_c,
             'meetrox_call_id': c['id'], 'meetrox_url': c.get('url'),
             'gravada': True,
             'duracao_gravacao': int(c['duration']) if c.get('duration') else None,
             'meet_apurado': False,
-            'status': 'fora_da_agenda', 'motivo': 'gravada sem evento correspondente na agenda',
+            'status': 'fora_da_agenda', 'motivo': motivo_fora,
             'atualizado_em': datetime.now(timezone.utc).isoformat(),
         })
 
     linhas = remover_duplicatas(linhas, {c['nome'] for c in closers})
+    linhas = preservar_apuracao_antiga(linhas)
 
     resumo = {}
     for l in linhas:
