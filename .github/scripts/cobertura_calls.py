@@ -767,6 +767,13 @@ def diagnostico_api(caminhos):
             print('  --   %-28s %s' % (c, str(e)[:160]))
 
 
+
+def gravar(linhas):
+    for i in range(0, len(linhas), 100):
+        supa('cobertura_calls', 'POST', linhas[i:i + 100],
+             prefer='resolution=merge-duplicates,return=minimal')
+
+
 def main():
     arg1 = sys.argv[1] if len(sys.argv) > 1 else ''
     if arg1.startswith('diag:'):
@@ -968,9 +975,24 @@ def main():
         return
     try:
         linhas = [uniformizar(l) for l in linhas]
-        for i in range(0, len(linhas), 100):
-            supa('cobertura_calls', 'POST', linhas[i:i + 100],
-                 prefer='resolution=merge-duplicates,return=minimal')
+        try:
+            gravar(linhas)
+        except RuntimeError as e:
+            # 23514 = o CHECK de status ainda não conhece 'processando'. Enquanto
+            # a migração não roda, a call recém-encerrada volta a ser gravada como
+            # sem_gravacao — o motivo já diz que é atraso do Meetrox, e o job não
+            # pode parar de gravar por causa disso.
+            if '23514' not in str(e):
+                raise
+            n = 0
+            for l in linhas:
+                if l.get('status') == 'processando':
+                    l['status'] = 'sem_gravacao'
+                    n += 1
+            print('\nO banco ainda não aceita o status "processando" (%d linha[s]). '
+                  'Rode sql/012_status_processando.sql; até lá elas entram como '
+                  'sem gravação.' % n)
+            gravar(linhas)
     except Exception as e:
         # 401 aqui quer dizer que a chave é a anon, não a service_role: a anon
         # tem policy só de select e de update em status_manual.
